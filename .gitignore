@@ -1,0 +1,16 @@
+# Ignore LocalStack cached certificates and keys (contain private keys)
+docker/localstack/.localstack/cache/*.key
+docker/localstack/.localstack/cache/*.pem
+docker/localstack/.localstack/cache/*.crt
+docker/localstack/.localstack/cache/
+
+# Node / Expo / OS defaults
+node_modules/
+.expo/
+.expo/**
+/.vscode/
+.DS_Store
+docker/localstack/.localstack/cache/
+
+# Erlang crash dumps
+erl_crash.dump

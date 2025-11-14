@@ -1,0 +1,7 @@
+ExUnit.start()
+Ecto.Adapters.SQL.Sandbox.mode(Backend.Repo, :manual)
+Faker.start()
+Code.require_file("support/factory.ex", __DIR__)
+Mox.defmock(Backend.Utils.BroadcastMock, for: Backend.Utils.Broadcast)
+Mox.set_mox_global()
+Code.require_file("support/mox_case.ex", __DIR__)
