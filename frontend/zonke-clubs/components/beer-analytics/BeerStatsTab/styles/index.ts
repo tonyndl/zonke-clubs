@@ -1,0 +1,186 @@
+import { StyleSheet } from "react-native";
+import { Colors } from "@/constants/ui";
+
+export const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  section: {
+    marginBottom: 24,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: Colors.platinum,
+    marginBottom: 16,
+    letterSpacing: 0.5,
+  },
+  statsGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 12,
+  },
+  statCard: {
+    flex: 1,
+    minWidth: "47%",
+    backgroundColor: Colors.bgCard,
+    borderRadius: 16,
+    padding: 16,
+    alignItems: "center",
+    gap: 8,
+    borderWidth: 1,
+    borderColor: "rgba(57, 243, 255, 0.15)",
+  },
+  statValue: {
+    fontSize: 20,
+    fontWeight: "800",
+    color: Colors.platinum,
+  },
+  statLabel: {
+    fontSize: 12,
+    color: Colors.lightGrey,
+    fontWeight: "600",
+  },
+  favoriteClubCard: {
+    backgroundColor: Colors.bgCard,
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: "rgba(57, 243, 255, 0.15)",
+  },
+  favoriteClubHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  favoriteClubInfo: {
+    flex: 1,
+  },
+  favoriteClubName: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: Colors.platinum,
+    marginBottom: 4,
+  },
+  favoriteClubVisits: {
+    fontSize: 13,
+    color: Colors.lightGrey,
+    fontWeight: "600",
+  },
+  clubsVisitedCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    backgroundColor: "rgba(217, 175, 98, 0.1)",
+    borderRadius: 12,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: "rgba(217, 175, 98, 0.3)",
+  },
+  clubsVisitedText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: Colors.platinum,
+  },
+  historyList: {
+    gap: 12,
+  },
+  historyItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: Colors.bgCard,
+    borderRadius: 14,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: "rgba(57, 243, 255, 0.15)",
+  },
+  historyItemLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    flex: 1,
+  },
+  historyIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "rgba(217, 175, 98, 0.15)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  historyItemInfo: {
+    flex: 1,
+  },
+  historyItemClub: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: Colors.platinum,
+    marginBottom: 2,
+  },
+  historyItemDate: {
+    fontSize: 12,
+    color: Colors.lightGrey,
+    fontWeight: "500",
+  },
+  historyItemRight: {
+    marginLeft: 12,
+  },
+  historyItemAmount: {
+    fontSize: 16,
+    fontWeight: "800",
+    color: Colors.gold,
+  },
+  loadingContainer: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 80,
+  },
+  loadingText: {
+    color: Colors.lightGrey,
+    marginTop: 16,
+    fontSize: 14,
+  },
+  errorContainer: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 80,
+    paddingHorizontal: 32,
+  },
+  errorText: {
+    color: Colors.smoke,
+    fontSize: 16,
+    fontWeight: "600",
+    marginTop: 16,
+    textAlign: "center",
+  },
+  errorSubtext: {
+    color: Colors.lightGrey,
+    fontSize: 13,
+    marginTop: 8,
+    textAlign: "center",
+  },
+  emptyContainer: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 80,
+    paddingHorizontal: 32,
+  },
+  emptyText: {
+    color: Colors.platinum,
+    fontSize: 18,
+    fontWeight: "700",
+    marginTop: 16,
+    textAlign: "center",
+  },
+  emptySubtext: {
+    color: Colors.lightGrey,
+    fontSize: 13,
+    marginTop: 8,
+    textAlign: "center",
+    lineHeight: 20,
+  },
+});

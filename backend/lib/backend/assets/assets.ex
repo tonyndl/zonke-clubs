@@ -1,122 +1,202 @@
-defmodule Backend.Assets.Assets do
+defmodule Backend.Assets do
+  @moduledoc """
+  Context module for managing file assets with S3 storage.
+  """
+  import Ecto.Query
   alias Backend.Repo
   alias Backend.Assets.Asset
   alias ExAws.S3
   alias Ecto.Multi
 
-  @bucket "zonke-drivers-bucket"
+  @bucket "zonke-clubs-bucket"
+  # 7 days in seconds
   @expires_in 604_000
+  # Note: 30 second video duration limit is enforced client-side (see VIDEO_UPLOAD_GUIDE.md)
+  # Future: add server-side validation with ffprobe
+  # 50MB max file size
+  @max_file_size 50 * 1024 * 1024
 
-  def upload_and_save(%{file: %Plug.Upload{path: path, filename: filename}} = params) do
-    Multi.new()
-    |> Multi.run(:s3_upload, fn _repo, _changes ->
-      case put_object(path, filename) do
-        {:ok, resp} -> {:ok, resp}
-        {:error, reason} -> {:error, {:s3_upload_failed, reason}}
-      end
-    end)
-    # |> Multi.on_rollback(:s3_upload_cleanup, fn _repo, %{s3_upload: s3_upload}, _error ->
-    #   if s3_upload do
-    #     case delete_object(s3_upload) do
-    #       {:ok, _} -> :ok
-    #       {:error, reason} -> Logger.error("Failed to delete S3 file on rollback: #{inspect(reason)}")
-    #     end
-    #   end
-    #   :ok
-    # end)
-    |> Multi.run(:asset, fn _repo, _changes ->
-        params
-        |> Map.merge(%{filename: filename})
-        |> Map.delete(:file)
-        |> create_asset()
-    end)
-    |> Repo.transaction()
-    |> case do
-      {:ok, %{asset: asset}} ->
-        {:ok, asset}
+  @allowed_image_types [
+    "image/jpeg",
+    "image/jpg",
+    "image/png",
+    "image/gif",
+    "image/webp",
+    "image/heic",
+    "image/heif"
+  ]
+  @allowed_video_types ["video/mp4", "video/quicktime", "video/x-msvideo", "video/mpeg"]
 
-      {:error, :s3_upload, {:error, reason}, _changes} ->
-        {:error, "Failed to upload file: #{inspect(reason)}"}
+  # === S3 UPLOAD/DOWNLOAD FUNCTIONS ===
 
-      {:error, :asset, {:error, reason}, _changes} ->
-        {:error, "Failed to save file record: #{inspect(reason)}"}
+  # Validates file type and size
+  defp validate_file(%Plug.Upload{content_type: content_type, path: path}) do
+    with :ok <- validate_file_type(content_type),
+         :ok <- validate_file_size(path) do
+      :ok
     end
   end
 
+  defp validate_file_type(content_type) do
+    allowed_types = @allowed_image_types ++ @allowed_video_types
+
+    if content_type in allowed_types do
+      :ok
+    else
+      {:error,
+       "File type #{content_type} not allowed. Supported: images (JPEG, PNG, GIF, WebP) and videos (MP4, MOV, AVI, MPEG)"}
+    end
+  end
+
+  defp validate_file_size(path) do
+    case File.stat(path) do
+      {:ok, %{size: size}} when size <= @max_file_size ->
+        :ok
+
+      {:ok, %{size: size}} ->
+        {:error,
+         "File size #{size} bytes exceeds maximum of #{@max_file_size} bytes (#{@max_file_size / 1024 / 1024}MB)"}
+
+      {:error, reason} ->
+        {:error, "Failed to read file: #{inspect(reason)}"}
+    end
+  end
+
+  @doc """
+  Uploads a file to S3 and saves the asset record.
+  """
+  def upload_and_save(%{file: %Plug.Upload{path: path, filename: filename} = file} = params) do
+    # Validate file before upload
+    with :ok <- validate_file(file) do
+      # Generate unique filename to avoid collisions
+      unique_filename = generate_unique_filename(filename)
+
+      Multi.new()
+      |> Multi.run(:s3_upload, fn _repo, _changes ->
+        case put_object(path, unique_filename) do
+          {:ok, resp} -> {:ok, resp}
+          {:error, reason} -> {:error, {:s3_upload_failed, reason}}
+        end
+      end)
+      |> Multi.run(:asset, fn _repo, _changes ->
+        params
+        |> Map.merge(%{filename: unique_filename})
+        |> Map.delete(:file)
+        |> create_asset()
+      end)
+      |> Repo.transaction()
+      |> case do
+        {:ok, %{asset: asset}} ->
+          {:ok, asset}
+
+        {:error, :s3_upload, {:s3_upload_failed, reason}, _changes} ->
+          {:error, "Failed to upload file: #{inspect(reason)}"}
+
+        {:error, :asset, changeset, _changes} ->
+          {:error, changeset}
+      end
+    end
+  end
+
+  @doc """
+  Updates an asset with a new file.
+  """
   def update_asset_with_file(
         %Asset{} = asset,
-        %{file: %Plug.Upload{path: path, filename: filename}} = params
+        %{file: %Plug.Upload{path: path, filename: filename} = file} = params
       ) do
-    Multi.new()
-    |> Multi.run(:delete_old_s3_file, fn _repo, _changes ->
-      if asset.filename do
-        case delete_object(asset.filename) do
-          {:ok, _} -> {:ok, :deleted}
-          {:error, reason} -> {:error, {:delete_old_file_failed, reason}}
+    # Validate file before upload
+    with :ok <- validate_file(file) do
+      unique_filename = generate_unique_filename(filename)
+
+      Multi.new()
+      |> Multi.run(:delete_old_s3_file, fn _repo, _changes ->
+        if asset.filename do
+          case delete_object(asset.filename) do
+            {:ok, _} -> {:ok, :deleted}
+            {:error, reason} -> {:error, {:delete_old_file_failed, reason}}
+          end
+        else
+          {:ok, :no_file_to_delete}
         end
-      else
-        {:ok, :no_file_to_delete}
-      end
-    end)
-    |> Multi.run(:new_s3_upload, fn _repo, _changes ->
-      case put_object(path, filename) do
-        {:ok, resp} -> {:ok, resp}
-        {:error, reason} -> {:error, {:s3_upload_failed, reason}}
-      end
-    end)
-    |> Multi.run(:updated_asset, fn _repo, _changes ->
+      end)
+      |> Multi.run(:new_s3_upload, fn _repo, _changes ->
+        case put_object(path, unique_filename) do
+          {:ok, resp} -> {:ok, resp}
+          {:error, reason} -> {:error, {:s3_upload_failed, reason}}
+        end
+      end)
+      |> Multi.run(:updated_asset, fn _repo, _changes ->
         asset_params =
           params
-          |> Map.merge(%{filename: filename})
+          |> Map.merge(%{filename: unique_filename})
           |> Map.delete(:file)
 
         update_asset(asset, asset_params)
-    end)
-    |> Repo.transaction()
-    |> case do
-      {:ok, %{updated_asset: updated_asset}} ->
-        {:ok, updated_asset}
+      end)
+      |> Repo.transaction()
+      |> case do
+        {:ok, %{updated_asset: updated_asset}} ->
+          {:ok, updated_asset}
 
-      {:error, :delete_old_s3_file, {:error, reason}, _changes} ->
-        {:error, "Failed to delete old s3 file file: #{inspect(reason)}"}
+        {:error, :delete_old_s3_file, {:delete_old_file_failed, reason}, _changes} ->
+          {:error, "Failed to delete old file: #{inspect(reason)}"}
 
-      {:error, :new_s3_upload, {:error, reason}, _changes} ->
-        {:error, "Failed to upload file: #{inspect(reason)}"}
+        {:error, :new_s3_upload, {:s3_upload_failed, reason}, _changes} ->
+          {:error, "Failed to upload file: #{inspect(reason)}"}
 
-      {:error, :updated_asset, {:error, reason}, _changes} ->
-        {:error, "Failed to save file record: #{inspect(reason)}"}
+        {:error, :updated_asset, changeset, _changes} ->
+          {:error, changeset}
+      end
     end
   end
 
-  def create_asset(params) do
-    %Asset{}
-    |> Asset.changeset(params)
-    |> Repo.insert()
-  end
-
-  def update_asset(%Asset{} = asset, params) do
-    asset
-    |> Asset.changeset(params)
-    |> Repo.update()
-  end
-
-  def get_asset(id) do
-    Repo.get_by(Asset, id: id)
-    |> format_asset()
-  end
-
+  @doc """
+  Uploads raw binary data to S3 with proper content type.
+  """
   def put_object(file_path, filename) do
     body = File.read!(file_path)
+    content_type = get_content_type(filename)
 
-    ExAws.S3.put_object(@bucket, filename, body)
+    ExAws.S3.put_object(@bucket, filename, body, content_type: content_type)
     |> ExAws.request(config: s3_config())
   end
 
+  # Determine content type based on file extension
+  defp get_content_type(filename) do
+    extension = filename |> Path.extname() |> String.downcase()
+
+    case extension do
+      # Videos
+      ".mp4" -> "video/mp4"
+      ".mov" -> "video/quicktime"
+      ".avi" -> "video/x-msvideo"
+      ".mpeg" -> "video/mpeg"
+      ".mpg" -> "video/mpeg"
+      # Images
+      ".jpg" -> "image/jpeg"
+      ".jpeg" -> "image/jpeg"
+      ".png" -> "image/png"
+      ".gif" -> "image/gif"
+      ".webp" -> "image/webp"
+      ".heic" -> "image/heic"
+      ".heif" -> "image/heif"
+      # Default
+      _ -> "application/octet-stream"
+    end
+  end
+
+  @doc """
+  Deletes an object from S3.
+  """
   def delete_object(filename) do
     S3.delete_object(@bucket, filename)
     |> ExAws.request(config: s3_config())
   end
 
+  @doc """
+  Generates a presigned URL for secure file access.
+  """
   def presigned_url(filename) do
     case S3.presigned_url(s3_config(), :get, @bucket, filename, expires_in: @expires_in) do
       {:ok, url} -> {:ok, url}
@@ -124,23 +204,55 @@ defmodule Backend.Assets.Assets do
     end
   end
 
-  def prepare_url(filename) do
+  @doc """
+  Generates a public download URL.
+  """
+  def download_url(filename, %{public: true, dt: dt}) do
+    config = s3_config()
+    port = ExAws.S3.Utils.sanitized_port_component(config)
+    params = URI.encode_query(t: DateTime.to_unix(dt, :millisecond))
+
+    if Mix.env() == :dev do
+      # LocalStack URL
+      "#{config[:scheme]}#{config[:host]}#{port}/#{@bucket}/#{filename}?#{params}"
+    else
+      # Real AWS URL
+      "https://#{@bucket}.s3.amazonaws.com/#{filename}?#{params}"
+    end
+  end
+
+  @doc """
+  Prepares a URL for an asset (either presigned or public).
+  """
+  def prepare_url(filename, opts \\ %{public: false}) do
     case filename do
-      nil -> nil
+      nil ->
+        nil
 
       filename ->
-        case presigned_url(filename) do
-          {:ok, url} -> url
-          _ -> nil
+        if opts.public do
+          download_url(filename, %{public: true, dt: DateTime.utc_now()})
+        else
+          case presigned_url(filename) do
+            {:ok, url} -> url
+            _ -> nil
+          end
         end
     end
   end
 
-  def s3_config() do
+  @doc """
+  Returns S3 configuration (LocalStack for dev, AWS for prod).
+  """
+  def s3_config do
     if Mix.env() == :dev do
+      # Use local network IP for mobile device access
+      # Change this to your machine's IP address if different
+      local_ip = System.get_env("LOCAL_IP") || "192.168.1.139"
+
       ExAws.Config.new(:s3,
         scheme: "http://",
-        host: "192.168.1.106",
+        host: local_ip,
         port: 4566,
         region: "us-east-1"
       )
@@ -149,21 +261,77 @@ defmodule Backend.Assets.Assets do
     end
   end
 
-  def ensure_bucket_exists() do
+  @doc """
+  Ensures the S3 bucket exists (for development setup).
+  """
+  def ensure_bucket_exists do
     case ExAws.S3.head_bucket(@bucket) |> ExAws.request() do
       {:ok, _} ->
-        IO.puts("Bucket #{@bucket} already exists")
+        IO.puts("✅ Bucket #{@bucket} exists")
         :ok
 
       {:error, {:http_error, 404, _}} ->
-        IO.puts("Bucket #{@bucket} not found — creating it now")
+        IO.puts("📦 Creating bucket #{@bucket}")
         ExAws.S3.put_bucket(@bucket, "us-east-1") |> ExAws.request()
 
       {:error, reason} ->
-        IO.inspect(reason, label: "Unexpected S3 error when creating bucket")
+        IO.inspect(reason, label: "❌ S3 error")
+        {:error, reason}
     end
   end
 
-  defp format_asset(%Asset{} = asset), do: {:ok, asset}
-  defp format_asset(nil), do: {:error, :not_found}
+  defp generate_unique_filename(original_filename) do
+    timestamp = DateTime.utc_now() |> DateTime.to_unix(:millisecond)
+    random_string = :crypto.strong_rand_bytes(8) |> Base.url_encode64() |> binary_part(0, 8)
+    extension = Path.extname(original_filename)
+    base_name = Path.basename(original_filename, extension)
+
+    "#{base_name}_#{timestamp}_#{random_string}#{extension}"
+  end
+
+  # === DATABASE FUNCTIONS ===
+
+  @doc """
+  Gets a single asset by ID.
+  """
+  def get_asset(id) do
+    case Repo.get(Asset, id) do
+      nil -> {:error, :not_found}
+      asset -> {:ok, asset}
+    end
+  end
+
+  @doc """
+  Creates an asset.
+  """
+  def create_asset(attrs) do
+    %Asset{}
+    |> Asset.changeset(attrs)
+    |> Repo.insert()
+  end
+
+  @doc """
+  Updates an asset.
+  """
+  def update_asset(%Asset{} = asset, attrs) do
+    asset
+    |> Asset.changeset(attrs)
+    |> Repo.update()
+  end
+
+  @doc """
+  Deletes an asset.
+  """
+  def delete_asset(%Asset{} = asset) do
+    Repo.delete(asset)
+  end
+
+  @doc """
+  Gets assets for a club.
+  """
+  def get_club_asset(club_id) do
+    Asset
+    |> where([a], a.club_id == ^club_id)
+    |> Repo.one()
+  end
 end

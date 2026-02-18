@@ -9,9 +9,9 @@ import Config
 
 config :backend,
   ecto_repos: [Backend.Repo],
-  generators: [timestamp_type: :utc_datetime]
+  generators: [timestamp_type: :utc_datetime, binary_id: true]
 
-# Configures the endpoint
+# Configure the endpoint
 config :backend, BackendWeb.Endpoint,
   url: [host: "localhost"],
   adapter: Bandit.PhoenixAdapter,
@@ -20,18 +20,9 @@ config :backend, BackendWeb.Endpoint,
     layout: false
   ],
   pubsub_server: Backend.PubSub,
-  live_view: [signing_salt: "yg5RdB7r"]
+  live_view: [signing_salt: "XrsNefGn"]
 
-# config :paginator, Paginator,
-#   cursor_serializer: Paginator.Cursors.JSON
-
-config :ex_aws,
-  access_key_id: System.get_env("AWS_ACCESS_KEY_ID"),
-  secret_access_key: System.get_env("AWS_SECRET_ACCESS_KEY"),
-  # or your region
-  region: "us-east-1"
-
-# Configures the mailer
+# Configure the mailer
 #
 # By default it uses the "Local" adapter which stores the emails
 # locally. You can see the emails in your browser, at "/dev/mailbox".
@@ -40,25 +31,25 @@ config :ex_aws,
 # at the `config/runtime.exs`.
 config :backend, Backend.Mailer, adapter: Swoosh.Adapters.Local
 
-# Configures Elixir's Logger
-config :logger, :console,
+# Configure Elixir's Logger
+config :logger, :default_formatter,
   format: "$time $metadata[$level] $message\n",
   metadata: [:request_id]
 
 # Use Jason for JSON parsing in Phoenix
 config :phoenix, :json_library, Jason
 
+# Configure Guardian for JWT authentication
+config :backend, Backend.Guardian,
+  issuer: "backend",
+  secret_key: "Q3s9evzfxYZp9N5hIyXiOpsu/mpklRQGBynqM1FmFy0D0Wwr/j+oHvMZ3YBQ3mSM"
+
+# Configure ExAws for S3 storage
+config :ex_aws,
+  access_key_id: System.get_env("AWS_ACCESS_KEY_ID"),
+  secret_access_key: System.get_env("AWS_SECRET_ACCESS_KEY"),
+  region: "us-east-1"
+
 # Import environment specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.
 import_config "#{config_env()}.exs"
-
-config :backend, Backend.Guardian,
-  issuer: "Backend",
-  # TODO -> gen a secret key and store in aws param store
-  secret_key: "aT8AZ2VYDaC8tgQXgWR69GbHSZYXIe9+0pqJQYKE5JOQJGa/RXvHh7M0VuBQ1jhJ"
-
-config :backend, Backend.Repo,
-  migration_primary_key: [type: :uuid],
-  migration_foreign_key: [type: :uuid]
-
-config :backend, :broadcast_module, Backend.Utils.BroadcastImpl

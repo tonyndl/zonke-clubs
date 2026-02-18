@@ -5,11 +5,12 @@ defmodule Backend.MixProject do
     [
       app: :backend,
       version: "0.1.0",
-      elixir: "~> 1.14",
+      elixir: "~> 1.15",
       elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
       aliases: aliases(),
-      deps: deps()
+      deps: deps(),
+      listeners: [Phoenix.CodeReloader]
     ]
   end
 
@@ -23,6 +24,12 @@ defmodule Backend.MixProject do
     ]
   end
 
+  def cli do
+    [
+      preferred_envs: [precommit: :test]
+    ]
+  end
+
   # Specifies which paths to compile per environment.
   defp elixirc_paths(:test), do: ["lib", "test/support"]
   defp elixirc_paths(_), do: ["lib"]
@@ -32,37 +39,29 @@ defmodule Backend.MixProject do
   # Type `mix help deps` for examples and options.
   defp deps do
     [
-      {:phoenix, "~> 1.7.14"},
+      {:phoenix, "~> 1.8.3"},
       {:phoenix_ecto, "~> 4.5"},
-      {:ecto_sql, "~> 3.10"},
+      {:ecto_sql, "~> 3.13"},
       {:postgrex, ">= 0.0.0"},
       {:phoenix_live_dashboard, "~> 0.8.3"},
-      {:swoosh, "~> 1.5"},
-      {:finch, "~> 0.13"},
+      {:swoosh, "~> 1.16"},
+      {:req, "~> 0.5"},
       {:telemetry_metrics, "~> 1.0"},
       {:telemetry_poller, "~> 1.0"},
-      {:gettext, "~> 0.20"},
+      {:gettext, "~> 1.0"},
       {:jason, "~> 1.2"},
-      {:dns_cluster, "~> 0.1.1"},
+      {:dns_cluster, "~> 0.2.0"},
       {:bandit, "~> 1.5"},
+      {:guardian, "~> 2.3"},
       {:bcrypt_elixir, "~> 3.0"},
-      {:guardian, "~> 2.3.1"},
-      {:ecto_shortuuid, "~> 0.2"},
-      {:better_params, "~> 0.5.0"},
-      {:ecto_enum, "~> 1.4"},
-      {:bodyguard, "~> 2.4"},
-      {:faker, "~> 0.18"},
-      {:paginator, "~> 1.2.0"},
+      {:corsica, "~> 2.1"},
+      {:dotenvy, "~> 0.8"},
       {:ex_machina, "~> 2.7", only: :test},
-      {:mox, "~> 1.0", only: :test},
-      {:cors_plug, "~> 3.0"},
-      {:timex, "~> 3.7"},
-      {:scrivener_ecto, "~> 2.0"},
+      # S3 Storage
       {:ex_aws, "~> 2.4"},
       {:ex_aws_s3, "~> 2.5"},
       {:hackney, "~> 1.18"},
-      {:sweet_xml, "~> 0.7"},
-      {:briefly, "~> 0.5", only: :test}
+      {:sweet_xml, "~> 0.7"}
     ]
   end
 
@@ -75,10 +74,10 @@ defmodule Backend.MixProject do
   defp aliases do
     [
       setup: ["deps.get", "ecto.setup"],
-      "ecto.setup": ["ecto.create", "ecto.migrate", "run priv/repo/seeds_base.exs"],
+      "ecto.setup": ["ecto.create", "ecto.migrate", "run priv/repo/seeds.exs"],
       "ecto.reset": ["ecto.drop", "ecto.setup"],
       test: ["ecto.create --quiet", "ecto.migrate --quiet", "test"],
-      start: ["phx.server"]
+      precommit: ["compile --warnings-as-errors", "deps.unlock --unused", "format", "test"]
     ]
   end
 end

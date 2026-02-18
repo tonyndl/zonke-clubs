@@ -1,0 +1,23 @@
+import React from "react";
+import { Outlet } from "react-router-dom";
+import { Sidebar } from "../Sidebar";
+import { LayoutContainer, MainContent } from "./styles";
+
+interface MainLayoutProps {
+  clubName?: string;
+  onLogout?: () => void;
+}
+
+export const MainLayout: React.FC<MainLayoutProps> = ({
+  clubName,
+  onLogout,
+}) => {
+  return (
+    <LayoutContainer>
+      <Sidebar clubName={clubName} onLogout={onLogout} />
+      <MainContent>
+        <Outlet />
+      </MainContent>
+    </LayoutContainer>
+  );
+};

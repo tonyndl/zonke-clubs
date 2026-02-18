@@ -29,16 +29,6 @@ defmodule Backend.DataCase do
 
   setup tags do
     Backend.DataCase.setup_sandbox(tags)
-
-    Application.put_env(:ex_aws, :access_key_id, "test")
-    Application.put_env(:ex_aws, :secret_access_key, "test")
-    Application.put_env(:ex_aws, :region, "us-east-1")
-    Application.put_env(:ex_aws, :s3, scheme: "http://", host: "localhost", port: 4566)
-    Application.put_env(:ex_aws, :request_impl, Backend.ExAwsMock)
-
-    ExAws.S3.put_bucket("zonke-drivers-bucket", "us-east-1")
-    |> ExAws.request!()
-
     :ok
   end
 

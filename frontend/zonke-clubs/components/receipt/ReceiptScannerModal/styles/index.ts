@@ -1,0 +1,287 @@
+import { StyleSheet, Dimensions } from "react-native";
+import { Colors } from "@/constants/ui";
+
+const { width, height } = Dimensions.get("window");
+
+export const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    justifyContent: "space-between",
+    backgroundColor: Colors.bg,
+  },
+  permissionContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 40,
+    gap: 20,
+  },
+  permissionTitle: {
+    fontSize: 24,
+    fontWeight: "700",
+    color: Colors.platinum,
+    textAlign: "center",
+    marginTop: 20,
+  },
+  permissionText: {
+    fontSize: 15,
+    color: Colors.smoke,
+    textAlign: "center",
+    lineHeight: 22,
+  },
+  permissionButton: {
+    width: "100%",
+    borderRadius: 16,
+    overflow: "hidden",
+    marginTop: 20,
+  },
+  permissionButtonGradient: {
+    paddingVertical: 18,
+    alignItems: "center",
+  },
+  permissionButtonText: {
+    fontSize: 17,
+    fontWeight: "700",
+    color: Colors.bgCard,
+  },
+  permissionCancel: {
+    paddingVertical: 14,
+  },
+  permissionCancelText: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: Colors.smoke,
+  },
+  cameraView: {
+    flex: 1,
+  },
+  camera: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: Colors.bg,
+  },
+  loadingText: {
+    fontSize: 16,
+    color: Colors.platinum,
+    marginTop: 16,
+    fontWeight: "500",
+  },
+  cameraOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "transparent",
+  },
+  cameraGradient: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  cameraPlaceholder: {
+    alignItems: "center",
+    gap: 16,
+  },
+  cameraPlaceholderText: {
+    fontSize: 16,
+    color: Colors.smoke,
+    fontWeight: "500",
+  },
+  scanFrame: {
+    position: "absolute",
+    width: width * 0.8,
+    height: height * 0.5,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  corner: {
+    position: "absolute",
+    width: 40,
+    height: 40,
+    borderColor: Colors.gold,
+  },
+  topLeft: {
+    top: 0,
+    left: 0,
+    borderTopWidth: 4,
+    borderLeftWidth: 4,
+    borderTopLeftRadius: 8,
+  },
+  topRight: {
+    top: 0,
+    right: 0,
+    borderTopWidth: 4,
+    borderRightWidth: 4,
+    borderTopRightRadius: 8,
+  },
+  bottomLeft: {
+    bottom: 0,
+    left: 0,
+    borderBottomWidth: 4,
+    borderLeftWidth: 4,
+    borderBottomLeftRadius: 8,
+  },
+  bottomRight: {
+    bottom: 0,
+    right: 0,
+    borderBottomWidth: 4,
+    borderRightWidth: 4,
+    borderBottomRightRadius: 8,
+  },
+  scanLine: {
+    width: "100%",
+    height: 2,
+  },
+  scanLineGradient: {
+    flex: 1,
+  },
+  instructions: {
+    marginTop: 10,
+    marginHorizontal: 24,
+    alignItems: "center",
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: "rgba(57, 243, 255, 0.2)",
+    overflow: "hidden",
+  },
+  instructionsBlur: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    padding: 10,
+  },
+  instructionsText: {
+    fontSize: 14,
+    color: Colors.lightGrey,
+    fontWeight: "500",
+  },
+  processingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  processingBlur: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  processingContent: {
+    alignItems: "center",
+    gap: 16,
+  },
+  processingTitle: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: Colors.platinum,
+  },
+  processingSubtitle: {
+    fontSize: 14,
+    color: Colors.smoke,
+  },
+  successOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(11, 15, 26, 0.8)",
+  },
+  successIcon: {
+    borderRadius: 50,
+    overflow: "hidden",
+    marginBottom: 16,
+  },
+  successIconGradient: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  successText: {
+    fontSize: 24,
+    fontWeight: "700",
+    color: Colors.platinum,
+  },
+  controls: {
+    height: 180,
+  },
+  controlsGradient: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-around",
+    paddingHorizontal: 40,
+    paddingBottom: 40,
+  },
+  closeButton: {
+    alignItems: "center",
+    gap: 8,
+  },
+  controlButton: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: "rgba(57, 243, 255, 0.15)",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "rgba(57, 243, 255, 0.3)",
+  },
+  controlLabel: {
+    fontSize: 12,
+    color: Colors.smoke,
+    fontWeight: "500",
+  },
+  captureButtonWrapper: {
+    alignItems: "center",
+  },
+  captureButtonOuter: {
+    width: 84,
+    height: 84,
+    borderRadius: 42,
+    backgroundColor: Colors.bgCard,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 4,
+    borderColor: "rgba(57, 243, 255, 0.3)",
+  },
+  captureButton: {
+    width: 68,
+    height: 68,
+    borderRadius: 34,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  galleryButton: {
+    alignItems: "center",
+    gap: 8,
+  },
+  tips: {
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: 20,
+  },
+  tip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "rgba(11, 15, 26, 0.8)",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "rgba(57, 243, 255, 0.2)",
+  },
+  tipIcon: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: "rgba(57, 243, 255, 0.15)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  tipText: {
+    fontSize: 12,
+    color: Colors.smoke,
+    fontWeight: "500",
+  },
+});

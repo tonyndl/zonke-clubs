@@ -1,85 +1,127 @@
 defmodule BackendWeb.UserChannel do
   use BackendWeb, :channel
+  alias BackendWeb.Presence
+  alias Backend.Accounts.Users
 
-  alias BackendWeb.Notifications.NotificationJSON
-  alias Backend.Notifications.Notifications
-  alias BackendWeb.Messenger.ThreadJSON
-  alias Backend.Messenger.Threads
-  alias Backend.AtomKeysHelper
-
-  require Logger
-
-  @actions [
-    "booking:created",
-    "booking:updated",
-    "booking:deleted",
-    "review:created",
-    "tag:created",
-    "tag:approved",
-    "tag:rejected"
-  ]
-
-  def join("users:" <> user_id, _params, socket) do
-    if user_id == socket.assigns.user_id do
-      # send(self(), {:after_join, user_id})
+  @impl true
+  def join("user:" <> user_id, _payload, socket) do
+    # Only allow users to join their own channel
+    # Convert both to strings for comparison since user_id from URL is a string
+    if to_string(socket.assigns.user_id) == user_id do
+      # Track user presence
+      send(self(), :after_join)
       {:ok, socket}
     else
-      {:error, %{reason: "Invalid user"}}
+      {:error, %{reason: "unauthorized"}}
     end
   end
 
-  # def handle_info({:after_join, user_id}, socket) do
-  #   notifications = Notifications.get_user_notifications(user_id)
-  #   notifications_json = NotificationJSON.index(%{notifications: notifications})
-  #   payload = %{notifications: notifications_json}
-
-  #   push(socket, "notifications:loaded", payload)
-
-  #   {:noreply, socket}
-  # end
-
-  def push_out!(action, notification) when action in @actions do
-    payload = NotificationJSON.show(%{notification: notification})
-
-    broadcast_module = Application.get_env(:backend, :broadcast_module)
-
-    broadcast_module.broadcast_from!(
-      self(),
-      "users:" <> notification.recipient_id,
-      "notifications",
-      payload
-    )
-  end
-
-  def handle_in("send_message_to_new_thread", %{"params" => params}, socket) do
+  @impl true
+  def handle_info(:after_join, socket) do
     user_id = socket.assigns.user_id
-    atomized_params = AtomKeysHelper.string_keys_to_atoms(params)
 
-    {:ok, thread} = Threads.put_message_in_new_thread(atomized_params, user_id)
-    payload = ThreadJSON.show(%{thread: thread})
+    # Track presence in the user's channel
+    {:ok, _} =
+      Presence.track(socket, user_id, %{
+        online_at: System.system_time(:second),
+        user_id: user_id
+      })
 
-    broadcast_module = Application.get_env(:backend, :broadcast_module)
+    # Update last_seen_at when user comes online
+    Users.update_last_seen(user_id)
 
-    broadcast_module.broadcast(
-      "users:" <> atomized_params.recipient_id,
-      "new_thread",
-      payload
-    )
+    # Mark all undelivered messages as delivered when user comes online
+    mark_user_messages_as_delivered(user_id)
 
-    Logger.info("Message sent to NEW thread_id: #{inspect(thread.id)}")
-    {:reply, {:ok, %{thread: payload}}, socket}
+    # Push initial presence state to this user
+    push(socket, "presence_state", Presence.list(socket))
+
+    # Broadcast to presence:lobby topic that this user is online
+    BackendWeb.Endpoint.broadcast("presence:lobby", "presence_diff", %{
+      joins: %{user_id => %{user_id: user_id, online_at: System.system_time(:second)}},
+      leaves: %{}
+    })
+
+    {:noreply, socket}
   end
 
-  # check if current_token exists in that map
-  # def handle_out("users:end_session", %{current_token: current_token}, socket) do
-  #   with {:ok, jwt} <- UserSocket.from_assigns(socket, :jwt),
-  #        ^jwt <- current_token do
-  #     {:noreply, socket}
-  #   else
-  #     _ ->
-  #       push(socket, "users:end_session", %{})
-  #   end
+  # Mark all messages sent to this user as delivered when they come online
+  defp mark_user_messages_as_delivered(user_id) do
+    alias Backend.Messenger.Message
+    alias Backend.Messenger.ThreadParticipant
+    alias Backend.Repo
+    import Ecto.Query
 
-  #   {:noreply, socket}
-  # end
+    # Find all threads this user is part of
+    thread_ids =
+      from(tp in ThreadParticipant,
+        where: tp.user_id == type(^user_id, :binary_id),
+        select: tp.thread_id
+      )
+      |> Repo.all()
+
+    # Update all messages in those threads that are sent to this user and still in "sent" status
+    Enum.each(thread_ids, fn thread_id ->
+      # Get messages that need to be marked as delivered
+      messages_to_update =
+        from(m in Message,
+          where:
+            m.thread_id == ^thread_id and
+              m.sender_id != type(^user_id, :binary_id) and
+              m.status == "sent",
+          select: {m.id, m.sender_id}
+        )
+        |> Repo.all()
+
+      # Update the messages
+      if length(messages_to_update) > 0 do
+        from(m in Message,
+          where:
+            m.thread_id == ^thread_id and
+              m.sender_id != type(^user_id, :binary_id) and
+              m.status == "sent"
+        )
+        |> Repo.update_all(set: [status: "delivered"])
+
+        # Broadcast status update to the thread
+        BackendWeb.Endpoint.broadcast(
+          "thread:#{thread_id}",
+          "message_status_updated",
+          %{
+            thread_id: thread_id,
+            reader_id: user_id,
+            status: "delivered",
+            timestamp: DateTime.utc_now()
+          }
+        )
+      end
+    end)
+  end
+
+  @impl true
+  def handle_in("ping", _payload, socket) do
+    {:reply, {:ok, %{message: "pong"}}, socket}
+  end
+
+  @impl true
+  def terminate(_reason, socket) do
+    # Update last_seen_at when user disconnects
+    user_id = socket.assigns.user_id
+    updated_user = Users.update_last_seen(user_id)
+
+    # Broadcast to presence:lobby topic that this user went offline
+    # Include the updated last_seen_at timestamp
+    last_seen_at =
+      case updated_user do
+        {:ok, user} -> user.last_seen_at
+        _ -> DateTime.utc_now()
+      end
+
+    BackendWeb.Endpoint.broadcast("presence:lobby", "presence_diff", %{
+      joins: %{},
+      leaves: %{user_id => %{user_id: user_id, last_seen_at: last_seen_at}}
+    })
+
+    :ok
+  end
 end

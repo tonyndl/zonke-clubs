@@ -1,0 +1,1859 @@
+import React, { useState, useEffect } from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TextInput,
+  Image,
+  TouchableOpacity,
+  ActivityIndicator,
+} from "react-native";
+import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
+import Animated, {
+  FadeInDown,
+  FadeInUp,
+  SlideInRight,
+  ZoomIn,
+} from "react-native-reanimated";
+import { Ionicons } from "@expo/vector-icons";
+import { Colors } from "@/constants/ui";
+import { PressableScale } from "@/components/ui/PressableScale";
+import { TextStroke } from "../../screens/Login/utils";
+import { LinearGradient } from "expo-linear-gradient";
+import {
+  router,
+  useLocalSearchParams,
+  useNavigation,
+  useFocusEffect,
+} from "expo-router";
+import { UserMediaGrid } from "@/components/profile/UserMediaGrid";
+import { ClubFeedViewer } from "@/components/club/ClubFeedViewer";
+import { AddPostModal } from "@/components/post/AddPostModal";
+import { BeerStatsTab } from "@/components/beer-analytics/BeerStatsTab";
+import { ClubPost } from "@/types/post";
+import { connectionService } from "@/services/connectionService";
+import { Toast } from "@/components/ui/Toast";
+import * as Haptics from "expo-haptics";
+import * as ImagePicker from "expo-image-picker";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
+import { Modal } from "@/components/modal";
+import { useAuth } from "@/contexts/AuthContext";
+import { authService, User } from "@/services/authService";
+import { LocationPicker } from "@/components/ui/LocationPicker";
+import { Location } from "@/services/locationService";
+import { userService } from "@/services/userService";
+import { Alert } from "react-native";
+import { clubsService, Club as ApiClub } from "@/services/clubsService";
+import postsService from "@/services/postsService";
+import { styles } from "./styles";
+
+// Placeholder images for clubs (we'll use random unsplash images)
+const getPlaceholderImage = (index: number) => {
+  const images = [
+    "https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?auto=format&fit=crop&w=800&q=60",
+    "https://images.unsplash.com/photo-1506157786151-b8491531f063?auto=format&fit=crop&w=800&q=60",
+    "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&w=800&q=60",
+    "https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?auto=format&fit=crop&w=800&q=60",
+    "https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?auto=format&fit=crop&w=800&q=60",
+    "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=800&q=60",
+  ];
+  return images[index % images.length];
+};
+
+const VIBE_OPTIONS = [
+  { emoji: "💃", name: "Dancing" },
+  { emoji: "🎉", name: "High Energy" },
+  { emoji: "✨", name: "VIP Lounges" },
+  { emoji: "🎵", name: "Live Music" },
+  { emoji: "🍸", name: "Cocktail Bars" },
+  { emoji: "🌆", name: "Rooftop" },
+];
+
+// Mock current user ID - in real app, get from auth context
+const CURRENT_USER_ID = "current-user";
+
+// Mock user profiles database
+const MOCK_USER_PROFILES: Record<string, any> = {
+  "current-user": {
+    id: "current-user",
+    name: "Alex D.",
+    avatar: "https://randomuser.me/api/portraits/men/32.jpg",
+    age: 26,
+    bio: "Weekend warrior with a passion for good music and great vibes. Always down for a spontaneous night out!",
+    favoriteDrinks: ["Black Label", "Hennessy", "Jameson"],
+    vibes: ["Dancing", "High Energy", "VIP Lounges"],
+    favoriteClubIds: ["1", "2", "5"],
+  },
+  user_1: {
+    id: "user_1",
+    name: "Sarah M.",
+    avatar: "https://randomuser.me/api/portraits/women/44.jpg",
+    age: 24,
+    bio: "Music lover and dance enthusiast. Always looking for new places to explore and great people to meet!",
+    favoriteDrinks: ["Aperol Spritz", "Champagne", "Mojito"],
+    vibes: ["Dancing", "Live Music", "Rooftop"],
+    favoriteClubIds: ["1", "3"],
+  },
+  user_2: {
+    id: "user_2",
+    name: "James K.",
+    avatar: "https://randomuser.me/api/portraits/men/45.jpg",
+    age: 28,
+    bio: "Tech enthusiast who loves mixing business with pleasure. You'll find me at the best clubs every Friday!",
+    favoriteDrinks: ["Whiskey", "Gin & Tonic", "Craft Beer"],
+    vibes: ["VIP Lounges", "Rooftop", "High Energy"],
+    favoriteClubIds: ["2", "4", "6"],
+  },
+  user_3: {
+    id: "user_3",
+    name: "Emily R.",
+    avatar: "https://randomuser.me/api/portraits/women/68.jpg",
+    age: 25,
+    bio: "Party planner by day, party-goer by night. Let's make some unforgettable memories!",
+    favoriteDrinks: ["Vodka", "Tequila", "Margarita"],
+    vibes: ["Dancing", "High Energy", "Live Music"],
+    favoriteClubIds: ["1", "2", "3"],
+  },
+  user_4: {
+    id: "user_4",
+    name: "Marcus T.",
+    avatar: "https://randomuser.me/api/portraits/men/22.jpg",
+    age: 27,
+    bio: "DJ and music producer. Always on the hunt for the next big sound and vibe.",
+    favoriteDrinks: ["Red Bull", "Vodka", "Corona"],
+    vibes: ["Live Music", "Dancing", "High Energy"],
+    favoriteClubIds: ["3", "4", "5"],
+  },
+  user_5: {
+    id: "user_5",
+    name: "Lisa P.",
+    avatar: "https://randomuser.me/api/portraits/women/32.jpg",
+    age: 23,
+    bio: "Fashion student living for the weekend. Love dressing up and hitting the town with good people!",
+    favoriteDrinks: ["Rosé", "Prosecco", "Cosmopolitan"],
+    vibes: ["VIP Lounges", "Rooftop", "Cocktail Bars"],
+    favoriteClubIds: ["5", "6"],
+  },
+  user_6: {
+    id: "user_6",
+    name: "David C.",
+    avatar: "https://randomuser.me/api/portraits/men/67.jpg",
+    age: 29,
+    bio: "Finance guy who knows how to unwind. Premium vibes only!",
+    favoriteDrinks: ["Champagne", "Johnny Walker Blue", "Cognac"],
+    vibes: ["VIP Lounges", "Rooftop", "Cocktail Bars"],
+    favoriteClubIds: ["5", "6"],
+  },
+};
+
+// Mock function to get user profile data by ID
+const getUserProfile = (userId: string) => {
+  // Return the profile if it exists in our mock database
+  if (MOCK_USER_PROFILES[userId]) {
+    return MOCK_USER_PROFILES[userId];
+  }
+
+  // Fallback for unknown users - generate a basic profile
+  return {
+    id: userId,
+    name: "Guest User",
+    avatar: "",
+    age: 25,
+    bio: "New to the club scene. Looking to connect and have a great time!",
+    favoriteDrinks: ["Beer", "Vodka"],
+    vibes: ["Dancing", "High Energy"],
+    favoriteClubIds: ["1"],
+  };
+};
+
+// This profile screen now handles both editable (own profile) and read-only (other users) modes
+export default function ProfileScreen() {
+  const params = useLocalSearchParams<{
+    userId?: string;
+    requestData?: string;
+    clubId?: string;
+  }>();
+  const navigation = useNavigation();
+  const insets = useSafeAreaInsets();
+
+  // Get authenticated user from context
+  const { user: authUser, isLoading: authLoading, refreshUser } = useAuth();
+
+  const viewingUserId = params.userId ?? authUser?.id ?? CURRENT_USER_ID;
+  const isOwnProfile =
+    !params.userId || (authUser && viewingUserId === authUser.id);
+
+  // Parse connection request data if passed from requests screen
+  const existingRequest = React.useMemo(() => {
+    if (!params.requestData) return null;
+    try {
+      return JSON.parse(decodeURIComponent(params.requestData));
+    } catch {
+      return null;
+    }
+  }, [params.requestData]);
+
+  // State for viewing other users' profiles
+  const [viewingUser, setViewingUser] = useState<User | null>(null);
+  const [loadingViewingUser, setLoadingViewingUser] = useState(false);
+  const [viewingUserError, setViewingUserError] = useState<string | null>(null);
+
+  // Fetch other user's profile from API
+  useEffect(() => {
+    if (!isOwnProfile && viewingUserId) {
+      setLoadingViewingUser(true);
+      setViewingUserError(null);
+
+      userService
+        .getUserById(viewingUserId)
+        .then((user) => {
+          setViewingUser(user);
+        })
+        .catch((error) => {
+          console.error("Failed to load user profile:", error);
+          setViewingUserError("Failed to load user profile");
+        })
+        .finally(() => {
+          setLoadingViewingUser(false);
+        });
+    }
+  }, [isOwnProfile, viewingUserId]);
+
+  // Get user profile data - use real data for own profile or fetched user for others
+  const userProfileData =
+    isOwnProfile && authUser
+      ? {
+          id: authUser.id,
+          name: authUser.username,
+          avatar: authUser.avatar_url || "",
+          age: 26, // This would come from backend if we add it
+          bio: authUser.bio || "",
+          favoriteDrinks: authUser.favorite_drinks || [],
+          vibes: authUser.vibes || [],
+          favoriteClubIds: [],
+        }
+      : viewingUser
+        ? {
+            id: viewingUser.id,
+            name: viewingUser.username,
+            avatar: viewingUser.avatar_url || "",
+            age: 26,
+            bio: viewingUser.bio || "",
+            favoriteDrinks: viewingUser.favorite_drinks || [],
+            vibes: viewingUser.vibes || [],
+            favoriteClubIds: [],
+          }
+        : {
+            id: viewingUserId,
+            name: "Loading...",
+            avatar: "",
+            age: 25,
+            bio: "",
+            favoriteDrinks: [],
+            vibes: ["Dancing", "High Energy", "Live Music"], // Default dummy vibes
+            favoriteClubIds: [],
+          };
+
+  // Hide tab bar when viewing other users' profiles
+  useEffect(() => {
+    navigation.setOptions({
+      tabBarStyle: isOwnProfile
+        ? {
+            backgroundColor: Colors.bgCard,
+            height: 50 + insets.bottom,
+            paddingBottom: insets.bottom + 10,
+            paddingTop: 10,
+          }
+        : {
+            display: "none",
+          },
+    });
+
+    // Cleanup: restore tab bar when leaving
+    return () => {
+      navigation.setOptions({
+        tabBarStyle: {
+          backgroundColor: Colors.bgCard,
+          height: 50 + insets.bottom,
+          paddingBottom: insets.bottom + 10,
+          paddingTop: 10,
+        },
+      });
+    };
+  }, [isOwnProfile, navigation, insets.bottom]);
+
+  // Listen for tab press to reset to own profile
+  useEffect(() => {
+    const unsubscribe = navigation.addListener("tabPress" as any, (e: any) => {
+      // If viewing another user's profile and tab is pressed, reset to own profile
+      if (!isOwnProfile && params.userId) {
+        e.preventDefault();
+        router.replace("/(tabs)/profile" as any);
+      }
+    });
+
+    return unsubscribe;
+  }, [navigation, isOwnProfile, params.userId]);
+
+  const [avatarUri, setAvatarUri] = useState<string | null>(
+    authUser?.avatar_url || null,
+  );
+  const [bio, setBio] = useState(userProfileData.bio);
+  const [favoriteDrinks, setFavoriteDrinks] = useState<string[]>(
+    userProfileData.favoriteDrinks,
+  );
+  const [selectedVibes, setSelectedVibes] = useState<string[]>(
+    userProfileData.vibes,
+  );
+  const [location, setLocation] = useState<Location | null>(
+    authUser?.location || null,
+  );
+  const [selectedClubs, setSelectedClubs] = useState<string[]>([]);
+
+  // Track original values for change detection
+  const [originalAvatar, setOriginalAvatar] = useState(
+    authUser?.avatar_url || null,
+  );
+
+  // Update avatar when user data is refreshed from server
+  useEffect(() => {
+    if (authUser?.avatar_url !== avatarUri && !hasChanges()) {
+      console.log(
+        "[Profile] Updating avatar from server:",
+        authUser?.avatar_url,
+      );
+      setAvatarUri(authUser?.avatar_url || null);
+      setOriginalAvatar(authUser?.avatar_url || null);
+    }
+  }, [authUser?.avatar_url]);
+  const [originalBio, setOriginalBio] = useState(userProfileData.bio);
+  const [originalDrinks, setOriginalDrinks] = useState<string[]>(
+    userProfileData.favoriteDrinks,
+  );
+  const [originalVibes, setOriginalVibes] = useState<string[]>(
+    userProfileData.vibes,
+  );
+  const [originalLocation, setOriginalLocation] = useState<Location | null>(
+    authUser?.location || null,
+  );
+  const [originalClubs, setOriginalClubs] = useState<string[]>([]);
+
+  // Save state
+  const [isSaving, setIsSaving] = useState(false);
+
+  // Modal states
+  const [showAvatarModal, setShowAvatarModal] = useState(false);
+  const [showDrinkModal, setShowDrinkModal] = useState(false);
+  const [showClubModal, setShowClubModal] = useState(false);
+  const [newDrink, setNewDrink] = useState("");
+  const [clubSearchQuery, setClubSearchQuery] = useState("");
+
+  // Tab state
+  const [activeTab, setActiveTab] = useState<"info" | "feed" | "beer-stats">(
+    "info",
+  );
+
+  // Feed viewer state
+  const [showFeedViewer, setShowFeedViewer] = useState(false);
+  const [feedInitialIndex, setFeedInitialIndex] = useState(0);
+
+  // Add post modal state
+  const [showAddPostModal, setShowAddPostModal] = useState(false);
+
+  // User posts - TODO: Fetch from backend when posts API is implemented
+  // For now, posts feature requires backend implementation (see MOBILE_BACKEND_TODO.md)
+  const [userPosts, setUserPosts] = useState<ClubPost[]>([]);
+
+  // Connection request state (for viewing other users' profiles)
+  const [isRequestSending, setIsRequestSending] = useState(false);
+  const [requestSent, setRequestSent] = useState(false);
+  const [connectionAccepted, setConnectionAccepted] = useState(false);
+  const [chatThreadId, setChatThreadId] = useState<string | undefined>(
+    undefined,
+  );
+  const [toastVisible, setToastVisible] = useState(false);
+  const [toastMessage, setToastMessage] = useState("");
+  const [toastType, setToastType] = useState<"success" | "error" | "info">(
+    "success",
+  );
+
+  // Clubs state (loaded from backend)
+  const [allClubs, setAllClubs] = useState<
+    Array<{ id: string; name: string; image: string; location: string }>
+  >([]);
+  const [loadingClubs, setLoadingClubs] = useState(false);
+
+  // Map club IDs to names for display
+  const clubNames: Record<string, string> = {};
+  allClubs.forEach((club) => {
+    clubNames[club.id] = club.name;
+  });
+
+  // Load user's posts from backend
+  const loadUserPosts = () => {
+    if (!isOwnProfile) return; // Only load posts for own profile
+
+    postsService
+      .getUserPosts()
+      .then((response) => {
+        // Convert backend posts to ClubPost format
+        const posts = response.posts.map((post) => ({
+          id: post.id,
+          clubId: post.club_id,
+          description: post.caption || undefined,
+          likes: 0,
+          comments: 0,
+          status: post.status,
+          isClubApproved: post.is_club_approved,
+          clubApprovedAt: post.club_approved_at,
+          createdAt: post.inserted_at,
+          media: post.assets.map((asset) => ({
+            id: asset.id,
+            type: asset.type as "image" | "video",
+            url: asset.url,
+            thumbnailUrl: asset.type === "video" ? asset.url : undefined,
+            duration: asset.duration,
+            startTime: asset.start_time || undefined,
+            endTime: asset.end_time || undefined,
+          })),
+          user: {
+            id: post.user.id,
+            username: post.user.username,
+            avatarUrl: post.user.avatar_url || undefined,
+          },
+        }));
+        setUserPosts(posts);
+      })
+      .catch((error) => {
+        console.error("Failed to load posts:", error);
+      });
+  };
+
+  // OLD Feed media items - mix of photos and videos (DEPRECATED - keeping for reference)
+  const [feedItems] = useState([
+    {
+      id: "1",
+      type: "image",
+      uri: "https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?auto=format&fit=crop&w=800&q=60",
+      club: "The BeatBox",
+      likes: 234,
+      aspectRatio: 1.2,
+    },
+    {
+      id: "2",
+      type: "video",
+      uri: "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=800&q=60",
+      club: "Neon Dreams",
+      likes: 567,
+      views: 1234,
+      duration: "0:15",
+      aspectRatio: 0.8,
+    },
+    {
+      id: "3",
+      type: "image",
+      uri: "https://images.unsplash.com/photo-1540039155733-5bb30b53aa14?auto=format&fit=crop&w=800&q=60",
+      club: "Velvet Room",
+      likes: 189,
+      aspectRatio: 1.5,
+    },
+    {
+      id: "4",
+      type: "video",
+      uri: "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&w=800&q=60",
+      club: "The BeatBox",
+      likes: 445,
+      views: 2100,
+      duration: "0:22",
+      aspectRatio: 0.75,
+    },
+    {
+      id: "5",
+      type: "image",
+      uri: "https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?auto=format&fit=crop&w=800&q=60",
+      club: "Club Euphoria",
+      likes: 312,
+      aspectRatio: 1.1,
+    },
+    {
+      id: "6",
+      type: "image",
+      uri: "https://images.unsplash.com/photo-1566737236500-c8ac43014a67?auto=format&fit=crop&w=800&q=60",
+      club: "District 7",
+      likes: 678,
+      aspectRatio: 1.3,
+    },
+  ]);
+
+  // Sync profile data when user data changes
+  useEffect(() => {
+    if (isOwnProfile && authUser) {
+      setBio(authUser.bio || "");
+      setFavoriteDrinks(authUser.favorite_drinks || []);
+      setSelectedVibes(authUser.vibes || []);
+      setOriginalBio(authUser.bio || "");
+      setOriginalDrinks(authUser.favorite_drinks || []);
+      setOriginalVibes(authUser.vibes || []);
+    } else if (viewingUser) {
+      setBio(viewingUser.bio || "");
+      setFavoriteDrinks(viewingUser.favorite_drinks || []);
+      setSelectedVibes(viewingUser.vibes || []);
+    }
+  }, [authUser, viewingUser, isOwnProfile]);
+
+  // Load clubs and user's favorites
+  useEffect(() => {
+    loadClubsAndFavorites();
+  }, [isOwnProfile, viewingUserId, authUser]);
+
+  // Refresh user profile data when screen is focused (to sync avatar across devices)
+  useFocusEffect(
+    React.useCallback(() => {
+      if (isOwnProfile) {
+        console.log("[Profile] Screen focused, refreshing user profile...");
+        refreshUser()
+          .then(() => {
+            console.log("[Profile] User profile refreshed from server");
+          })
+          .catch((error) => {
+            console.error("[Profile] Error refreshing user profile:", error);
+          });
+      }
+    }, [isOwnProfile, refreshUser]),
+  );
+
+  // Reload favorites when screen comes into focus (e.g., after unliking on discover screen)
+  useFocusEffect(
+    React.useCallback(() => {
+      if (isOwnProfile && authUser) {
+        console.log("[Profile] Screen focused, reloading favorites...");
+        clubsService
+          .getFavoriteClubs()
+          .then((favoritesResponse) => {
+            const favoriteIds = favoritesResponse.clubs.map(
+              (club: ApiClub) => club.id,
+            );
+            console.log(
+              "[Profile] Favorites reloaded on focus:",
+              favoriteIds.length,
+            );
+            // Update both current and original state to prevent "unsaved changes" prompt
+            setSelectedClubs(favoriteIds);
+            setOriginalClubs(favoriteIds);
+          })
+          .catch((error) => {
+            console.error(
+              "[Profile] Failed to reload favorites on focus:",
+              error,
+            );
+          });
+      }
+    }, [isOwnProfile, authUser]),
+  );
+
+  // Load user posts when screen comes into focus
+  useFocusEffect(
+    React.useCallback(() => {
+      loadUserPosts();
+    }, [isOwnProfile]),
+  );
+
+  // Check connection request status when viewing other users' profiles
+  useFocusEffect(
+    React.useCallback(() => {
+      if (!isOwnProfile && viewingUserId) {
+        console.log(
+          "[Profile] Checking connection status for user:",
+          viewingUserId,
+        );
+
+        // Check both sent and received requests
+        Promise.all([
+          connectionService.getSentRequests(),
+          connectionService.getReceivedRequests(),
+        ])
+          .then(([sentResponse, receivedResponse]) => {
+            // Check if we've sent a request to this user
+            const sentRequest = sentResponse.requests.find(
+              (req: any) => req.receiver.id === viewingUserId,
+            );
+
+            // Check if we've received a request from this user
+            const receivedRequest = receivedResponse.requests.find(
+              (req: any) => req.sender.id === viewingUserId,
+            );
+
+            const request = sentRequest || receivedRequest;
+
+            if (request) {
+              console.log("[Profile] Found existing request:", request);
+
+              // Check if the request is accepted
+              if (request.status === "accepted" && request.threadId) {
+                console.log(
+                  "[Profile] Connection accepted, thread ID:",
+                  request.threadId,
+                );
+                setConnectionAccepted(true);
+                setChatThreadId(request.threadId);
+                setRequestSent(false); // Don't show "Requested" when accepted
+              } else {
+                // Request is pending
+                console.log("[Profile] Connection pending");
+                setRequestSent(true);
+                setConnectionAccepted(false);
+                setChatThreadId(undefined);
+              }
+            } else {
+              console.log("[Profile] No existing request found");
+              setRequestSent(false);
+              setConnectionAccepted(false);
+              setChatThreadId(undefined);
+            }
+          })
+          .catch((error) => {
+            console.error(
+              "[Profile] Failed to check connection status:",
+              error,
+            );
+          });
+      }
+    }, [isOwnProfile, viewingUserId]),
+  );
+
+  const loadClubsAndFavorites = () => {
+    setLoadingClubs(true);
+
+    // Load all clubs first
+    clubsService
+      .getClubs(false)
+      .then((response) => {
+        console.log("[Profile] Loaded all clubs:", response.clubs.length);
+        const formattedClubs = response.clubs.map(
+          (club: ApiClub, index: number) => ({
+            id: club.id,
+            name: club.name,
+            location: club.location.name,
+            image: getPlaceholderImage(index),
+          }),
+        );
+        setAllClubs(formattedClubs);
+      })
+      .catch((error) => {
+        console.error("[Profile] Failed to load all clubs:", error);
+      });
+
+    // Load favorites separately if authenticated
+    if (isOwnProfile && authUser) {
+      console.log("[Profile] Loading favorites for user:", authUser.id);
+      clubsService
+        .getFavoriteClubs()
+        .then((favoritesResponse) => {
+          const favoriteIds = favoritesResponse.clubs.map(
+            (club: ApiClub) => club.id,
+          );
+          console.log("[Profile] Loaded favorite clubs:", favoriteIds);
+          setSelectedClubs(favoriteIds);
+          setOriginalClubs(favoriteIds);
+        })
+        .catch((error) => {
+          console.error("[Profile] Failed to load favorites:", error);
+          // Don't show error to user - just means they have no favorites yet
+          setSelectedClubs([]);
+          setOriginalClubs([]);
+        })
+        .finally(() => {
+          setLoadingClubs(false);
+        });
+    } else {
+      console.log(
+        "[Profile] Not loading favorites - isOwnProfile:",
+        isOwnProfile,
+        "authUser:",
+        !!authUser,
+      );
+      setLoadingClubs(false);
+    }
+  };
+
+  const pickImage = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setShowAvatarModal(false);
+
+    ImagePicker.requestMediaLibraryPermissionsAsync()
+      .then(({ status }) => {
+        if (status !== "granted") {
+          Alert.alert(
+            "Permission Required",
+            "We need access to your photos to change your profile picture.",
+          );
+          return Promise.reject("Permission denied");
+        }
+        return ImagePicker.launchImageLibraryAsync({
+          mediaTypes: "images",
+          allowsEditing: true,
+          aspect: [1, 1],
+          quality: 0.8,
+        });
+      })
+      .then((result) => {
+        if (!result.canceled) {
+          setAvatarUri(result.assets[0].uri);
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        }
+      })
+      .catch((error) => {
+        if (error !== "Permission denied") {
+          console.error("Error picking image:", error);
+        }
+      });
+  };
+
+  const removeAvatar = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setShowAvatarModal(false);
+
+    Alert.alert(
+      "Remove Profile Picture",
+      "Are you sure you want to remove your profile picture?",
+      [
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
+        {
+          text: "Remove",
+          style: "destructive",
+          onPress: () => {
+            setAvatarUri(null);
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          },
+        },
+      ],
+    );
+  };
+
+  const handleSendConnectionRequest = async () => {
+    if (requestSent) return;
+
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setIsRequestSending(true);
+
+    try {
+      // Use clubId from params, or fallback to default club
+      const clubId = params.clubId || "3f1b5bd3-a899-44c1-bfda-ee83f940accb"; // The Grand Africa Café & Beach (default)
+
+      await connectionService.createRequest({
+        receiver_id: viewingUserId,
+        message: undefined,
+        club_id: clubId,
+      });
+
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      setRequestSent(true);
+      setToastMessage("Request sent!");
+      setToastType("success");
+      setToastVisible(true);
+    } catch (error) {
+      console.error("Failed to send connection request:", error);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      setToastMessage("Failed to send request");
+      setToastType("error");
+      setToastVisible(true);
+    } finally {
+      setIsRequestSending(false);
+    }
+  };
+
+  const toggleVibe = (name: string) => {
+    setSelectedVibes((prev) =>
+      prev.includes(name) ? prev.filter((v) => v !== name) : [...prev, name],
+    );
+  };
+
+  const addDrink = () => {
+    if (newDrink.trim() && !favoriteDrinks.includes(newDrink.trim())) {
+      setFavoriteDrinks([...favoriteDrinks, newDrink.trim()]);
+      setNewDrink("");
+      setShowDrinkModal(false);
+    }
+  };
+
+  const removeDrink = (drink: string) => {
+    setFavoriteDrinks(favoriteDrinks.filter((d) => d !== drink));
+  };
+
+  const toggleClub = (clubId: string) => {
+    const isCurrentlySelected = selectedClubs.includes(clubId);
+
+    // Update local state only (changes will be saved when user presses "Save Changes")
+    setSelectedClubs((prev) =>
+      isCurrentlySelected
+        ? prev.filter((c) => c !== clubId)
+        : [...prev, clubId],
+    );
+
+    // Haptic feedback
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  };
+
+  const getSelectedClubsData = () => {
+    return allClubs.filter((club) => selectedClubs.includes(club.id));
+  };
+
+  const getFilteredClubs = () => {
+    if (!clubSearchQuery.trim()) return allClubs;
+    return allClubs.filter(
+      (club) =>
+        club.name.toLowerCase().includes(clubSearchQuery.toLowerCase()) ||
+        club.location.toLowerCase().includes(clubSearchQuery.toLowerCase()),
+    );
+  };
+
+  const handleAddPost = () => {
+    // Post is already created via AddPostModal -> postsService.createPost()
+    // Just refresh the posts list
+    setShowAddPostModal(false);
+    loadUserPosts();
+  };
+
+  // Check if profile has been modified
+  const hasChanges = () => {
+    const avatarChanged = avatarUri !== originalAvatar;
+    const bioChanged = bio !== originalBio;
+    const drinksChanged =
+      JSON.stringify([...favoriteDrinks].sort()) !==
+      JSON.stringify([...originalDrinks].sort());
+    const vibesChanged =
+      JSON.stringify([...selectedVibes].sort()) !==
+      JSON.stringify([...originalVibes].sort());
+    const locationChanged =
+      JSON.stringify(location) !== JSON.stringify(originalLocation);
+    const clubsChanged =
+      JSON.stringify([...selectedClubs].sort()) !==
+      JSON.stringify([...originalClubs].sort());
+
+    return (
+      avatarChanged ||
+      bioChanged ||
+      drinksChanged ||
+      vibesChanged ||
+      locationChanged ||
+      clubsChanged
+    );
+  };
+
+  const handleSaveProfile = () => {
+    if (!hasChanges()) {
+      return;
+    }
+
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setIsSaving(true);
+
+    // Upload avatar to S3 first if it's a local file
+    const uploadAvatarIfNeeded = () => {
+      if (
+        avatarUri &&
+        avatarUri !== originalAvatar &&
+        avatarUri.startsWith("file://")
+      ) {
+        // Local file - upload to S3
+        console.log("📸 Uploading avatar to S3...", avatarUri.substring(0, 50));
+        const extension = avatarUri.toLowerCase().endsWith(".heic")
+          ? "jpg"
+          : "jpg";
+        return postsService
+          .uploadMedia({
+            uri: avatarUri,
+            type: "image",
+            name: `avatar_${Date.now()}.${extension}`,
+          })
+          .then((asset) => {
+            console.log("✅ Avatar uploaded successfully:", asset.url);
+            return asset.url;
+          })
+          .catch((error) => {
+            console.error("❌ Avatar upload failed:", error);
+            throw new Error(
+              `Failed to upload avatar: ${error.message || error}`,
+            );
+          });
+      } else {
+        // Either no change, removal (null), or already an S3 URL
+        console.log(
+          "ℹ️ Avatar not changed or already uploaded:",
+          avatarUri?.substring(0, 50),
+        );
+        return Promise.resolve(avatarUri);
+      }
+    };
+
+    uploadAvatarIfNeeded()
+      .then((uploadedAvatarUrl) => {
+        const profileData: any = {
+          bio: bio.trim() || undefined,
+          vibes: selectedVibes.length > 0 ? selectedVibes : undefined,
+          favorite_drinks:
+            favoriteDrinks.length > 0 ? favoriteDrinks : undefined,
+          location: location || undefined,
+        };
+
+        // Handle avatar_url separately to distinguish between "no change" and "remove"
+        if (avatarUri !== originalAvatar) {
+          profileData.avatar_url = uploadedAvatarUrl; // Use S3 URL or null
+        }
+
+        // Determine which clubs were added/removed
+        const clubsAdded = selectedClubs.filter(
+          (id) => !originalClubs.includes(id),
+        );
+        const clubsRemoved = originalClubs.filter(
+          (id) => !selectedClubs.includes(id),
+        );
+
+        // Build array of promises for all updates
+        const updates: Promise<any>[] = [];
+
+        // Add profile update
+        updates.push(authService.updateProfile(profileData));
+
+        // Add like/unlike promises for clubs
+        clubsAdded.forEach((clubId) => {
+          updates.push(clubsService.likeClub(clubId));
+        });
+        clubsRemoved.forEach((clubId) => {
+          updates.push(clubsService.unlikeClub(clubId));
+        });
+
+        // Execute all updates
+        return Promise.all(updates);
+      })
+      .then(() => {
+        return refreshUser();
+      })
+      .then(() => {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        setToastMessage("Profile updated successfully!");
+        setToastType("success");
+        setToastVisible(true);
+
+        // Update original values to current values so hasChanges() returns false
+        setOriginalAvatar(avatarUri);
+        setOriginalBio(bio);
+        setOriginalDrinks([...favoriteDrinks]);
+        setOriginalVibes([...selectedVibes]);
+        setOriginalLocation(location);
+        setOriginalClubs([...selectedClubs]);
+      })
+      .catch((error) => {
+        console.error("❌ Profile update failed:", error);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+        const errorMessage =
+          error.message || "Failed to save profile changes. Please try again.";
+        Alert.alert("Error", errorMessage);
+      })
+      .finally(() => {
+        setIsSaving(false);
+      });
+  };
+
+  // Show loading state while auth is loading
+  if (authLoading) {
+    return (
+      <SafeAreaView style={styles.container} edges={["top"]}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={Colors.gold} />
+          <Text style={styles.loadingText}>Loading profile...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // If not authenticated, show message
+  if (!authUser && isOwnProfile) {
+    return (
+      <SafeAreaView style={styles.container} edges={["top"]}>
+        <View style={styles.loadingContainer}>
+          <Ionicons
+            name="person-circle-outline"
+            size={80}
+            color={Colors.lightGrey}
+          />
+          <Text style={styles.notAuthText}>
+            Please log in to view your profile
+          </Text>
+          <PressableScale
+            style={styles.loginButton}
+            onPress={() => router.push("/screens/Login" as any)}
+          >
+            <Text style={styles.loginButtonText}>Go to Login</Text>
+          </PressableScale>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // Show loading state when fetching other user's profile
+  if (loadingViewingUser) {
+    return (
+      <SafeAreaView style={styles.container} edges={["top"]}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={Colors.gold} />
+          <Text style={styles.loadingText}>Loading profile...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // Show error state if failed to load user
+  if (viewingUserError && !isOwnProfile) {
+    return (
+      <SafeAreaView style={styles.container} edges={["top"]}>
+        <View style={styles.loadingContainer}>
+          <Ionicons
+            name="person-circle-outline"
+            size={80}
+            color={Colors.smoke}
+          />
+          <Text style={styles.errorText}>{viewingUserError}</Text>
+          <PressableScale
+            onPress={() => router.back()}
+            style={styles.errorButton}
+          >
+            <Text style={styles.errorButtonText}>Go Back</Text>
+          </PressableScale>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  return (
+    <SafeAreaView style={styles.container} edges={["top"]}>
+      <KeyboardAwareScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+        enableOnAndroid={true}
+        enableAutomaticScroll={true}
+        extraScrollHeight={20}
+      >
+        {/* Header */}
+        <Animated.View entering={FadeInUp.springify()} style={styles.header}>
+          {!isOwnProfile && (
+            <PressableScale
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                // If we came from people browse (has clubId), replace current screen to avoid loop
+                if (params.clubId) {
+                  // Use negative delta to go back multiple times to get out of tab navigation
+                  router.navigate(
+                    `/people-browse?clubId=${params.clubId}` as any,
+                  );
+                } else if (router.canGoBack()) {
+                  router.back();
+                } else {
+                  // Fallback to discover tab
+                  router.push("/(tabs)/discover" as any);
+                }
+              }}
+              style={styles.backButton}
+            >
+              <Ionicons name="chevron-back" size={28} color={Colors.white} />
+            </PressableScale>
+          )}
+          <TextStroke stroke={0.6} color={Colors.secondaryBlue}>
+            <Text style={styles.headerTitle}>Profile</Text>
+          </TextStroke>
+          {isOwnProfile && (
+            <PressableScale
+              onPress={() => router.push("/screens/Settings" as any)}
+              style={styles.settingsButton}
+            >
+              <Ionicons name="settings-outline" size={24} color={Colors.gold} />
+            </PressableScale>
+          )}
+        </Animated.View>
+
+        {/* Profile Picture Section */}
+        <Animated.View
+          entering={FadeInUp.delay(100).springify()}
+          style={styles.profilePictureSection}
+        >
+          <View style={styles.avatarSection}>
+            <PressableScale
+              onPress={() => isOwnProfile && setShowAvatarModal(true)}
+            >
+              <View style={styles.avatarRing}>
+                {(() => {
+                  // If user changed avatar, use the new value (could be null or new URI)
+                  // Otherwise, use the current profile avatar (own or viewing user)
+                  const hasAvatarChange = avatarUri !== originalAvatar;
+                  const displayAvatar = hasAvatarChange
+                    ? avatarUri
+                    : isOwnProfile
+                      ? authUser?.avatar_url
+                      : userProfileData.avatar;
+
+                  return displayAvatar ? (
+                    <Image
+                      source={{ uri: displayAvatar }}
+                      style={styles.avatarImage}
+                    />
+                  ) : (
+                    <View style={styles.avatarPlaceholder}>
+                      <Ionicons
+                        name="person"
+                        size={48}
+                        color={Colors.lightGrey}
+                      />
+                    </View>
+                  );
+                })()}
+              </View>
+            </PressableScale>
+            {isOwnProfile && (
+              <PressableScale
+                style={styles.avatarEditBadge}
+                onPress={pickImage}
+              >
+                <Ionicons name="camera" size={18} color={Colors.bg} />
+              </PressableScale>
+            )}
+          </View>
+          <Text style={styles.userName}>{userProfileData.name}</Text>
+          {/* {authUser && isOwnProfile && (
+            <View style={styles.userInfoChip}>
+              <Ionicons name="mail-outline" size={14} color={Colors.lightGrey} />
+              <Text style={styles.userInfoText}>{authUser.email || authUser.username}</Text>
+            </View>
+          )} */}
+          {/* {authUser && isOwnProfile && (
+            <View style={styles.userInfoChip}>
+              <Ionicons name="shield-checkmark" size={14} color={Colors.gold} />
+              <Text style={styles.userRoleText}>
+                {authUser.role === 'club_owner' ? 'Club Owner' : 'Club Goer'}
+              </Text>
+            </View>
+          )} */}
+        </Animated.View>
+
+        {/* Connect Button (only for other users' profiles) */}
+        {!isOwnProfile && (
+          <Animated.View
+            entering={FadeInDown.delay(150).springify()}
+            style={styles.connectSection}
+          >
+            {(existingRequest?.status === "accepted" || connectionAccepted) &&
+            (existingRequest?.threadId || chatThreadId) ? (
+              // Show Chat button for accepted requests
+              <PressableScale
+                style={[styles.connectButton, styles.chatNowButton]}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  const threadId = existingRequest?.threadId || chatThreadId;
+                  router.push(`/chat/${threadId}` as any);
+                }}
+              >
+                <Ionicons name="chatbubble" size={20} color={Colors.white} />
+                <Text style={styles.chatNowButtonText}>Chat</Text>
+              </PressableScale>
+            ) : existingRequest?.status === "pending" || requestSent ? (
+              // Show Requested for pending requests
+              <PressableScale
+                style={[styles.connectButton, styles.requestPendingButton]}
+                disabled={true}
+              >
+                <Ionicons
+                  name="checkmark-circle"
+                  size={20}
+                  color={Colors.gold}
+                />
+                <Text style={styles.requestPendingText}>Requested</Text>
+              </PressableScale>
+            ) : (
+              // Show Send Connection Request if no existing request
+              <PressableScale
+                style={[styles.connectButton]}
+                onPress={handleSendConnectionRequest}
+                disabled={isRequestSending}
+              >
+                <Ionicons name="person-add" size={20} color={Colors.bg} />
+                <Text style={styles.connectButtonText}>
+                  {isRequestSending ? "Sending..." : "Send Connection Request"}
+                </Text>
+              </PressableScale>
+            )}
+          </Animated.View>
+        )}
+
+        {/* Tab Switcher */}
+        <Animated.View
+          entering={FadeInDown.delay(150).springify()}
+          style={styles.tabSwitcher}
+        >
+          <PressableScale
+            style={StyleSheet.flatten([
+              styles.tab,
+              activeTab === "info" && styles.tabActive,
+            ])}
+            onPress={() => setActiveTab("info")}
+          >
+            <Ionicons
+              name="person-circle"
+              size={20}
+              color={activeTab === "info" ? Colors.bg : Colors.lightGrey}
+            />
+            <Text
+              style={StyleSheet.flatten([
+                styles.tabText,
+                activeTab === "info" && styles.tabTextActive,
+              ])}
+            >
+              Info
+            </Text>
+          </PressableScale>
+          <PressableScale
+            style={StyleSheet.flatten([
+              styles.tab,
+              activeTab === "feed" && styles.tabActive,
+            ])}
+            onPress={() => setActiveTab("feed")}
+          >
+            <Ionicons
+              name="images"
+              size={20}
+              color={activeTab === "feed" ? Colors.bg : Colors.lightGrey}
+            />
+            <Text
+              style={StyleSheet.flatten([
+                styles.tabText,
+                activeTab === "feed" && styles.tabTextActive,
+              ])}
+            >
+              Club Feed
+            </Text>
+          </PressableScale>
+          <PressableScale
+            style={StyleSheet.flatten([
+              styles.tab,
+              activeTab === "beer-stats" && styles.tabActive,
+            ])}
+            onPress={() => setActiveTab("beer-stats")}
+          >
+            <Ionicons
+              name="wallet"
+              size={20}
+              color={activeTab === "beer-stats" ? Colors.bg : Colors.lightGrey}
+            />
+            <Text
+              style={StyleSheet.flatten([
+                styles.tabText,
+                activeTab === "beer-stats" && styles.tabTextActive,
+              ])}
+            >
+              Spending
+            </Text>
+          </PressableScale>
+        </Animated.View>
+
+        {/* Info Tab Content */}
+        {activeTab === "info" && (
+          <>
+            {/* Bio Section */}
+            <Animated.View
+              entering={FadeInDown.delay(150).springify()}
+              style={styles.section}
+            >
+              <View style={styles.sectionCard}>
+                <View style={styles.sectionHeader}>
+                  <View style={styles.sectionHeaderLeft}>
+                    <Ionicons name="person" size={20} color={Colors.gold} />
+                    <Text style={styles.sectionTitle}>Bio</Text>
+                  </View>
+                </View>
+                {isOwnProfile ? (
+                  <View style={styles.bioEditContainer}>
+                    <TextInput
+                      style={styles.bioInput}
+                      value={bio}
+                      onChangeText={setBio}
+                      multiline
+                      maxLength={200}
+                      placeholder="Tell people about yourself..."
+                      placeholderTextColor={Colors.lightGrey}
+                    />
+                    <Text style={styles.charCount}>{bio.length}/200</Text>
+                  </View>
+                ) : (
+                  <Text style={styles.bioText}>{bio}</Text>
+                )}
+              </View>
+            </Animated.View>
+
+            {/* Location Section */}
+            <Animated.View
+              entering={FadeInDown.delay(175).springify()}
+              style={styles.section}
+            >
+              <View style={styles.sectionCard}>
+                {isOwnProfile ? (
+                  <LocationPicker
+                    label="Location"
+                    labelIcon={
+                      <Ionicons name="location" size={20} color={Colors.gold} />
+                    }
+                    value={location}
+                    onChange={setLocation}
+                    placeholder="Search for your location..."
+                  />
+                ) : (
+                  <>
+                    <View style={styles.sectionHeader}>
+                      <View style={styles.sectionHeaderLeft}>
+                        <Ionicons
+                          name="location"
+                          size={20}
+                          color={Colors.gold}
+                        />
+                        <Text style={styles.sectionTitle}>Location</Text>
+                      </View>
+                    </View>
+                    {location ? (
+                      <View style={styles.locationDisplay}>
+                        <Ionicons
+                          name="location"
+                          size={16}
+                          color={Colors.primaryBlue}
+                        />
+                        <Text style={styles.locationText}>{location.name}</Text>
+                      </View>
+                    ) : (
+                      <Text style={styles.emptyText}>No location set</Text>
+                    )}
+                  </>
+                )}
+              </View>
+            </Animated.View>
+
+            {/* Favorite Drinks Section */}
+            <Animated.View
+              entering={FadeInDown.delay(200).springify()}
+              style={styles.section}
+            >
+              <View style={styles.sectionCard}>
+                <View style={styles.sectionHeader}>
+                  <View style={styles.sectionHeaderLeft}>
+                    <Ionicons name="wine" size={20} color={Colors.gold} />
+                    <Text style={styles.sectionTitle}>Favorite Drinks</Text>
+                  </View>
+                  {isOwnProfile && (
+                    <PressableScale
+                      style={styles.addButton}
+                      onPress={() => setShowDrinkModal(true)}
+                    >
+                      <Ionicons name="add" size={18} color={Colors.gold} />
+                    </PressableScale>
+                  )}
+                </View>
+                {isOwnProfile && (
+                  <Text style={styles.sectionSubtitle}>
+                    Add your favorite drink brands
+                  </Text>
+                )}
+                <View style={styles.drinksContainer}>
+                  {favoriteDrinks.map((drink, index) => (
+                    <Animated.View
+                      key={drink}
+                      entering={SlideInRight.delay(index * 50).springify()}
+                      style={styles.drinkChip}
+                    >
+                      <Text style={styles.drinkEmoji}>🥃</Text>
+                      <Text style={styles.drinkText}>{drink}</Text>
+                      {isOwnProfile && (
+                        <TouchableOpacity
+                          onPress={() => removeDrink(drink)}
+                          style={styles.removeButton}
+                        >
+                          <Ionicons
+                            name="close-circle"
+                            size={18}
+                            color={Colors.primaryBlue}
+                          />
+                        </TouchableOpacity>
+                      )}
+                    </Animated.View>
+                  ))}
+                </View>
+              </View>
+            </Animated.View>
+
+            {/* Club Vibes Section */}
+            <Animated.View
+              entering={FadeInDown.delay(250).springify()}
+              style={styles.section}
+            >
+              <View style={styles.sectionCard}>
+                <View style={styles.sectionHeader}>
+                  <View style={styles.sectionHeaderLeft}>
+                    <Ionicons name="flash" size={20} color={Colors.gold} />
+                    <Text style={styles.sectionTitle}>My Vibe</Text>
+                  </View>
+                </View>
+                {isOwnProfile && (
+                  <Text style={styles.sectionSubtitle}>
+                    Select your club preferences
+                  </Text>
+                )}
+                {selectedVibes.length === 0 && !isOwnProfile ? (
+                  <Text style={styles.emptyText}>No vibes selected yet</Text>
+                ) : (
+                  <View style={styles.vibesGrid}>
+                    {VIBE_OPTIONS.map((vibe) => {
+                      const isSelected = selectedVibes.includes(vibe.name);
+                      return isOwnProfile ? (
+                        <PressableScale
+                          key={vibe.name}
+                          style={StyleSheet.flatten([
+                            styles.vibeChip,
+                            isSelected && styles.vibeChipSelected,
+                          ])}
+                          onPress={() => toggleVibe(vibe.name)}
+                        >
+                          <Text style={styles.vibeEmoji}>{vibe.emoji}</Text>
+                          <Text
+                            style={[
+                              styles.vibeText,
+                              isSelected && styles.vibeTextSelected,
+                            ]}
+                          >
+                            {vibe.name}
+                          </Text>
+                          {isSelected && (
+                            <Animated.View
+                              entering={ZoomIn.springify()}
+                              style={styles.checkmark}
+                            >
+                              <Ionicons
+                                name="checkmark"
+                                size={10}
+                                color={Colors.bg}
+                              />
+                            </Animated.View>
+                          )}
+                        </PressableScale>
+                      ) : isSelected ? (
+                        <View
+                          key={vibe.name}
+                          style={StyleSheet.flatten([
+                            styles.vibeChip,
+                            styles.vibeChipSelected,
+                          ])}
+                        >
+                          <Text style={styles.vibeEmoji}>{vibe.emoji}</Text>
+                          <Text
+                            style={[styles.vibeText, styles.vibeTextSelected]}
+                          >
+                            {vibe.name}
+                          </Text>
+                        </View>
+                      ) : null;
+                    })}
+                  </View>
+                )}
+              </View>
+            </Animated.View>
+
+            {/* Favourite Clubs Section */}
+            <Animated.View
+              entering={FadeInDown.delay(300).springify()}
+              style={styles.section}
+            >
+              <View style={styles.sectionCard}>
+                <View style={styles.sectionHeader}>
+                  <View style={styles.sectionHeaderLeft}>
+                    <Ionicons name="heart" size={20} color={Colors.gold} />
+                    <Text style={styles.sectionTitle}>Favourite Clubs</Text>
+                  </View>
+                  {isOwnProfile && (
+                    <PressableScale
+                      style={styles.addButton}
+                      onPress={() => setShowClubModal(true)}
+                    >
+                      <Ionicons name="add" size={18} color={Colors.gold} />
+                    </PressableScale>
+                  )}
+                </View>
+                {isOwnProfile && (
+                  <Text style={styles.sectionSubtitle}>
+                    Search and select your favorite spots
+                  </Text>
+                )}
+                <View style={styles.clubsGrid}>
+                  {loadingClubs ? (
+                    <View style={{ padding: 20, alignItems: "center" }}>
+                      <ActivityIndicator size="small" color={Colors.gold} />
+                      <Text style={styles.sectionSubtitle}>
+                        Loading clubs...
+                      </Text>
+                    </View>
+                  ) : getSelectedClubsData().length === 0 ? (
+                    <View style={{ padding: 20, alignItems: "center" }}>
+                      <Ionicons
+                        name="heart-outline"
+                        size={48}
+                        color={Colors.lightGrey}
+                      />
+                      <Text
+                        style={[
+                          styles.sectionSubtitle,
+                          { marginTop: 12, textAlign: "center" },
+                        ]}
+                      >
+                        {isOwnProfile
+                          ? "No favorite clubs yet. Tap + to add some!"
+                          : "No favorite clubs"}
+                      </Text>
+                    </View>
+                  ) : null}
+                  {!loadingClubs &&
+                    getSelectedClubsData().map((club, index) => (
+                      <Animated.View
+                        key={club.id}
+                        entering={FadeInDown.delay(index * 100).springify()}
+                      >
+                        <PressableScale
+                          style={styles.clubCard}
+                          onPress={() => router.push(`/club/${club.id}` as any)}
+                        >
+                          <Image
+                            source={{ uri: club.image }}
+                            style={styles.clubCardImage}
+                          />
+                          <View style={styles.clubCardContent}>
+                            <Text style={styles.clubCardName}>{club.name}</Text>
+                            <View style={styles.clubCardLocation}>
+                              <Ionicons
+                                name="location"
+                                size={12}
+                                color={Colors.gold}
+                              />
+                              <Text style={styles.clubCardLocationText}>
+                                {club.location}
+                              </Text>
+                            </View>
+                          </View>
+                          {isOwnProfile && (
+                            <TouchableOpacity
+                              style={styles.clubRemoveButton}
+                              onPress={(e) => {
+                                e.stopPropagation();
+                                toggleClub(club.id);
+                              }}
+                            >
+                              <Ionicons
+                                name="close-circle"
+                                size={24}
+                                color={Colors.gold}
+                              />
+                            </TouchableOpacity>
+                          )}
+                        </PressableScale>
+                      </Animated.View>
+                    ))}
+                </View>
+              </View>
+            </Animated.View>
+          </>
+        )}
+
+        {/* Feed Tab Content */}
+        {activeTab === "feed" && (
+          <UserMediaGrid
+            posts={userPosts}
+            clubNames={clubNames}
+            onPostPress={(postIndex) => {
+              setFeedInitialIndex(postIndex);
+              setShowFeedViewer(true);
+            }}
+            onAddPost={() => setShowAddPostModal(true)}
+          />
+        )}
+
+        {/* Beer Stats Tab Content */}
+        {activeTab === "beer-stats" && (
+          <BeerStatsTab userId={viewingUserId} isOwnProfile={isOwnProfile} />
+        )}
+
+        <View style={{ height: 120 }} />
+      </KeyboardAwareScrollView>
+
+      {/* Add Drink Modal - only for own profile */}
+      {isOwnProfile && showDrinkModal && (
+        <Modal
+          onDismiss={() => setShowDrinkModal(false)}
+          bgColor={Colors.bgCard}
+        >
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Add Favorite Drink</Text>
+            <TouchableOpacity onPress={() => setShowDrinkModal(false)}>
+              <Ionicons name="close" size={24} color={Colors.platinum} />
+            </TouchableOpacity>
+          </View>
+          <Text style={styles.modalSubtitle}>
+            Enter the brand name (e.g., Black Label, Hennessy)
+          </Text>
+          <TextInput
+            style={styles.modalInput}
+            value={newDrink}
+            onChangeText={setNewDrink}
+            placeholder="Brand name..."
+            placeholderTextColor={Colors.lightGrey}
+            autoFocus
+            onSubmitEditing={addDrink}
+          />
+          <PressableScale style={styles.modalButton} onPress={addDrink}>
+            <Text style={styles.modalButtonText}>Add Drink</Text>
+            <Ionicons name="checkmark" size={20} color={Colors.bg} />
+          </PressableScale>
+          {/* </Animated.View> */}
+        </Modal>
+      )}
+
+      {/* Club Selection Modal - only for own profile */}
+      {isOwnProfile && showClubModal && (
+        <Modal
+          onDismiss={() => setShowClubModal(false)}
+          bgColor={Colors.bgCard}
+        >
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Select Clubs</Text>
+            <TouchableOpacity onPress={() => setShowClubModal(false)}>
+              <Ionicons name="close" size={24} color={Colors.platinum} />
+            </TouchableOpacity>
+          </View>
+          <View style={styles.searchContainer}>
+            <Ionicons name="search" size={18} color={Colors.lightGrey} />
+            <TextInput
+              style={styles.searchInput}
+              value={clubSearchQuery}
+              onChangeText={setClubSearchQuery}
+              placeholder="Search clubs..."
+              placeholderTextColor={Colors.lightGrey}
+            />
+          </View>
+          <ScrollView
+            style={{ maxHeight: 250, marginBottom: 16 }}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+          >
+            {getFilteredClubs().map((club) => {
+              const isSelected = selectedClubs.includes(club.id);
+              return (
+                <PressableScale
+                  key={club.id}
+                  style={StyleSheet.flatten([
+                    styles.clubListItem,
+                    isSelected && styles.clubListItemSelected,
+                  ])}
+                  onPress={() => toggleClub(club.id)}
+                >
+                  <Image
+                    source={{ uri: club.image }}
+                    style={styles.clubListItemImage}
+                  />
+                  <View style={styles.clubListItemContent}>
+                    <Text style={styles.clubListItemName}>{club.name}</Text>
+                    <View style={styles.clubListItemLocation}>
+                      <Ionicons
+                        name="location"
+                        size={12}
+                        color={Colors.lightGrey}
+                      />
+                      <Text style={styles.clubListItemLocationText}>
+                        {club.location}
+                      </Text>
+                    </View>
+                  </View>
+                  <View
+                    style={StyleSheet.flatten([
+                      styles.clubListItemCheckbox,
+                      isSelected && styles.clubListItemCheckboxSelected,
+                    ])}
+                  >
+                    {isSelected && (
+                      <Ionicons name="checkmark" size={16} color={Colors.bg} />
+                    )}
+                  </View>
+                </PressableScale>
+              );
+            })}
+          </ScrollView>
+          <PressableScale
+            style={styles.modalButton}
+            onPress={() => setShowClubModal(false)}
+          >
+            <Text style={styles.modalButtonText}>Done</Text>
+            <Ionicons name="checkmark" size={20} color={Colors.bg} />
+          </PressableScale>
+        </Modal>
+      )}
+
+      {/* Avatar Viewer Modal */}
+      {isOwnProfile && showAvatarModal && (
+        <Modal onDismiss={() => setShowAvatarModal(false)} bgColor={Colors.bg}>
+          <View style={styles.avatarModalContent}>
+            <View style={styles.avatarModalHeader}>
+              <TouchableOpacity
+                onPress={() => setShowAvatarModal(false)}
+                style={{ position: "absolute", right: 0 }}
+              >
+                <Ionicons name="close" size={28} color={Colors.gold} />
+              </TouchableOpacity>
+            </View>
+
+            {/* Full Size Avatar */}
+            <View style={styles.fullAvatarContainer}>
+              {(() => {
+                // Use same logic as main avatar display
+                const hasAvatarChange = avatarUri !== originalAvatar;
+                const displayAvatar = hasAvatarChange
+                  ? avatarUri
+                  : authUser?.avatar_url;
+
+                return displayAvatar ? (
+                  <Image
+                    source={{ uri: displayAvatar }}
+                    style={styles.fullAvatar}
+                    resizeMode="cover"
+                  />
+                ) : (
+                  <View style={styles.fullAvatarPlaceholder}>
+                    <Ionicons
+                      name="person"
+                      size={120}
+                      color={Colors.primaryBlue}
+                    />
+                  </View>
+                );
+              })()}
+            </View>
+
+            {/* Action Buttons */}
+            <View style={styles.avatarActionsContainer}>
+              <PressableScale
+                style={styles.avatarActionButton}
+                onPress={pickImage}
+              >
+                <Ionicons name="camera" size={24} color={Colors.bg} />
+                <Text style={styles.avatarActionText}>Change Photo</Text>
+              </PressableScale>
+
+              {(() => {
+                // Only show remove button if there's currently an avatar to display
+                const hasAvatarChange = avatarUri !== originalAvatar;
+                const displayAvatar = hasAvatarChange
+                  ? avatarUri
+                  : authUser?.avatar_url;
+
+                return displayAvatar ? (
+                  <PressableScale
+                    style={[
+                      styles.avatarActionButton,
+                      styles.avatarRemoveButton,
+                    ]}
+                    onPress={removeAvatar}
+                  >
+                    <Ionicons name="trash" size={24} color="#ff3b30" />
+                    <Text
+                      style={[styles.avatarActionText, styles.avatarRemoveText]}
+                    >
+                      Remove Photo
+                    </Text>
+                  </PressableScale>
+                ) : null;
+              })()}
+            </View>
+          </View>
+        </Modal>
+      )}
+
+      {/* Feed Viewer Modal */}
+      <ClubFeedViewer
+        visible={showFeedViewer}
+        posts={userPosts}
+        initialPostIndex={feedInitialIndex}
+        currentUserId={authUser?.id}
+        onClose={() => {
+          setShowFeedViewer(false);
+        }}
+        onPostDeleted={(postId) => {
+          setUserPosts(userPosts.filter((p) => p.id !== postId));
+        }}
+        onPostUpdated={(postId, updatedCaption) => {
+          setUserPosts(
+            userPosts.map((p) =>
+              p.id === postId ? { ...p, description: updatedCaption } : p,
+            ),
+          );
+        }}
+        onPostLiked={(postId, liked, likeCount) => {
+          setUserPosts(
+            userPosts.map((p) =>
+              p.id === postId
+                ? { ...p, isLiked: liked, likeCount: likeCount }
+                : p,
+            ),
+          );
+        }}
+      />
+
+      {/* Add Post Modal */}
+      {showAddPostModal && (
+        <AddPostModal
+          visible={showAddPostModal}
+          onClose={() => setShowAddPostModal(false)}
+          onPost={handleAddPost}
+          showClubSelector={true}
+          availableClubs={allClubs}
+        />
+      )}
+
+      {/* Save Button - Fixed at bottom when changes detected */}
+      {isOwnProfile && hasChanges() && (
+        <Animated.View
+          entering={FadeInUp.springify()}
+          style={styles.saveButtonContainer}
+        >
+          <PressableScale
+            onPress={handleSaveProfile}
+            style={styles.saveButton}
+            disabled={isSaving}
+          >
+            {isSaving ? (
+              <ActivityIndicator size="small" color={Colors.bg} />
+            ) : (
+              <>
+                <Ionicons name="checkmark-circle" size={22} color={Colors.bg} />
+                <Text style={styles.saveButtonText}>Save Changes</Text>
+              </>
+            )}
+          </PressableScale>
+        </Animated.View>
+      )}
+
+      {/* Toast Notification */}
+      <Toast
+        message={toastMessage}
+        visible={toastVisible}
+        onHide={() => setToastVisible(false)}
+        type={toastType}
+      />
+    </SafeAreaView>
+  );
+}

@@ -38,15 +38,21 @@ defmodule BackendWeb do
   def controller do
     quote do
       use Phoenix.Controller,
-        formats: [:html, :json],
-        layouts: [html: BackendWeb.Layouts]
+        formats: [:json]
+
+      use Gettext, backend: BackendWeb.Gettext
 
       import Plug.Conn
-      import BackendWeb.Gettext
-
-      plug(BetterParams, drop_string_keys: true)
 
       unquote(verified_routes())
+
+      # Override action/2 to inject session as third parameter
+      def action(conn, _) do
+        # Get current_user from conn.assigns (set by Guardian for authenticated routes)
+        session = Map.get(conn.assigns, :current_user)
+        args = [conn, conn.params, session]
+        apply(__MODULE__, action_name(conn), args)
+      end
     end
   end
 

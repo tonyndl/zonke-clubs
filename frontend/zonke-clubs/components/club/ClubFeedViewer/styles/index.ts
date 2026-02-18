@@ -1,0 +1,212 @@
+import { StyleSheet, Dimensions } from "react-native";
+import { Colors } from "@/constants/ui";
+
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
+
+export const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: "black",
+  },
+  closeButton: {
+    position: "absolute",
+    left: 16,
+    zIndex: 100,
+  },
+  closeButtonInner: {
+    width: 44,
+    height: 44,
+  },
+  menuButton: {
+    position: "absolute",
+    right: 16,
+    zIndex: 100,
+  },
+  menuButtonInner: {
+    width: 44,
+    height: 44,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  counterBadge: {
+    position: "absolute",
+    // Note: When uncommenting, use insets.top + 14 for proper safe area
+    top: 14,
+    right: 16,
+    backgroundColor: "rgba(0, 0, 0, 0.7)",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "rgba(57, 243, 255, 0.3)",
+  },
+  counterText: {
+    color: Colors.platinum,
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  feedItem: {
+    width: SCREEN_WIDTH,
+    height: SCREEN_HEIGHT,
+    backgroundColor: "black",
+    justifyContent: "center",
+  },
+  mediaContainer: {
+    width: SCREEN_WIDTH,
+    height: SCREEN_HEIGHT * 0.85,
+    position: "relative",
+  },
+  scrollView: {
+    width: SCREEN_WIDTH,
+    height: SCREEN_HEIGHT * 0.85,
+  },
+  mediaItem: {
+    width: SCREEN_WIDTH,
+    height: SCREEN_HEIGHT * 0.85,
+    justifyContent: "flex-start",
+    alignItems: "center",
+  },
+  media: {
+    width: SCREEN_WIDTH,
+    height: SCREEN_HEIGHT * 0.85,
+  },
+  videoTapArea: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  dotsContainer: {
+    position: "absolute",
+    bottom: 100,
+    left: 0,
+    right: 0,
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: 5,
+  },
+  dot: {
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: "rgba(255, 255, 255, 0.3)",
+  },
+  dotActive: {
+    backgroundColor: "rgba(57, 243, 255, 0.9)",
+    width: 5,
+  },
+  navLeft: {
+    position: "absolute",
+    left: 16,
+    top: "50%",
+    marginTop: -25,
+  },
+  navRight: {
+    position: "absolute",
+    right: 16,
+    top: "50%",
+    marginTop: -25,
+  },
+  navButton: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: "rgba(0, 0, 0, 0.6)",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 2,
+    borderColor: "rgba(57, 243, 255, 0.3)",
+  },
+  infoOverlay: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+  },
+  gradientOverlay: {
+    padding: 20,
+    paddingBottom: 40,
+  },
+  descriptionContainer: {
+    marginBottom: 12,
+  },
+  description: {
+    color: Colors.platinum,
+    fontSize: 15,
+    lineHeight: 22,
+    fontWeight: "500",
+  },
+  statsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 20,
+  },
+  stat: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  statText: {
+    color: Colors.platinum,
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  videoBottomControls: {
+    position: "absolute",
+    bottom: 20,
+    left: 16,
+    right: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    zIndex: 5,
+  },
+  feedPlayPauseButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "rgba(0, 0, 0, 0.6)",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "rgba(57, 243, 255, 0.3)",
+  },
+  progressBarContainer: {
+    flex: 1,
+    paddingVertical: 8,
+    justifyContent: "center",
+  },
+  progressBarBackground: {
+    height: 4,
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    borderRadius: 2,
+    position: "relative",
+  },
+  progressBarFill: {
+    height: "100%",
+    backgroundColor: Colors.gold,
+  },
+  progressThumb: {
+    position: "absolute",
+    top: -6,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: Colors.gold,
+    marginLeft: -8,
+    shadowColor: Colors.gold,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 4,
+    elevation: 5,
+    borderWidth: 2,
+    borderColor: "#fff",
+  },
+  feedMuteButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "rgba(0, 0, 0, 0.6)",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "rgba(57, 243, 255, 0.3)",
+  },
+});
