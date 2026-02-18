@@ -1,0 +1,407 @@
+import React, { useState } from "react";
+import { Modal } from "../Modal";
+import { PrimaryButton, OutlineButton } from "../../Buttons";
+import { DatePicker } from "../../DatePicker";
+import { TimePicker } from "../../TimePicker";
+import {
+  RiCalendarLine,
+  RiTimeLine,
+  RiImageAddLine,
+  RiMusicLine,
+  RiAddLine,
+} from "react-icons/ri";
+import {
+  Form,
+  FormGroup,
+  Label,
+  Input,
+  TextArea,
+  FormRow,
+  ImageUploadArea,
+  ImageUploadText,
+  ImageUploadHint,
+  DJLineupContainer,
+  DJInput,
+  RemoveButton,
+  AddButton,
+  Select,
+  FormActions,
+  HiddenInput,
+  SwitchContainer,
+  SwitchLabel,
+  SwitchInput,
+  SwitchSlider,
+  StatusText,
+  DJSelectHeader,
+  QuickAddDJButton,
+} from "./styles";
+
+interface CreateEventModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onSubmit: (event: EventFormData) => void;
+  mode?: "create" | "edit";
+  initialData?: EventFormData;
+  eventId?: string;
+  availableDJs?: Array<{ id: string; name: string }>;
+  onAddDJ?: () => void;
+}
+
+export interface EventFormData {
+  title: string;
+  description: string;
+  date: string;
+  start_time: string;
+  end_time: string;
+  general_entry_price: string;
+  vip_entry_price: string;
+  dj_lineup: string[];
+  cover_image: string;
+  status: "draft" | "published";
+}
+
+export const CreateEventModal: React.FC<CreateEventModalProps> = ({
+  isOpen,
+  onClose,
+  onSubmit,
+  mode = "create",
+  initialData,
+  availableDJs = [],
+  onAddDJ,
+}) => {
+  const getInitialFormData = (): EventFormData => {
+    if (mode === "edit" && initialData) {
+      return initialData;
+    }
+    return {
+      title: "",
+      description: "",
+      date: "",
+      start_time: "",
+      end_time: "",
+      general_entry_price: "",
+      vip_entry_price: "",
+      dj_lineup: [""],
+      cover_image: "",
+      status: "draft",
+    };
+  };
+
+  const [formData, setFormData] = useState<EventFormData>(getInitialFormData());
+  const [originalData, setOriginalData] =
+    useState<EventFormData>(getInitialFormData());
+
+  // Update form data when initialData changes (for edit mode)
+  React.useEffect(() => {
+    if (mode === "edit" && initialData) {
+      setFormData(initialData);
+      setOriginalData(initialData);
+    }
+  }, [mode, initialData, isOpen]);
+
+  // Check if form has been modified
+  const hasChanges = React.useMemo(() => {
+    if (mode === "create") {
+      // For create mode, check if any field has been filled
+      return (
+        formData.title !== "" ||
+        formData.description !== "" ||
+        formData.date !== "" ||
+        formData.start_time !== "" ||
+        formData.end_time !== "" ||
+        formData.general_entry_price !== "" ||
+        formData.vip_entry_price !== "" ||
+        formData.dj_lineup.some((dj) => dj.trim() !== "") ||
+        formData.cover_image !== ""
+      );
+    }
+
+    // For edit mode, compare with original data
+    return (
+      formData.title !== originalData.title ||
+      formData.description !== originalData.description ||
+      formData.date !== originalData.date ||
+      formData.start_time !== originalData.start_time ||
+      formData.end_time !== originalData.end_time ||
+      formData.general_entry_price !== originalData.general_entry_price ||
+      formData.vip_entry_price !== originalData.vip_entry_price ||
+      JSON.stringify(formData.dj_lineup) !==
+        JSON.stringify(originalData.dj_lineup) ||
+      formData.cover_image !== originalData.cover_image ||
+      formData.status !== originalData.status
+    );
+  }, [formData, originalData, mode]);
+
+  const handleChange = (field: keyof EventFormData, value: string) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleDJChange = (index: number, value: string) => {
+    const newLineup = [...formData.dj_lineup];
+    newLineup[index] = value;
+    setFormData((prev) => ({ ...prev, dj_lineup: newLineup }));
+  };
+
+  const addDJ = () => {
+    setFormData((prev) => ({ ...prev, dj_lineup: [...prev.dj_lineup, ""] }));
+  };
+
+  const removeDJ = (index: number) => {
+    setFormData((prev) => ({
+      ...prev,
+      dj_lineup: prev.dj_lineup.filter((_, i) => i !== index),
+    }));
+  };
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      // In a real app, you'd upload to a server and get back a URL
+      const imageUrl = URL.createObjectURL(file);
+      setFormData((prev) => ({ ...prev, cover_image: imageUrl }));
+    }
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onSubmit(formData);
+    onClose();
+    // Reset form
+    setFormData({
+      title: "",
+      description: "",
+      date: "",
+      start_time: "",
+      end_time: "",
+      general_entry_price: "",
+      vip_entry_price: "",
+      dj_lineup: [""],
+      cover_image: "",
+      status: "draft",
+    });
+  };
+
+  const modalTitle = mode === "edit" ? "Edit Event" : "Create New Event";
+  const submitButtonText = mode === "edit" ? "Save Changes" : "Create Event";
+
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} title={modalTitle}>
+      <Form onSubmit={handleSubmit}>
+        <FormGroup>
+          <Label>
+            {React.createElement(RiCalendarLine as React.ComponentType)}
+            Event Title
+          </Label>
+          <Input
+            type="text"
+            placeholder="e.g., Friday Night Fever"
+            value={formData.title}
+            onChange={(e) => handleChange("title", e.target.value)}
+            required
+          />
+        </FormGroup>
+
+        <FormGroup>
+          <Label>Description</Label>
+          <TextArea
+            placeholder="Describe what makes this event special..."
+            value={formData.description}
+            onChange={(e) => handleChange("description", e.target.value)}
+            required
+          />
+        </FormGroup>
+
+        <FormGroup>
+          <Label>
+            {React.createElement(RiCalendarLine as React.ComponentType)}
+            Event Date
+          </Label>
+          <DatePicker
+            value={formData.date}
+            onChange={(date) => handleChange("date", date)}
+            minDate={new Date().toISOString().split("T")[0]}
+          />
+        </FormGroup>
+
+        <FormRow>
+          <FormGroup>
+            <Label>General Entry Price (R)</Label>
+            <Input
+              type="number"
+              placeholder="150"
+              value={formData.general_entry_price}
+              onChange={(e) =>
+                handleChange("general_entry_price", e.target.value)
+              }
+              required
+              min="0"
+              step="0.01"
+            />
+          </FormGroup>
+
+          <FormGroup>
+            <Label>VIP Entry Price (R)</Label>
+            <Input
+              type="number"
+              placeholder="300"
+              value={formData.vip_entry_price}
+              onChange={(e) => handleChange("vip_entry_price", e.target.value)}
+              required
+              min="0"
+            />
+          </FormGroup>
+        </FormRow>
+
+        <FormRow>
+          <FormGroup>
+            <Label>
+              {React.createElement(RiTimeLine as React.ComponentType)}
+              Start Time
+            </Label>
+            <TimePicker
+              value={formData.start_time}
+              onChange={(time) => handleChange("start_time", time)}
+            />
+          </FormGroup>
+
+          <FormGroup>
+            <Label>
+              {React.createElement(RiTimeLine as React.ComponentType)}
+              End Time
+            </Label>
+            <TimePicker
+              value={formData.end_time}
+              onChange={(time) => handleChange("end_time", time)}
+            />
+          </FormGroup>
+        </FormRow>
+
+        <FormGroup>
+          <DJSelectHeader>
+            <Label>
+              {React.createElement(RiMusicLine as React.ComponentType)}
+              DJ Lineup
+            </Label>
+            {onAddDJ && availableDJs.length > 0 && (
+              <QuickAddDJButton type="button" onClick={onAddDJ}>
+                {React.createElement(RiAddLine as React.ComponentType)}
+                Quick Add DJ
+              </QuickAddDJButton>
+            )}
+          </DJSelectHeader>
+          <DJLineupContainer>
+            {formData.dj_lineup.map((dj, index) => (
+              <DJInput key={index}>
+                {availableDJs.length > 0 ? (
+                  <Select
+                    value={dj}
+                    onChange={(e) => handleDJChange(index, e.target.value)}
+                    required
+                    style={{ flex: 1 }}
+                  >
+                    <option value="">Choose a DJ...</option>
+                    {availableDJs.map((availableDJ) => (
+                      <option key={availableDJ.id} value={availableDJ.id}>
+                        {availableDJ.name}
+                      </option>
+                    ))}
+                  </Select>
+                ) : (
+                  <Input
+                    type="text"
+                    placeholder={`DJ ${index + 1} name`}
+                    value={dj}
+                    onChange={(e) => handleDJChange(index, e.target.value)}
+                    style={{ flex: 1 }}
+                  />
+                )}
+                {formData.dj_lineup.length > 1 && (
+                  <RemoveButton type="button" onClick={() => removeDJ(index)}>
+                    Remove
+                  </RemoveButton>
+                )}
+              </DJInput>
+            ))}
+            <AddButton type="button" onClick={addDJ}>
+              {React.createElement(RiMusicLine as React.ComponentType)}
+              Add Another DJ
+            </AddButton>
+            {onAddDJ && availableDJs.length === 0 && (
+              <QuickAddDJButton
+                type="button"
+                onClick={onAddDJ}
+                style={{ width: "fit-content" }}
+              >
+                {React.createElement(RiAddLine as React.ComponentType)}
+                Add Your First DJ
+              </QuickAddDJButton>
+            )}
+          </DJLineupContainer>
+        </FormGroup>
+
+        <FormGroup>
+          <Label>
+            {React.createElement(RiImageAddLine as React.ComponentType)}
+            Cover Image
+          </Label>
+          <HiddenInput
+            id="image-upload"
+            type="file"
+            accept="image/*"
+            onChange={handleImageUpload}
+          />
+          <ImageUploadArea
+            as="label"
+            htmlFor="image-upload"
+            style={{
+              backgroundImage: formData.cover_image
+                ? `url(${formData.cover_image})`
+                : "none",
+              backgroundSize: "cover",
+              backgroundPosition: "center",
+            }}
+          >
+            {!formData.cover_image && (
+              <>
+                {React.createElement(RiImageAddLine as React.ComponentType)}
+                <ImageUploadText>Click to upload cover image</ImageUploadText>
+                <ImageUploadHint>PNG, JPG up to 10MB</ImageUploadHint>
+              </>
+            )}
+          </ImageUploadArea>
+        </FormGroup>
+
+        <FormGroup>
+          <Label>Publish Event</Label>
+          <SwitchContainer>
+            <SwitchLabel>
+              <SwitchInput
+                type="checkbox"
+                checked={formData.status === "published"}
+                onChange={(e) =>
+                  handleChange(
+                    "status",
+                    e.target.checked ? "published" : "draft",
+                  )
+                }
+              />
+              <SwitchSlider />
+            </SwitchLabel>
+            <StatusText published={formData.status === "published"}>
+              {formData.status === "published" ? "Published" : "Draft"}
+            </StatusText>
+          </SwitchContainer>
+        </FormGroup>
+
+        <FormActions>
+          <OutlineButton type="button" onClick={onClose}>
+            Cancel
+          </OutlineButton>
+          <PrimaryButton type="submit" disabled={!hasChanges}>
+            {submitButtonText}
+          </PrimaryButton>
+        </FormActions>
+      </Form>
+    </Modal>
+  );
+};

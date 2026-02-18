@@ -1,0 +1,238 @@
+import { StyleSheet, Dimensions } from "react-native";
+import { Colors } from "@/constants/ui";
+
+export const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } =
+  Dimensions.get("window");
+export const SWIPE_THRESHOLD = 120;
+
+export const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: Colors.bg,
+  },
+  header: {
+    position: "relative",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+  },
+  closeButton: {
+    position: "absolute",
+    left: 6,
+    top: 18,
+    width: 40,
+    height: 40,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: "800",
+    color: Colors.platinum,
+  },
+  counterBadge: {
+    backgroundColor: "rgba(0, 0, 0, 0.7)",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "rgba(57, 243, 255, 0.3)",
+  },
+  counterText: {
+    color: Colors.gold,
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  cardContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingTop: 20,
+  },
+  card: {
+    position: "absolute",
+    width: SCREEN_WIDTH - 40,
+    height: SCREEN_HEIGHT - 280,
+    borderRadius: 24,
+    backgroundColor: Colors.bgCard,
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 5,
+  },
+  cardImage: {
+    width: "100%",
+    height: "100%",
+  },
+  gradient: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: "50%",
+  },
+  stamp: {
+    position: "absolute",
+    top: 50,
+    padding: 16,
+    borderWidth: 4,
+    borderRadius: 16,
+    transform: [{ rotate: "-20deg" }],
+  },
+  likeStamp: {
+    right: 30,
+    borderColor: "#4ECDC4",
+  },
+  nopeStamp: {
+    left: 30,
+    borderColor: "#FF6B6B",
+    transform: [{ rotate: "20deg" }],
+  },
+  stampText: {
+    fontSize: 32,
+    fontWeight: "900",
+    color: Colors.platinum,
+    letterSpacing: 2,
+  },
+  cardInfo: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    padding: 24,
+  },
+  activityBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: "rgba(0, 0, 0, 0.7)",
+    alignSelf: "flex-start",
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: Colors.gold,
+  },
+  activityEmoji: {
+    fontSize: 20,
+  },
+  activityLabel: {
+    color: Colors.platinum,
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  userInfo: {
+    flexDirection: "row",
+    alignItems: "baseline",
+    marginBottom: 12,
+  },
+  userName: {
+    fontSize: 32,
+    fontWeight: "900",
+    color: Colors.platinum,
+  },
+  userAge: {
+    fontSize: 28,
+    fontWeight: "600",
+    color: Colors.platinum,
+  },
+  dateRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  dateText: {
+    color: Colors.platinum,
+    fontSize: 14,
+    fontWeight: "600",
+    marginLeft: 6,
+  },
+  messageContainer: {
+    backgroundColor: "rgba(57, 243, 255, 0.15)",
+    padding: 12,
+    borderRadius: 12,
+    borderLeftWidth: 3,
+    borderLeftColor: Colors.gold,
+    marginBottom: 8,
+  },
+  messageText: {
+    color: Colors.platinum,
+    fontSize: 14,
+    fontStyle: "italic",
+  },
+  bio: {
+    color: Colors.smoke,
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  actions: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 20,
+    paddingVertical: 30,
+    paddingHorizontal: 20,
+  },
+  actionButton: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: Colors.bgCard,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
+    borderWidth: 2,
+  },
+  passButton: {
+    borderColor: "#FF6B6B",
+  },
+  infoButton: {
+    borderColor: Colors.gold,
+    width: 56,
+    height: 56,
+  },
+  likeButton: {
+    borderColor: "#4ECDC4",
+  },
+  endCard: {
+    alignItems: "center",
+    paddingHorizontal: 40,
+  },
+  endIconContainer: {
+    marginBottom: 24,
+  },
+  endTitle: {
+    fontSize: 28,
+    fontWeight: "900",
+    color: Colors.platinum,
+    marginBottom: 12,
+  },
+  endSubtitle: {
+    fontSize: 16,
+    color: Colors.smoke,
+    textAlign: "center",
+    lineHeight: 24,
+    marginBottom: 32,
+  },
+  endButton: {
+    backgroundColor: Colors.gold,
+    paddingHorizontal: 48,
+    paddingVertical: 16,
+    borderRadius: 16,
+  },
+  endButtonText: {
+    color: Colors.bg,
+    fontSize: 16,
+    fontWeight: "700",
+  },
+});

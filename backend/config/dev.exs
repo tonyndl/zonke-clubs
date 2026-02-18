@@ -5,11 +5,10 @@ config :backend, Backend.Repo,
   username: "postgres",
   password: "postgres",
   hostname: "localhost",
-  database: "zonke_drivers",
+  database: "zonke_clubs_dev",
   stacktrace: true,
   show_sensitive_data_on_connection_error: true,
-  pool_size: 10,
-  migration_primary_key: [name: :id, type: :binary_id]
+  pool_size: 10
 
 # For development, we disable any cache and enable
 # debugging and code reloading.
@@ -19,23 +18,13 @@ config :backend, Backend.Repo,
 # to bundle .js and .css sources.
 config :backend, BackendWeb.Endpoint,
   # Binding to loopback ipv4 address prevents access from other machines.
-  # http: [ip: {127, 0, 0, 1}, port: 4000],
+  # Change to `ip: {0, 0, 0, 0}` to allow access from other machines.
   http: [ip: {0, 0, 0, 0}, port: 4000],
   check_origin: false,
   code_reloader: true,
   debug_errors: true,
-  secret_key_base: "FdMkqljggbQATVowkn4cuXVIjMiQuaE/ZxK8LWjhWlwrvBtodc6wN6Ddpafk5T9q",
+  secret_key_base: "bfQW9Erxd6ltd2lrvaIao2nZvco4SGgASq14mJ1qeOfDEK2ZDqL4iyPKcGvm1/yQ",
   watchers: []
-
-config :ex_aws,
-  access_key_id: "test",
-  secret_access_key: "test",
-  region: "us-east-1",
-  s3: [
-    scheme: "http://",
-    host: "localhost",
-    port: 4566
-  ]
 
 # ## SSL Support
 #
@@ -64,7 +53,7 @@ config :ex_aws,
 config :backend, dev_routes: true
 
 # Do not include metadata nor timestamps in development logs
-config :logger, :console, format: "[$level] $message\n"
+config :logger, :default_formatter, format: "[$level] $message\n"
 
 # Set a higher stacktrace during development. Avoid configuring such
 # in production as building large stacktraces may be expensive.
@@ -75,3 +64,14 @@ config :phoenix, :plug_init_mode, :runtime
 
 # Disable swoosh api client as it is only required for production adapters.
 config :swoosh, :api_client, false
+
+# Configure ExAws to use LocalStack for development
+config :ex_aws,
+  access_key_id: "test",
+  secret_access_key: "test",
+  region: "us-east-1",
+  s3: [
+    scheme: "http://",
+    host: "localhost",
+    port: 4566
+  ]

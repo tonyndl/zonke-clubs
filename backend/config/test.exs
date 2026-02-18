@@ -9,7 +9,7 @@ config :backend, Backend.Repo,
   username: "postgres",
   password: "postgres",
   hostname: "localhost",
-  database: "backend_test#{System.get_env("MIX_TEST_PARTITION")}",
+  database: "zonke_clubs_test#{System.get_env("MIX_TEST_PARTITION")}",
   pool: Ecto.Adapters.SQL.Sandbox,
   pool_size: System.schedulers_online() * 2
 
@@ -17,13 +17,11 @@ config :backend, Backend.Repo,
 # you can enable the server option below.
 config :backend, BackendWeb.Endpoint,
   http: [ip: {127, 0, 0, 1}, port: 4002],
-  secret_key_base: "mIwE3fjkya2wGjdNhdaa1xjwJngga8hsN0mlsEfcYjzVjju9BKUiJIM0JtFYIfjA",
+  secret_key_base: "uN98153v+yv9P9zDg8pWrmMb5ckbLa3iEcPrPJ9hAygU7CaEMZ9HZzG7e+4hlm3o",
   server: false
 
 # In test we don't send emails
 config :backend, Backend.Mailer, adapter: Swoosh.Adapters.Test
-
-config :backend, :broadcast_module, Backend.Utils.BroadcastMock
 
 # Disable swoosh api client as it is only required for production adapters
 config :swoosh, :api_client, false
@@ -33,3 +31,7 @@ config :logger, level: :warning
 
 # Initialize plugs at runtime for faster test compilation
 config :phoenix, :plug_init_mode, :runtime
+
+# Sort query params output of verified routes for robust url comparisons
+config :phoenix,
+  sort_verified_routes_query_params: true

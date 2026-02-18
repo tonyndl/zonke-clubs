@@ -1,46 +1,77 @@
-defmodule BackendWeb.UserController do
+defmodule BackendWeb.API.UserController do
   use BackendWeb, :controller
-  use BackendWeb.AuthenticatedController
+  action_fallback BackendWeb.FallbackController
 
-  alias Backend.Accounts.{Users, Registration}
-  alias Backend.Guardian
+  alias Backend.Accounts.{Registration, Users}
 
-  def get_current_user(conn, _params, _session) do
-    with ["" <> token] <- get_req_header(conn, "authorization"),
-         clean_token when is_binary(clean_token) <- String.replace(token, "Bearer ", ""),
-         {:ok, claims} <- Guardian.decode_and_verify(clean_token),
-         {:ok, %{user_id: user_id}} <- Guardian.resource_from_claims(claims),
-         {:ok, user} <- Users.get_user_by(id: user_id) do
-      render(conn, :show, %{user: user})
-    else
-      {:error, :not_found} ->
-        conn
-        |> put_status(:not_found)
-        |> json(%{error: "User not found"})
-
-      {:error, reason} ->
-        conn
-        |> put_status(:unauthorized)
-        |> json(%{error: "Unauthorized", reason: inspect(reason)})
-
-      _ ->
-        conn
-        |> put_status(:bad_request)
-        |> json(%{error: "Invalid request"})
-    end
-  end
-
+  @doc """
+  Register a new user.
+  Public endpoint - no authentication required.
+  """
   def create(conn, params, _session) do
-    # Accounts send email confirmation email
-    with {:ok, _user} <- Registration.register_user(params) do
-      json(conn, :ok)
+    with {:ok, user} <- Registration.register_user(params) do
+      conn
+      |> put_status(:created)
+      |> render(:show, user: user)
     end
   end
 
-  def update(conn, params, %{user_id: user_id}) do
-    with {:ok, user} <- Users.get_user_by(id: user_id),
-         {:ok, user} <- Users.update(user, params) do
-      render(conn, :show, user: user)
+  @doc """
+  Get current user profile.
+  Requires authentication - session contains the current user.
+  """
+  def show(conn, _params, session) do
+    conn
+    |> put_status(:ok)
+    |> render(:show, user: session)
+  end
+
+  @doc """
+  Get any user's public profile by ID.
+  Public endpoint - no authentication required.
+  """
+  def show_public(conn, %{"id" => id}, _session) do
+    with {:ok, user} <- Users.get_user_by(id: id) do
+      conn
+      |> put_status(:ok)
+      |> render(:show, user: user)
+    end
+  end
+
+  @doc """
+  Update current user profile.
+  Requires authentication - session contains the current user.
+  """
+  def update(conn, params, session) do
+    with {:ok, updated_user} <- Users.update_profile(session, params) do
+      conn
+      |> put_status(:ok)
+      |> render(:show, user: updated_user)
+    end
+  end
+
+  @doc """
+  Update current user account information (name, username, email, phone).
+  Requires authentication - session contains the current user.
+  """
+  def update_account(conn, params, session) do
+    with {:ok, updated_user} <- Users.update_account_info(session, params) do
+      conn
+      |> put_status(:ok)
+      |> render(:show, user: updated_user)
+    end
+  end
+
+  @doc """
+  Change current user password.
+  Requires authentication - session contains the current user.
+  Requires current_password and new_password in params.
+  """
+  def change_password(conn, params, session) do
+    with {:ok, _updated_user} <- Users.change_password(session, params) do
+      conn
+      |> put_status(:ok)
+      |> render(:password_changed, message: "Password changed successfully")
     end
   end
 end

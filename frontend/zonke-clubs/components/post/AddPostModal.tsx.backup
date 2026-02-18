@@ -1,0 +1,723 @@
+import React, { useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TextInput,
+  Image,
+  ScrollView,
+  Alert,
+  Dimensions,
+  Pressable,
+} from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
+import { VideoView, useVideoPlayer } from 'expo-video';
+import Animated, { FadeIn, FadeOut, ZoomIn, SlideInRight } from 'react-native-reanimated';
+import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
+import { Colors } from '@/constants/ui';
+import { PressableScale } from '@/components/ui/PressableScale';
+import { Modal } from '../modal';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+
+interface MediaItem {
+  uri: string;
+  type: 'image' | 'video';
+  duration?: number;
+}
+
+interface Props {
+  visible: boolean;
+  onClose: () => void;
+  onPost: (media: MediaItem[], description: string, clubId?: string) => void;
+  preselectedClubId?: string;
+  clubName?: string;
+  showClubSelector?: boolean;
+  availableClubs?: Array<{ id: string; name: string; image: string }>;
+}
+
+export function AddPostModal({
+  visible,
+  onClose,
+  onPost,
+  preselectedClubId,
+  clubName,
+  showClubSelector = false,
+  availableClubs = [],
+}: Props) {
+  const [mediaItems, setMediaItems] = useState<MediaItem[]>([]);
+  const [description, setDescription] = useState('');
+  const [selectedClubId, setSelectedClubId] = useState<string | undefined>(preselectedClubId);
+  const [isPosting, setIsPosting] = useState(false);
+  const [clubSearchQuery, setClubSearchQuery] = useState('');
+  const [showSuggestions, setShowSuggestions] = useState(false);
+
+  // Reset state when modal closes
+  React.useEffect(() => {
+    if (!visible) {
+      setMediaItems([]);
+      setDescription('');
+      setSelectedClubId(preselectedClubId);
+      setIsPosting(false);
+      setClubSearchQuery('');
+      setShowSuggestions(false);
+    } else {
+      setSelectedClubId(preselectedClubId);
+    }
+  }, [visible, preselectedClubId]);
+
+  // Filter clubs based on search query
+  const filteredClubs = React.useMemo(() => {
+    if (!clubSearchQuery.trim()) return [];
+    const query = clubSearchQuery.toLowerCase();
+    return availableClubs.filter(club =>
+      club.name.toLowerCase().includes(query)
+    ).slice(0, 5); // Show max 5 suggestions
+  }, [clubSearchQuery, availableClubs]);
+
+  const handleClubSearch = (text: string) => {
+    setClubSearchQuery(text);
+    setShowSuggestions(text.trim().length > 0);
+  };
+
+  const selectClub = (club: { id: string; name: string; image: string }) => {
+    setSelectedClubId(club.id);
+    setClubSearchQuery('');
+    setShowSuggestions(false);
+  };
+
+  const clearClubSelection = () => {
+    setSelectedClubId(undefined);
+    setClubSearchQuery('');
+    setShowSuggestions(false);
+  };
+
+  const requestPermissions = async () => {
+    const { status: cameraStatus } = await ImagePicker.requestCameraPermissionsAsync();
+    const { status: libraryStatus } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+    if (cameraStatus !== 'granted' || libraryStatus !== 'granted') {
+      Alert.alert(
+        'Permissions Required',
+        'Camera and photo library permissions are required to post content.',
+        [{ text: 'OK' }]
+      );
+      return false;
+    }
+    return true;
+  };
+
+  const pickFromGallery = async () => {
+    const hasPermission = await requestPermissions();
+    if (!hasPermission) return;
+
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.All,
+        allowsMultipleSelection: true,
+        quality: 0.8,
+        videoMaxDuration: 60, // 60 seconds max
+        selectionLimit: 10 - mediaItems.length, // Max 10 total items
+      });
+
+      if (!result.canceled && result.assets) {
+        const newMedia: MediaItem[] = result.assets.map((asset) => ({
+          uri: asset.uri,
+          type: asset.type === 'video' ? 'video' : 'image',
+          duration: asset.duration ? asset.duration / 1000 : undefined, // Convert to seconds
+        }));
+        setMediaItems([...mediaItems, ...newMedia]);
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Failed to pick media from gallery.');
+      console.error('Gallery error:', error);
+    }
+  };
+
+  const takePhoto = async () => {
+    const hasPermission = await requestPermissions();
+    if (!hasPermission) return;
+
+    try {
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        quality: 0.8,
+        allowsEditing: true,
+        aspect: [4, 5],
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        const newMedia: MediaItem = {
+          uri: result.assets[0].uri,
+          type: 'image',
+        };
+        setMediaItems([...mediaItems, newMedia]);
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Failed to take photo.');
+      console.error('Camera error:', error);
+    }
+  };
+
+  const takeVideo = async () => {
+    const hasPermission = await requestPermissions();
+    if (!hasPermission) return;
+
+    try {
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Videos,
+        videoMaxDuration: 60,
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        const newMedia: MediaItem = {
+          uri: result.assets[0].uri,
+          type: 'video',
+          duration: result.assets[0].duration ? result.assets[0].duration / 1000 : undefined,
+        };
+        setMediaItems([...mediaItems, newMedia]);
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Failed to record video.');
+      console.error('Video error:', error);
+    }
+  };
+
+  const removeMedia = (index: number) => {
+    setMediaItems(mediaItems.filter((_, i) => i !== index));
+  };
+
+  const handlePost = () => {
+    if (mediaItems.length === 0) {
+      Alert.alert('No Media', 'Please add at least one photo or video.');
+      return;
+    }
+
+    if (showClubSelector && !selectedClubId) {
+      Alert.alert('Select Club', 'Please select which club this post is for.');
+      return;
+    }
+
+    setIsPosting(true);
+    // Simulate upload delay
+    setTimeout(() => {
+      onPost(mediaItems, description.trim(), selectedClubId);
+      setIsPosting(false);
+      onClose();
+    }, 1500);
+  };
+
+  const selectedClub = availableClubs.find((c) => c.id === selectedClubId);
+  const displayClubName = clubName || selectedClub?.name;
+
+  if (!visible) return null;
+
+  return (
+    <Modal onDismiss={onClose} sliding bgColor={Colors.bg}>
+      <View style={styles.container}>
+        {/* Header */}
+        <View style={styles.header}>
+          <PressableScale onPress={onClose}>
+            <Ionicons name="close" size={28} color={Colors.platinum} />
+          </PressableScale>
+          <Text style={styles.headerTitle}>Create Post</Text>
+          <PressableScale
+            onPress={handlePost}
+            disabled={isPosting || mediaItems.length === 0}
+            style={[styles.postButton, (isPosting || mediaItems.length === 0) && styles.postButtonDisabled]}
+          >
+            {isPosting ? (
+              <Text style={styles.postButtonText}>Posting...</Text>
+            ) : (
+              <Text style={styles.postButtonText}>Post</Text>
+            )}
+          </PressableScale>
+        </View>
+
+        <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+          {/* Club Tag Section */}
+          <Animated.View entering={FadeIn.delay(100)} style={styles.tagClubSection}>
+            <View style={styles.tagHeader}>
+              <View style={styles.tagHeaderLeft}>
+                <Ionicons name="pricetag" size={18} color={Colors.gold} />
+                <Text style={styles.tagHeaderTitle}>Tag Club</Text>
+              </View>
+            </View>
+
+            {/* Selected Club Display */}
+            {selectedClubId && selectedClub ? (
+              <Animated.View entering={ZoomIn.springify()} style={styles.selectedClubBar}>
+                <Image source={{ uri: selectedClub.image }} style={styles.selectedClubBarImage} />
+                <View style={styles.selectedClubBarInfo}>
+                  <Text style={styles.selectedClubBarHash}>#</Text>
+                  <Text style={styles.selectedClubBarName}>{selectedClub.name}</Text>
+                </View>
+                <PressableScale onPress={clearClubSelection} style={styles.removeClubButton}>
+                  <Ionicons name="close-circle" size={22} color={Colors.gold} />
+                </PressableScale>
+              </Animated.View>
+            ) : (
+              <>
+                {/* Search Input */}
+                <View style={styles.searchInputContainer}>
+                  <Ionicons name="search" size={18} color={Colors.smoke} style={styles.searchIcon} />
+                  <TextInput
+                    style={styles.searchInput}
+                    placeholder="Search for a club..."
+                    placeholderTextColor={Colors.smoke}
+                    value={clubSearchQuery}
+                    onChangeText={handleClubSearch}
+                    onFocus={() => setShowSuggestions(clubSearchQuery.trim().length > 0)}
+                  />
+                  {clubSearchQuery.length > 0 && (
+                    <PressableScale onPress={() => handleClubSearch('')}>
+                      <Ionicons name="close-circle" size={18} color={Colors.smoke} />
+                    </PressableScale>
+                  )}
+                </View>
+
+                {/* Autocomplete Suggestions */}
+                {showSuggestions && filteredClubs.length > 0 && (
+                  <Animated.View entering={FadeIn} style={styles.suggestionsContainer}>
+                    {filteredClubs.map((club) => (
+                      <PressableScale
+                        key={club.id}
+                        onPress={() => selectClub(club)}
+                        style={styles.suggestionItem}
+                      >
+                        <Image source={{ uri: club.image }} style={styles.suggestionImage} />
+                        <View style={styles.suggestionInfo}>
+                          <Text style={styles.suggestionHash}>#</Text>
+                          <Text style={styles.suggestionName}>{club.name}</Text>
+                        </View>
+                        <Ionicons name="arrow-forward" size={16} color={Colors.gold} />
+                      </PressableScale>
+                    ))}
+                  </Animated.View>
+                )}
+
+                {showSuggestions && clubSearchQuery.trim().length > 0 && filteredClubs.length === 0 && (
+                  <Animated.View entering={FadeIn} style={styles.noResultsContainer}>
+                    <Text style={styles.noResultsText}>No clubs found matching "{clubSearchQuery}"</Text>
+                  </Animated.View>
+                )}
+              </>
+            )}
+          </Animated.View>
+
+          {/* Media Picker Actions */}
+          {mediaItems.length < 10 && (
+            <Animated.View entering={FadeIn.delay(200)} style={styles.actionsSection}>
+              <Text style={styles.sectionLabel}>Add Media</Text>
+              <View style={styles.actionsGrid}>
+                <PressableScale onPress={takePhoto} style={styles.actionButton}>
+                  {/* <LinearGradient
+                    colors={['rgba(57, 243, 255, 0.2)', 'rgba(57, 243, 255, 0.05)']}
+                    style={styles.actionButtonGradient}
+                  /> */}
+                  <Ionicons name="camera" size={32} color={Colors.gold} />
+                  <Text style={styles.actionButtonText}>Take Photo</Text>
+                </PressableScale>
+
+                <PressableScale onPress={takeVideo} style={styles.actionButton}>
+                  {/* <LinearGradient
+                    colors={['rgba(217, 175, 98, 0.2)', 'rgba(217, 175, 98, 0.05)']}
+                    style={styles.actionButtonGradient}
+                  /> */}
+                  <Ionicons name="videocam" size={32} color={Colors.gold} />
+                  <Text style={styles.actionButtonText}>Record Video</Text>
+                </PressableScale>
+
+                <PressableScale onPress={pickFromGallery} style={styles.actionButton}>
+                  {/* <LinearGradient
+                    colors={['rgba(167, 139, 250, 0.2)', 'rgba(167, 139, 250, 0.05)']}
+                    style={styles.actionButtonGradient}
+                  /> */}
+                  <Ionicons name="images" size={32} color={Colors.gold} />
+                  <Text style={styles.actionButtonText}>From Gallery</Text>
+                </PressableScale>
+              </View>
+            </Animated.View>
+          )}
+
+          {/* Media Preview Grid */}
+          {mediaItems.length > 0 && (
+            <Animated.View entering={FadeIn.delay(300)} style={styles.mediaSection}>
+              <View style={styles.mediaSectionHeader}>
+                <Text style={styles.sectionLabel}>
+                  Media ({mediaItems.length}/10)
+                </Text>
+                {mediaItems.length < 10 && (
+                  <Text style={styles.addMoreHint}>Tap buttons above to add more</Text>
+                )}
+              </View>
+              <View style={styles.mediaGrid}>
+                {mediaItems.map((item, index) => (
+                  <MediaItemPreview
+                    key={index}
+                    item={item}
+                    index={index}
+                    onRemove={removeMedia}
+                  />
+                ))}
+              </View>
+            </Animated.View>
+          )}
+
+          {/* Description Input */}
+          <Animated.View entering={FadeIn.delay(400)} style={styles.descriptionSection}>
+            <Text style={styles.sectionLabel}>Description (Optional)</Text>
+            <TextInput
+              style={styles.descriptionInput}
+              value={description}
+              onChangeText={setDescription}
+              placeholder="Share what makes this moment special..."
+              placeholderTextColor={Colors.smoke}
+              multiline
+              maxLength={300}
+            />
+            <Text style={styles.charCount}>{description.length}/300</Text>
+          </Animated.View>
+
+          <View style={{ height: 40 }} />
+        </ScrollView>
+      </View>
+    </Modal>
+  );
+}
+
+// Separate component for media item preview with video player
+function MediaItemPreview({
+  item,
+  index,
+  onRemove
+}: {
+  item: MediaItem;
+  index: number;
+  onRemove: (index: number) => void;
+}) {
+  const videoPlayer = useVideoPlayer(
+    item.type === 'video' ? item.uri : '',
+    (player) => {
+      player.loop = false;
+      player.muted = true;
+    }
+  );
+
+  return (
+    <Animated.View
+      entering={SlideInRight.delay(index * 50).springify()}
+      style={styles.mediaItem}
+    >
+      {item.type === 'image' ? (
+        <Image source={{ uri: item.uri }} style={styles.mediaItemImage} />
+      ) : (
+        <View style={styles.videoContainer}>
+          <VideoView
+            player={videoPlayer}
+            style={styles.mediaItemImage}
+            contentFit="cover"
+            nativeControls={false}
+            allowsFullscreen={false}
+          />
+          <View style={styles.videoOverlay}>
+            <Ionicons name="play-circle" size={32} color={Colors.platinum} />
+          </View>
+        </View>
+      )}
+      <Pressable onPress={() => onRemove(index)} style={styles.removeButton}>
+        <BlurView intensity={80} style={styles.removeButtonBlur}>
+          <Ionicons name="close" size={16} color={Colors.platinum} />
+        </BlurView>
+      </Pressable>
+    </Animated.View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    // Modal component handles container styling
+  },
+  headerGradient: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 100,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 16,
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: Colors.platinum,
+    letterSpacing: 0.5,
+  },
+  postButton: {
+    backgroundColor: Colors.gold,
+    paddingHorizontal: 20,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  postButtonDisabled: {
+    opacity: 0.5,
+  },
+  postButtonText: {
+    color: Colors.bg,
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  content: {
+    paddingHorizontal: 16,
+  },
+  tagClubSection: {
+    marginBottom: 24,
+  },
+  tagHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  tagHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  tagHeaderTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: Colors.platinum,
+    letterSpacing: 0.5,
+  },
+  selectedClubBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(57, 243, 255, 0.08)',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderWidth: 1,
+    borderColor: Colors.gold,
+  },
+  selectedClubBarImage: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    borderWidth: 2,
+    borderColor: Colors.gold,
+  },
+  selectedClubBarInfo: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginLeft: 12,
+    gap: 6,
+  },
+  selectedClubBarHash: {
+    fontSize: 16,
+    fontWeight: '900',
+    color: Colors.gold,
+  },
+  selectedClubBarName: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: Colors.platinum,
+  },
+  removeClubButton: {
+    padding: 4,
+  },
+  searchInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.bgCard,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderWidth: 2,
+    borderColor: 'rgba(57, 243, 255, 0.2)',
+    gap: 10,
+  },
+  searchIcon: {
+    opacity: 0.7,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 15,
+    color: Colors.platinum,
+    padding: 0,
+  },
+  suggestionsContainer: {
+    marginTop: 8,
+    backgroundColor: Colors.bgCard,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(57, 243, 255, 0.2)',
+    overflow: 'hidden',
+  },
+  suggestionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(57, 243, 255, 0.1)',
+  },
+  suggestionImage: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: Colors.gold,
+  },
+  suggestionInfo: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginLeft: 12,
+    gap: 6,
+  },
+  suggestionHash: {
+    fontSize: 14,
+    fontWeight: '900',
+    color: Colors.gold,
+  },
+  suggestionName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: Colors.platinum,
+  },
+  noResultsContainer: {
+    marginTop: 8,
+    padding: 16,
+    backgroundColor: Colors.bgCard,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(57, 243, 255, 0.1)',
+  },
+  noResultsText: {
+    fontSize: 13,
+    color: Colors.smoke,
+    textAlign: 'center',
+    fontStyle: 'italic',
+  },
+  sectionLabel: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: Colors.platinum,
+    marginBottom: 12,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  actionsSection: {
+    marginBottom: 24,
+  },
+  actionsGrid: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  actionButton: {
+    flex: 1,
+    aspectRatio: 1,
+    borderRadius: 16,
+    overflow: 'hidden',
+    backgroundColor: Colors.bgCard,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: 'rgba(57, 243, 255, 0.2)',
+  },
+  actionButtonGradient: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  actionButtonText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: Colors.platinum,
+    marginTop: 8,
+    textAlign: 'center',
+  },
+  mediaSection: {
+    marginBottom: 24,
+  },
+  mediaSectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  addMoreHint: {
+    fontSize: 11,
+    color: Colors.smoke,
+    fontStyle: 'italic',
+  },
+  mediaGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  mediaItem: {
+    width: (SCREEN_WIDTH - 48) / 3,
+    height: (SCREEN_WIDTH - 48) / 3,
+    borderRadius: 12,
+    overflow: 'hidden',
+    backgroundColor: Colors.bgCard,
+  },
+  mediaItemImage: {
+    width: '100%',
+    height: '100%',
+  },
+  videoContainer: {
+    width: '100%',
+    height: '100%',
+    position: 'relative',
+  },
+  videoOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+  },
+  removeButton: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  removeButtonBlur: {
+    width: '100%',
+    height: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  descriptionSection: {
+    marginBottom: 24,
+  },
+  descriptionInput: {
+    backgroundColor: Colors.bgCard,
+    borderRadius: 14,
+    padding: 14,
+    color: Colors.platinum,
+    fontSize: 15,
+    minHeight: 100,
+    textAlignVertical: 'top',
+    borderWidth: 2,
+    borderColor: 'rgba(57, 243, 255, 0.2)',
+  },
+  charCount: {
+    fontSize: 11,
+    color: Colors.smoke,
+    textAlign: 'right',
+    marginTop: 6,
+  },
+});

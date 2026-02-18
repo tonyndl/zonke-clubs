@@ -5,20 +5,14 @@ defmodule Backend.Application do
 
   use Application
 
-  alias Backend.Assets.Assets
-
   @impl true
   def start(_type, _args) do
-    Assets.ensure_bucket_exists()
-
     children = [
       BackendWeb.Telemetry,
       Backend.Repo,
       {DNSCluster, query: Application.get_env(:backend, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: Backend.PubSub},
-      # Start the Finch HTTP client for sending emails
-      {Finch, name: Backend.Finch},
-      Backend.ConnectionTracker,
+      BackendWeb.Presence,
       # Start a worker by calling: Backend.Worker.start_link(arg)
       # {Backend.Worker, arg},
       # Start to serve requests, typically the last entry

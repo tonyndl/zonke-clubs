@@ -2,85 +2,189 @@ defmodule BackendWeb.Router do
   use BackendWeb, :router
 
   pipeline :api do
-    plug(:accepts, ["json"])
+    plug :accepts, ["json"]
   end
 
-  pipeline :authorization do
-    plug(Backend.Guardian.AuthAccessPipeline)
+  pipeline :authenticated do
+    plug Backend.Guardian.AuthPipeline
   end
 
-  @except_path_actions [:new, :edit]
+  pipeline :optional_auth do
+    plug Guardian.Plug.Pipeline,
+      module: Backend.Guardian,
+      error_handler: Backend.Guardian.AuthErrorHandler
 
-  scope "/api", BackendWeb do
-    pipe_through(:api)
-    # unauthenticated paths
+    plug Guardian.Plug.VerifyHeader, scheme: "Bearer"
+    plug Guardian.Plug.LoadResource, allow_blank: true
+    plug Backend.Guardian.CurrentUser, halt_on_error: false
+  end
 
-    resources("/session/current_session", SessionController, only: [:create, :show, :delete])
-    resources("/users/register_user", UserController, only: [:create])
-    get("/session/current_user", UserController, :get_current_user)
+  # Protected routes (authentication required) - MUST come before public routes
+  # to ensure specific authenticated routes like /clubs/favorites are matched
+  # before parameterized public routes like /clubs/:id
+  scope "/api", BackendWeb.API, as: :api do
+    pipe_through [:api, :authenticated]
 
-    # authenticated paths
-    scope "/" do
-      pipe_through([:authorization])
+    # User profile
+    get "/profile", UserController, :show
+    put "/profile", UserController, :update
+    put "/profile/account", UserController, :update_account
+    put "/profile/password", UserController, :change_password
 
-      resources("/users", UserController, except: @except_path_actions)
+    # Club likes and favorites
+    get "/clubs/favorites", ClubController, :favorites
+    post "/clubs/:id/like", ClubController, :like
+    delete "/clubs/:id/like", ClubController, :unlike
 
-      scope("/business_profiles") do
-        get("/public", BusinessProfiles.BusinessProfilesController, :public_index)
-      end
+    # Intentions (authenticated actions)
+    post "/intentions", IntentionController, :create
+    put "/intentions/:id", IntentionController, :update
+    delete "/intentions/:id", IntentionController, :delete
 
-      resources("/business_profiles", BusinessProfiles.BusinessProfilesController,
-        except: @except_path_actions
-      )
+    # Connection Requests
+    get "/connection-requests/received", ConnectionRequestController, :received
+    get "/connection-requests/sent", ConnectionRequestController, :sent
+    get "/connection-requests/thread/:thread_id", ConnectionRequestController, :get_by_thread
+    post "/connection-requests", ConnectionRequestController, :create
+    put "/connection-requests/:id/accept", ConnectionRequestController, :accept
+    put "/connection-requests/:id/decline", ConnectionRequestController, :decline
+    delete "/connection-requests/:id", ConnectionRequestController, :cancel
+    post "/connection-requests/disconnect", ConnectionRequestController, :disconnect_by_thread
+    post "/connection-requests/reconnect", ConnectionRequestController, :reconnect_by_thread
 
-      scope("/drivers") do
-        get("/public", Drivers.DriverController, :public_index)
-        get("/show_public", Drivers.DriverController, :show_public)
-        get("/user_driver", Drivers.DriverController, :fetch_user_driver)
-        post("/upsert", Drivers.DriverController, :upsert)
-      end
+    # Messaging
+    get "/threads", MessageController, :index
+    get "/threads/:id", MessageController, :show
+    post "/threads/with-user", MessageController, :get_or_create
+    post "/messages", MessageController, :create
+    delete "/threads/:id/messages", MessageController, :clear
 
-      resources("/drivers", Drivers.DriverController, except: @except_path_actions)
+    # Spending (user-facing)
+    get "/spending/history", SpendingController, :history
+    get "/spending/stats", SpendingController, :stats
+    get "/spending/club/:club_id", SpendingController, :club_history
+    get "/spending/club/:club_id/stats", SpendingController, :club_stats
 
-      scope("/vehicles") do
-        get("/vehicle_drivers", Vehicles.VehicleController, :index_management_vehicle)
-        get("/public", Vehicles.VehicleController, :index_public)
-        post("/update", Vehicles.VehicleController, :update_vehicle)
-      end
+    # Assets (file uploads)
+    post "/assets", AssetController, :create
+    get "/assets/:id", AssetController, :show
+    put "/assets/:id", AssetController, :update
+    delete "/assets/:id", AssetController, :delete
 
-      resources("/vehicle_drivers", Vehicles.VehicleDriverController, except: @except_path_actions)
+    # Posts (club feed)
+    post "/posts", PostController, :create
+    get "/posts/:id", PostController, :show
+    put "/posts/:id", PostController, :update
+    delete "/posts/:id", PostController, :delete
+    get "/posts/user/me", PostController, :user_posts
 
-      resources("/vehicles", Vehicles.VehicleController, except: @except_path_actions)
+    # Post likes
+    post "/posts/:post_id/like", PostLikeController, :toggle
+  end
 
-      resources("/vehicle_payments", Vehicles.PaymentController, except: @except_path_actions)
+  # Admin club setup (under /api/clubs for consistency with frontend)
+  # MUST come before public /api/clubs/:id route to avoid route conflicts
+  scope "/api/clubs", BackendWeb.Admin, as: :admin_clubs do
+    pipe_through [:api, :authenticated]
 
-      scope("/vehicle_applications") do
-        post("/application_seen", Applications.VehicleApplicationController, :set_seen_true)
-      end
+    post "/setup", ClubController, :setup
+    get "/my-club", ClubController, :show
+  end
 
-      resources("/vehicle_applications", Applications.VehicleApplicationController,
-        except: @except_path_actions
-      )
+  # Admin DJ management routes
+  scope "/api", BackendWeb.API, as: :api do
+    pipe_through [:api, :authenticated]
 
-      resources("/reviews", Reviews.ReviewController, except: @except_path_actions)
+    resources "/djs", DJController, except: [:new, :edit]
+    resources "/dj-schedules", DJScheduleController, except: [:new, :edit]
+  end
 
-      resources("/comments", Reviews.CommentController, except: @except_path_actions)
+  # Routes with optional authentication (work for both logged in and logged out users)
+  scope "/api", BackendWeb.API, as: :api do
+    pipe_through [:api, :optional_auth]
 
-      resources("/replys", Reviews.ReplyController, except: @except_path_actions)
+    # Clubs list - returns is_liked if authenticated
+    get "/clubs", ClubController, :index
 
-      scope("/threads") do
-        get("/user_threads", Messenger.ThreadController, :get_participant_threads)
-        post("/messages_seen", Messenger.ThreadController, :set_seen_true)
-      end
+    # Club posts - returns has_liked if authenticated
+    get "/clubs/:club_id/posts", PostController, :index
+  end
 
-      resources("/threads", Messenger.ThreadController, except: @except_path_actions)
+  # Public routes (no authentication required)
+  scope "/api", BackendWeb.API, as: :api do
+    pipe_through :api
 
-      scope("/messages") do
-        get("/", Messenger.MessageController, :get_thread_messages)
-      end
+    # Authentication
+    post "/login", SessionController, :create
+    post "/register", UserController, :create
 
-      resources("/messages", Messenger.MessageController, except: @except_path_actions)
-    end
+    # Asset proxy for serving S3 images
+    get "/avatars/:filename", AssetProxyController, :proxy_avatar
+
+    # Clubs (public endpoints)
+    get "/clubs/:id", ClubController, :show
+    get "/clubs/:id/schedule", DJScheduleController, :club_schedule
+
+    # Intentions (public read)
+    get "/clubs/:club_id/intentions", IntentionController, :club_intentions
+
+    # Users (public profiles)
+    get "/users/:id", UserController, :show_public
+
+    # Locations (public search endpoint)
+    get "/locations/search", LocationController, :search
+  end
+
+  # Public club events endpoint (uses Admin.EventController)
+  scope "/api/clubs", BackendWeb.Admin do
+    pipe_through :api
+
+    get "/:id/events", EventController, :club_events
+  end
+
+  # Admin routes (separate authentication from regular users)
+  # Protected admin routes
+  scope "/api/admin", BackendWeb.Admin, as: :admin do
+    pipe_through [:api, :authenticated]
+
+    # Admin profile
+    get "/profile", AdminController, :show
+    put "/profile", AdminController, :update
+    put "/profile/password", AdminController, :change_password
+
+    # Dashboard statistics
+    get "/dashboard/stats", AdminController, :dashboard_stats
+
+    # Events management
+    delete "/events/past", EventController, :cleanup_past
+    resources "/events", EventController, except: [:new, :edit]
+    put "/events/:id/publish", EventController, :publish
+    put "/events/:id/unpublish", EventController, :unpublish
+
+    # Spending records management
+    get "/spending-records", SpendingRecordController, :index
+    post "/spending-records", SpendingRecordController, :create
+    get "/spending-records/leaderboard", SpendingRecordController, :leaderboard
+    get "/spending-records/stats", SpendingRecordController, :stats
+
+    # User search (for adding spending records)
+    get "/users/search", UserController, :search
+
+    # Posts/Content moderation
+    get "/content-moderation", ContentModerationController, :index
+    get "/content-moderation/stats", ContentModerationController, :stats
+    post "/content-moderation/posts", ContentModerationController, :create
+    put "/content-moderation/:id/approve", ContentModerationController, :approve
+    put "/content-moderation/:id/reject", ContentModerationController, :reject
+  end
+
+  # Public admin routes
+  scope "/api/admin", BackendWeb.Admin, as: :admin do
+    pipe_through :api
+
+    # Admin authentication
+    post "/login", SessionController, :create
+    post "/register", AdminController, :create
   end
 
   # Enable LiveDashboard and Swoosh mailbox preview in development
@@ -93,10 +197,10 @@ defmodule BackendWeb.Router do
     import Phoenix.LiveDashboard.Router
 
     scope "/dev" do
-      pipe_through([:fetch_session, :protect_from_forgery])
+      pipe_through [:fetch_session, :protect_from_forgery]
 
-      live_dashboard("/dashboard", metrics: BackendWeb.Telemetry)
-      forward("/mailbox", Plug.Swoosh.MailboxPreview)
+      live_dashboard "/dashboard", metrics: BackendWeb.Telemetry
+      forward "/mailbox", Plug.Swoosh.MailboxPreview
     end
   end
 end

@@ -4,13 +4,81 @@ docker/localstack/.localstack/cache/*.pem
 docker/localstack/.localstack/cache/*.crt
 docker/localstack/.localstack/cache/
 
-# Node / Expo / OS defaults
-node_modules/
-.expo/
-.expo/**
-/.vscode/
-.DS_Store
-docker/localstack/.localstack/cache/
+# Elixir/Phoenix Backend
+backend/_build/
+backend/deps/
+backend/*.ez
+backend/doc/
+backend/.fetch
+backend/erl_crash.dump
+backend/*.beam
+backend/config/*.secret.exs
+backend/.elixir_ls/
+backend/priv/static/
 
 # Erlang crash dumps
 erl_crash.dump
+
+# Node / Expo / React Native Frontend
+node_modules/
+frontend/node_modules/
+frontend/zonke-clubs/node_modules/
+frontend/zonke-clubs-admin/node_modules/
+frontend/zonke-clubs-admin/build/
+.expo/
+.expo-shared/
+dist/
+npm-debug.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.orig.*
+web-build/
+
+# Metro bundler
+.metro-health-check*
+
+# macOS
+.DS_Store
+*.DS_Store
+
+# IDEs and Editors
+/.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+*.env
+
+# Testing
+coverage/
+.nyc_output
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+logs/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# OS generated files
+Thumbs.db
+Desktop.ini

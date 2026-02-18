@@ -1,13 +1,18 @@
-defmodule BackendWeb.SessionController do
+defmodule BackendWeb.API.SessionController do
   use BackendWeb, :controller
-  action_fallback(BackendWeb.FallbackController)
+  action_fallback BackendWeb.FallbackController
+
   alias Backend.Accounts.Session
 
-  def create(conn, %{username: username, password: password} = params) do
-    IO.inspect(params, label: "Incoming params in SessionController")
-
-    with {:ok, session} <- Session.authenticate(params) do
-      render(conn, :show, session: session)
+  @doc """
+  Login endpoint.
+  Accepts username and password, returns user and JWT token.
+  """
+  def create(conn, params, _session) do
+    with {:ok, session_data} <- Session.authenticate(params) do
+      conn
+      |> put_status(:ok)
+      |> render(:show, session: session_data)
     end
   end
 end
