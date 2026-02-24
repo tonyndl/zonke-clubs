@@ -10,10 +10,14 @@ defmodule BackendWeb.API.DJScheduleJSON do
   end
 
   defp data(%DJSchedule{} = schedule) do
+    dj_loaded = Ecto.assoc_loaded?(schedule.dj)
+
     %{
       id: schedule.id,
       dj_id: schedule.dj_id,
-      dj_name: if(Ecto.assoc_loaded?(schedule.dj), do: schedule.dj.name, else: nil),
+      dj_name: if(dj_loaded, do: schedule.dj.name, else: nil),
+      dj_instagram: if(dj_loaded, do: schedule.dj.instagram, else: nil),
+      dj_tiktok: if(dj_loaded, do: schedule.dj.tiktok, else: nil),
       day_of_week: schedule.day_of_week,
       day: day_name(schedule.day_of_week),
       start_time: format_time(schedule.start_time),

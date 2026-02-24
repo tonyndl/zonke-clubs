@@ -176,6 +176,8 @@ defmodule BackendWeb.Router do
     post "/content-moderation/posts", ContentModerationController, :create
     put "/content-moderation/:id/approve", ContentModerationController, :approve
     put "/content-moderation/:id/reject", ContentModerationController, :reject
+    put "/content-moderation/:id", ContentModerationController, :update
+    delete "/content-moderation/:id", ContentModerationController, :delete
   end
 
   # Public admin routes

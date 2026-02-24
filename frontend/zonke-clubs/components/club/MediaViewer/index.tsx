@@ -50,22 +50,20 @@ export function MediaViewer({ visible, media, allMedia, onClose }: Props) {
     }
   }, [media, allMedia]);
 
-  if (!media || !visible) return null;
+  // Compute derived values before hooks (null-safe)
+  const currentMedia = allMedia[currentIndex] ?? media;
+  const isVideo = currentMedia?.type === "video";
 
-  const currentMedia = allMedia[currentIndex] || media;
-  const isVideo = currentMedia.type === "video";
-  const hasNext = currentIndex < allMedia.length - 1;
-  const hasPrevious = currentIndex > 0;
-
-  // Create video player for the current video
-  const player = useVideoPlayer(isVideo ? currentMedia.url : "", (player) => {
-    player.loop = false; // We'll handle looping manually for trimmed videos
-    player.muted = isMuted;
-    // Set a preview frame at start time (or 0.1s for non-trimmed)
-    const previewTime = currentMedia.startTime || 0.1;
-    player.currentTime = previewTime;
-    // Don't auto-play here - let useEffect handle it with correct start time
-  });
+  // Create video player — must be called unconditionally (Rules of Hooks)
+  const player = useVideoPlayer(
+    isVideo && currentMedia ? currentMedia.url : "",
+    (p) => {
+      p.loop = false;
+      p.muted = isMuted;
+      const previewTime = currentMedia?.startTime || 0.1;
+      p.currentTime = previewTime;
+    },
+  );
 
   // Update muted state
   useEffect(() => {
@@ -76,30 +74,24 @@ export function MediaViewer({ visible, media, allMedia, onClose }: Props) {
 
   // Handle trimmed video playback
   useEffect(() => {
-    if (!player || !isVideo) return;
+    if (!player || !isVideo || !currentMedia) return;
 
-    // Check if video is trimmed
     const isTrimmed =
-      currentMedia.startTime !== undefined &&
-      currentMedia.endTime !== undefined;
+      currentMedia.startTime != null && currentMedia.endTime != null;
 
     if (isTrimmed) {
-      // Start at trim start time
       player.currentTime = currentMedia.startTime || 0;
       player.play();
 
-      // Monitor playback and loop within trimmed range + update progress
       const interval = setInterval(() => {
         const currentTime = player.currentTime;
         const startTime = currentMedia.startTime || 0;
         const endTime = currentMedia.endTime || currentMedia.duration || 0;
         const duration = endTime - startTime;
 
-        // Update progress bar
         const progress = ((currentTime - startTime) / duration) * 100;
         setVideoProgress(Math.max(0, Math.min(100, progress)));
 
-        // If we've reached the end of the trim, loop back to start
         if (currentTime >= endTime) {
           player.currentTime = startTime;
         }
@@ -107,14 +99,13 @@ export function MediaViewer({ visible, media, allMedia, onClose }: Props) {
 
       return () => clearInterval(interval);
     } else {
-      // For non-trimmed videos, just loop normally
       player.loop = true;
       player.play();
 
-      // Update progress bar
       const interval = setInterval(() => {
         const currentTime = player.currentTime;
-        const duration = currentMedia.duration || 1;
+        const duration = player.duration || currentMedia.duration || 0;
+        if (!duration) return;
         const progress = (currentTime / duration) * 100;
         setVideoProgress(Math.max(0, Math.min(100, progress)));
       }, 100);
@@ -122,6 +113,29 @@ export function MediaViewer({ visible, media, allMedia, onClose }: Props) {
       return () => clearInterval(interval);
     }
   }, [player, currentMedia, isVideo]);
+
+  // Auto-hide controls after 3 seconds
+  useEffect(() => {
+    if (showControls && isVideo) {
+      if (controlsTimerRef.current) {
+        clearTimeout(controlsTimerRef.current);
+      }
+      controlsTimerRef.current = setTimeout(() => {
+        setShowControls(false);
+      }, 3000);
+    }
+    return () => {
+      if (controlsTimerRef.current) {
+        clearTimeout(controlsTimerRef.current);
+      }
+    };
+  }, [showControls, isVideo]);
+
+  // Early return AFTER all hooks
+  if (!media || !visible || !currentMedia) return null;
+
+  const hasNext = currentIndex < allMedia.length - 1;
+  const hasPrevious = currentIndex > 0;
 
   const handleNext = () => {
     if (hasNext) {
@@ -159,23 +173,6 @@ export function MediaViewer({ visible, media, allMedia, onClose }: Props) {
     setShowControls(!showControls);
   };
 
-  // Auto-hide controls after 3 seconds
-  useEffect(() => {
-    if (showControls && isVideo) {
-      if (controlsTimerRef.current) {
-        clearTimeout(controlsTimerRef.current);
-      }
-      controlsTimerRef.current = setTimeout(() => {
-        setShowControls(false);
-      }, 3000);
-    }
-    return () => {
-      if (controlsTimerRef.current) {
-        clearTimeout(controlsTimerRef.current);
-      }
-    };
-  }, [showControls, isVideo]);
-
   const handleProgressBarLayout = (event: any) => {
     progressBarWidthRef.current = event.nativeEvent.layout.width;
   };
@@ -188,7 +185,8 @@ export function MediaViewer({ visible, media, allMedia, onClose }: Props) {
       0,
       Math.min(1, locationX / progressBarWidthRef.current),
     );
-    const duration = currentMedia.duration || 0;
+    const duration = player.duration || currentMedia.duration || 0;
+    if (!duration) return;
     const newTime = progress * duration;
 
     const wasPlaying = player.playing;
@@ -227,13 +225,6 @@ export function MediaViewer({ visible, media, allMedia, onClose }: Props) {
             <PressableScale onPress={onClose} style={styles.closeButton}>
               <Ionicons name="close" size={28} color={Colors.platinum} />
             </PressableScale>
-
-            {/* Counter */}
-            {/* <View style={styles.counter}>
-            <Text style={styles.counterText}>
-              {currentIndex + 1} / {allMedia.length}
-            </Text>
-          </View> */}
           </Animated.View>
 
           {/* Media Content */}
@@ -354,23 +345,12 @@ export function MediaViewer({ visible, media, allMedia, onClose }: Props) {
             </Animated.View>
           )}
 
-          {/* Media Type Badge */}
+          {/* Footer */}
           <Animated.View
             entering={FadeIn.delay(400)}
             exiting={FadeOut}
             style={styles.footer}
-          >
-            {/* <View style={styles.typeBadge}>
-            <Ionicons
-              name={isVideo ? 'videocam' : 'image'}
-              size={16}
-              color={Colors.gold}
-            />
-            <Text style={styles.typeBadgeText}>
-              {isVideo ? 'Video' : 'Photo'}
-            </Text>
-          </View> */}
-          </Animated.View>
+          />
         </View>
       </GestureHandlerRootView>
     </Modal>

@@ -3,7 +3,7 @@ import { Card } from "../../../../components/Card";
 import { theme } from "../../../../styles/theme";
 
 export const SettingsContainer = styled.div`
-  max-width: 900px;
+  width: 100%;
 `;
 
 export const PageHeader = styled.div`
@@ -72,31 +72,70 @@ export const TimeInputs = styled.div`
   gap: ${theme.spacing.md};
 `;
 
-export const TimeInput = styled.input`
-  padding: ${theme.spacing.sm} ${theme.spacing.md};
-  background: ${theme.colors.background};
+export const TimeSelectWrapper = styled.div`
+  position: relative;
+  display: flex;
+  align-items: center;
+`;
+
+export const TimeClockIcon = styled.span`
+  position: absolute;
+  left: 10px;
+  color: ${theme.colors.primary};
+  display: flex;
+  align-items: center;
+  pointer-events: none;
+  z-index: 1;
+  opacity: 0.8;
+
+  svg {
+    width: 13px;
+    height: 13px;
+  }
+`;
+
+export const TimeSelect = styled.select`
+  appearance: none;
+  -webkit-appearance: none;
+  width: 100%;
+  padding: ${theme.spacing.sm} 2rem ${theme.spacing.sm} 2rem;
+  background: ${theme.colors.backgroundGray};
   border: 1px solid ${theme.colors.border};
   border-radius: ${theme.borderRadius.lg};
   color: ${theme.colors.textPrimary};
   font-size: ${theme.typography.fontSize.sm};
   font-family: ${theme.typography.fontFamily.base};
+  font-weight: ${theme.typography.fontWeight.medium};
+  cursor: pointer;
   transition: all ${theme.transitions.fast};
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2339f3ff' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+
+  &:hover {
+    border-color: ${theme.colors.borderHover};
+    background-color: ${theme.colors.backgroundHover};
+  }
 
   &:focus {
     outline: none;
     border-color: ${theme.colors.primary};
-    box-shadow: 0 0 0 3px ${theme.colors.primaryLight};
+    box-shadow: 0 0 0 3px rgba(57, 243, 255, 0.12);
   }
 
-  &:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
+  option {
+    background: ${theme.colors.backgroundCard};
+    color: ${theme.colors.textPrimary};
   }
 `;
 
 export const TimeSeparator = styled.span`
   color: ${theme.colors.textSecondary};
+  font-size: ${theme.typography.fontSize.xs};
   font-weight: ${theme.typography.fontWeight.medium};
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  white-space: nowrap;
 `;
 
 export const ToggleButton = styled.button<{ active: boolean }>`
@@ -164,4 +203,34 @@ export const WeekDate = styled.span`
   color: ${theme.colors.text};
   font-weight: ${theme.typography.fontWeight.semibold};
   font-size: ${theme.typography.fontSize.sm};
+`;
+
+export const WeekTabs = styled.div`
+  display: flex;
+  gap: 0;
+  border-radius: ${theme.borderRadius.lg};
+  background: ${theme.colors.backgroundGray};
+  border: 1px solid ${theme.colors.border};
+  padding: 4px;
+  margin-bottom: ${theme.spacing.xl};
+  width: fit-content;
+`;
+
+export const WeekTab = styled.button<{ active: boolean }>`
+  padding: ${theme.spacing.sm} ${theme.spacing.xl};
+  border-radius: ${theme.borderRadius.md};
+  border: none;
+  font-size: ${theme.typography.fontSize.sm};
+  font-weight: ${theme.typography.fontWeight.semibold};
+  cursor: pointer;
+  transition: all ${theme.transitions.fast};
+  background: ${(props) =>
+    props.active ? theme.colors.primary : "transparent"};
+  color: ${(props) =>
+    props.active ? theme.colors.background : theme.colors.textSecondary};
+
+  &:hover {
+    color: ${(props) =>
+      props.active ? theme.colors.background : theme.colors.textPrimary};
+  }
 `;

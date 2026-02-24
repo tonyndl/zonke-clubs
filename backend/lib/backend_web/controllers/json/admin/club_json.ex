@@ -20,6 +20,8 @@ defmodule BackendWeb.Admin.ClubJSON do
       dress_code: club.dress_code,
       entry_fee: club.entry_fee,
       opening_hours: club.opening_hours || %{},
+      next_week_hours: club.next_week_hours || %{},
+      table_reservation_numbers: club.table_reservation_numbers || [],
       admin_id: club.admin_id,
       inserted_at: club.inserted_at,
       updated_at: club.updated_at

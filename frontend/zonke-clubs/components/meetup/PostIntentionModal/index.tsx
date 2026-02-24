@@ -12,6 +12,7 @@ interface Props {
   visible: boolean;
   clubName: string;
   existingIntention?: MeetupIntention;
+  fixedDate?: string; // When provided, locks the date and hides date selection
   onClose: () => void;
   onSubmit: (
     activityType: ActivityType,
@@ -83,6 +84,7 @@ export function PostIntentionModal({
   visible,
   clubName,
   existingIntention,
+  fixedDate,
   onClose,
   onSubmit,
   onRemove,
@@ -91,7 +93,7 @@ export function PostIntentionModal({
     existingIntention?.activityType || null,
   );
   const [selectedDate, setSelectedDate] = useState<string>(
-    existingIntention?.plannedDate || getDateString(0),
+    fixedDate || existingIntention?.plannedDate || getDateString(0),
   );
   const [message, setMessage] = useState<string>(
     existingIntention?.message || "",
@@ -171,68 +173,71 @@ export function PostIntentionModal({
         })}
       </View>
 
-      {/* Date Selection */}
-      <View style={styles.dateSection}>
-        <Text style={styles.sectionLabel}>When are you going?</Text>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.dateOptionsContainer}
-        >
-          {dateOptions.map((option) => {
-            const isSelected = selectedDate === option.value;
-            return (
-              <PressableScale
-                key={option.value}
-                style={[
-                  styles.dateOption,
-                  isSelected && styles.dateOptionSelected,
-                ]}
-                onPress={() => setSelectedDate(option.value)}
-              >
-                <Ionicons
-                  name={option.icon as any}
-                  size={16}
-                  color={isSelected ? Colors.bg : Colors.smoke}
-                />
-                <Text
-                  style={[
-                    styles.dateOptionText,
-                    isSelected && styles.dateOptionTextSelected,
-                  ]}
-                >
-                  {option.label}
-                </Text>
-              </PressableScale>
-            );
-          })}
-          {/* More Dates Button - Opens Calendar */}
-          <PressableScale
-            style={styles.moreDatesButton}
-            onPress={() => setShowCalendar(true)}
+      {/* Date Selection — hidden when a fixed event date is provided */}
+      {!fixedDate && (
+        <View style={styles.dateSection}>
+          <Text style={styles.sectionLabel}>When are you going?</Text>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.dateOptionsContainer}
           >
-            <Ionicons
-              name="calendar-outline"
-              size={16}
-              color={Colors.primaryBlue}
-            />
-            <Text style={styles.moreDatesText}>More</Text>
-          </PressableScale>
-        </ScrollView>
-      </View>
+            {dateOptions.map((option) => {
+              const isSelected = selectedDate === option.value;
+              return (
+                <PressableScale
+                  key={option.value}
+                  style={[
+                    styles.dateOption,
+                    isSelected && styles.dateOptionSelected,
+                  ]}
+                  onPress={() => setSelectedDate(option.value)}
+                >
+                  <Ionicons
+                    name={option.icon as any}
+                    size={16}
+                    color={isSelected ? Colors.bg : Colors.smoke}
+                  />
+                  <Text
+                    style={[
+                      styles.dateOptionText,
+                      isSelected && styles.dateOptionTextSelected,
+                    ]}
+                  >
+                    {option.label}
+                  </Text>
+                </PressableScale>
+              );
+            })}
+            <PressableScale
+              style={styles.moreDatesButton}
+              onPress={() => setShowCalendar(true)}
+            >
+              <Ionicons
+                name="calendar-outline"
+                size={16}
+                color={Colors.primaryBlue}
+              />
+              <Text style={styles.moreDatesText}>More</Text>
+            </PressableScale>
+          </ScrollView>
+        </View>
+      )}
 
       {/* Calendar Modal */}
-      <CalendarModal
-        visible={showCalendar}
-        onClose={() => setShowCalendar(false)}
-        onDateConfirm={(date) => {
-          setSelectedDate(date);
-          setShowCalendar(false);
-        }}
-        initialDate={selectedDate}
-        minDate={getDateString(0)}
-        title="Select Date"
-      />
+      {!fixedDate && (
+        <CalendarModal
+          visible={showCalendar}
+          onClose={() => setShowCalendar(false)}
+          onDateConfirm={(date) => {
+            setSelectedDate(date);
+            setShowCalendar(false);
+          }}
+          initialDate={selectedDate}
+          minDate={getDateString(0)}
+          title="Select Date"
+        />
+      )}
 
       {/* Message Input */}
       <View style={styles.inputContainer}>

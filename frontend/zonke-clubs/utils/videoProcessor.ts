@@ -1,12 +1,20 @@
 import * as FileSystem from "expo-file-system/legacy";
-import { Alert } from "react-native";
 
-/**
- * Video trimming utility using expo-av and expo-file-system
- *
- * Note: For production, consider backend processing for better performance
- * and reliability. Client-side video encoding can be slow and battery-intensive.
- */
+// Lazy-load ffmpeg-kit-react-native — it's a native module unavailable in Expo Go.
+// In Expo Go the require() throws, so we fall back to a no-op trim (original file
+// is uploaded with start_time/end_time metadata so the server can handle it).
+let _FFmpegKit: any = null;
+let _ReturnCode: any = null;
+try {
+  const mod = require("ffmpeg-kit-react-native");
+  _FFmpegKit = mod.FFmpegKit;
+  _ReturnCode = mod.ReturnCode;
+} catch (_) {
+  console.warn(
+    "ffmpeg-kit-react-native not available (Expo Go). " +
+      "Video will be uploaded without client-side trimming.",
+  );
+}
 
 interface TrimOptions {
   videoUri: string;
@@ -22,50 +30,59 @@ interface TrimResult {
 }
 
 /**
- * Trims a video to the specified time range
- *
- * IMPORTANT: This is a simplified implementation that works with expo-av.
- * For production use, consider:
- * 1. Backend processing with FFmpeg (recommended)
- * 2. Native modules for better performance
- * 3. Progress indicators for long videos
+ * Trims a video to the specified time range using FFmpeg.
+ * Uses stream copy (-c copy) for fast, lossless cutting without re-encoding.
+ * Falls back to returning the original URI when running in Expo Go
+ * (ffmpeg-kit-react-native is a native module not bundled with Expo Go).
  */
 export async function trimVideo(options: TrimOptions): Promise<TrimResult> {
   const { videoUri, startTime, endTime, onProgress } = options;
+  const duration = endTime - startTime;
 
-  try {
-    // For Expo managed workflow, we'll use a hybrid approach:
-    // 1. Store the trim metadata with the video
-    // 2. Backend will do actual trimming when video is uploaded
+  onProgress?.(5);
 
-    // For now, we'll copy the video and store metadata
-    const fileName = `trimmed_${Date.now()}.mp4`;
-    const newUri = `${FileSystem.cacheDirectory}${fileName}`;
-
-    // Copy the original video to a new location
-    // In a production app, you would:
-    // 1. Use FFmpeg via native modules for actual trimming
-    // 2. Or send to backend for processing
-    await FileSystem.copyAsync({
-      from: videoUri,
-      to: newUri,
-    });
-
-    onProgress?.(100);
-
-    // Get file info
-    const fileInfo = await FileSystem.getInfoAsync(newUri);
+  // Expo Go fallback — skip client-side trim, upload original with metadata
+  if (!_FFmpegKit) {
+    const fileInfo = await FileSystem.getInfoAsync(videoUri);
     const size = "size" in fileInfo ? fileInfo.size : 0;
-
-    return {
-      uri: newUri,
-      duration: endTime - startTime,
-      size: size || 0,
-    };
-  } catch (error) {
-    console.error("Video trimming error:", error);
-    throw new Error("Failed to process video. Please try again.");
+    onProgress?.(100);
+    return { uri: videoUri, duration, size: size || 0 };
   }
+
+  const fileName = `trimmed_${Date.now()}.mp4`;
+  const outputUri = `${FileSystem.cacheDirectory}${fileName}`;
+
+  // Normalize input URI — FFmpegKit handles file:// URIs on both platforms.
+  const inputPath = videoUri.startsWith("file://")
+    ? videoUri
+    : `file://${videoUri}`;
+  const outputPath = outputUri.startsWith("file://")
+    ? outputUri
+    : `file://${outputUri}`;
+
+  // -ss before -i = fast input seek (keyframe-accurate, near-instant)
+  // -t = duration to extract
+  // -c copy = no re-encoding (lossless, very fast)
+  // -avoid_negative_ts make_zero = fix timestamp issues at trim boundaries
+  const command = `-ss ${startTime} -i "${inputPath}" -t ${duration} -c copy -avoid_negative_ts make_zero "${outputPath}"`;
+
+  const session = await _FFmpegKit.execute(command);
+  const returnCode = await session.getReturnCode();
+
+  if (!_ReturnCode.isSuccess(returnCode)) {
+    const logs = await session.getLogsAsString();
+    console.error("FFmpeg trim failed:", logs);
+    throw new Error("Failed to trim video. Please try again.");
+  }
+
+  onProgress?.(95);
+
+  const fileInfo = await FileSystem.getInfoAsync(outputUri);
+  const size = "size" in fileInfo ? fileInfo.size : 0;
+
+  onProgress?.(100);
+
+  return { uri: outputUri, duration, size: size || 0 };
 }
 
 /**

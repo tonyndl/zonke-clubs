@@ -16,6 +16,7 @@ defmodule BackendWeb.API.DJJSON do
       genre: dj.genre,
       bio: dj.bio,
       instagram: dj.instagram,
+      tiktok: dj.tiktok,
       soundcloud: dj.soundcloud,
       image: dj.image_url,
       inserted_at: dj.inserted_at,

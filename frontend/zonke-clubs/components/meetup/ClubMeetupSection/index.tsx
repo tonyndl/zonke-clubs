@@ -18,6 +18,7 @@ interface Props {
   clubId: string;
   intentions: MeetupIntention[];
   currentUserId?: string;
+  userIntention?: MeetupIntention | null;
   connectionStatuses?: Map<string, { status: string; threadId?: string }>;
   onPostIntention: () => void;
   onConnect: (intention: MeetupIntention) => void;
@@ -52,6 +53,7 @@ export function ClubMeetupSection({
   clubId,
   intentions,
   currentUserId,
+  userIntention,
   connectionStatuses = new Map(),
   onPostIntention,
   onConnect,
@@ -111,16 +113,29 @@ export function ClubMeetupSection({
       {/* CTA to post intention */}
       <PressableScale style={styles.postCta} onPress={onPostIntention}>
         <View style={styles.postCtaIcon}>
-          <Ionicons name="add" size={24} color={Colors.gold} />
+          {userIntention ? (
+            <Text style={{ fontSize: 22 }}>
+              {ACTIVITY_CONFIG[userIntention.activityType].emoji}
+            </Text>
+          ) : (
+            <Ionicons name="add" size={24} color={Colors.gold} />
+          )}
         </View>
         <View style={styles.postCtaText}>
           <Text style={styles.postCtaTitle}>
-            When are you planning to visit?
+            {userIntention
+              ? `${ACTIVITY_CONFIG[userIntention.activityType].label}`
+              : "When are you planning to visit?"}
           </Text>
           <Text style={styles.postCtaSubtitle}>
-            Let others know when you want to meet up
+            {userIntention
+              ? `${formatPlannedDate(userIntention.plannedDate)}${userIntention.plannedTime ? ` · ${userIntention.plannedTime}` : ""} · Tap to update`
+              : "Let others know when you want to meet up"}
           </Text>
         </View>
+        {userIntention && (
+          <Ionicons name="pencil-outline" size={16} color={Colors.smoke} />
+        )}
       </PressableScale>
 
       {/* Date Filter Pills */}

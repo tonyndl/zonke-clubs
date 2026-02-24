@@ -99,13 +99,10 @@ export const EventCard = styled(Card)`
   }
 `;
 
-export const EventImage = styled.div<{ src?: string }>`
+export const EventImage = styled.div`
   width: 100%;
   height: 200px;
   background-color: ${theme.colors.sidebarActiveBg};
-  background-image: url(${(props) => props.src});
-  background-size: cover;
-  background-position: center;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -126,7 +123,17 @@ export const EventImage = styled.div<{ src?: string }>`
       ${theme.colors.cardBackground} 0%,
       transparent 100%
     );
+    pointer-events: none;
   }
+`;
+
+export const EventCoverImg = styled.img`
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 0;
 `;
 
 export const EventContent = styled.div`

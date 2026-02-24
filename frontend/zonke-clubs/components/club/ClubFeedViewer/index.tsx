@@ -242,8 +242,7 @@ function FeedItem({
     if (!videoPlayer || !isVideo || !isActive) return;
 
     const isTrimmed =
-      currentMedia.startTime !== undefined &&
-      currentMedia.endTime !== undefined;
+      currentMedia.startTime != null && currentMedia.endTime != null;
 
     if (!isTrimmed) {
       // For active non-trimmed videos, play them
@@ -267,8 +266,7 @@ function FeedItem({
 
     // Check if video is trimmed
     const isTrimmed =
-      currentMedia.startTime !== undefined &&
-      currentMedia.endTime !== undefined;
+      currentMedia.startTime != null && currentMedia.endTime != null;
 
     if (isTrimmed) {
       // Start at trim start time
@@ -300,7 +298,8 @@ function FeedItem({
       // Update progress bar
       const interval = setInterval(() => {
         const currentTime = videoPlayer.currentTime;
-        const duration = currentMedia.duration || 1;
+        const duration = videoPlayer.duration || currentMedia.duration || 0;
+        if (!duration) return;
         const progress = (currentTime / duration) * 100;
         setVideoProgress(Math.max(0, Math.min(100, progress)));
       }, 100);
@@ -385,7 +384,8 @@ function FeedItem({
       0,
       Math.min(1, locationX / progressBarWidthRef.current),
     );
-    const duration = currentMedia.duration || 0;
+    const duration = videoPlayer.duration || currentMedia.duration || 0;
+    if (!duration) return;
     const newTime = progress * duration;
 
     const wasPlaying = videoPlayer.playing;

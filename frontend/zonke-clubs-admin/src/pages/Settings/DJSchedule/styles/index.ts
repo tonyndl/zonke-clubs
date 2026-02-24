@@ -3,7 +3,7 @@ import { Card } from "../../../../components/Card";
 import { theme } from "../../../../styles/theme";
 
 export const SettingsContainer = styled.div`
-  max-width: 1200px;
+  width: 100%;
 `;
 
 export const PageHeader = styled.div`
@@ -59,32 +59,56 @@ export const SectionDescription = styled.p`
   color: ${theme.colors.textSecondary};
 `;
 
-export const DJCard = styled(Card)`
-  padding: ${theme.spacing.xl};
-  margin-bottom: ${theme.spacing.lg};
-  transition: all ${theme.transitions.normal};
-
-  &:hover {
-    transform: translateY(-2px);
-    box-shadow: ${theme.shadows.lg};
-  }
-`;
-
-export const DJHeader = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-`;
-
-export const DJInfo = styled.div`
-  display: flex;
-  align-items: center;
+export const DJGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
   gap: ${theme.spacing.md};
 `;
 
-export const DJAvatar = styled.div<{ image?: string }>`
-  width: 60px;
-  height: 60px;
+export const DJGridItem = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: ${theme.spacing.md} ${theme.spacing.sm};
+  border-radius: ${theme.borderRadius.xl};
+  background: ${theme.colors.backgroundCard};
+  border: 1px solid ${theme.colors.border};
+  transition: all ${theme.transitions.fast};
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+
+  &::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: ${theme.borderRadius.xl};
+    background: linear-gradient(
+      160deg,
+      rgba(57, 243, 255, 0.04) 0%,
+      transparent 60%
+    );
+    opacity: 0;
+    transition: opacity ${theme.transitions.fast};
+    pointer-events: none;
+  }
+
+  &:hover::before {
+    opacity: 1;
+  }
+
+  &:hover {
+    border-color: rgba(57, 243, 255, 0.4);
+    box-shadow:
+      0 0 24px rgba(57, 243, 255, 0.1),
+      ${theme.shadows.md};
+    transform: translateY(-2px);
+  }
+`;
+
+export const DJGridAvatar = styled.div<{ image?: string }>`
+  width: 62px;
+  height: 62px;
   border-radius: ${theme.borderRadius.full};
   background: ${(props) =>
     props.image ? `url(${props.image})` : theme.gradients.primary};
@@ -96,58 +120,166 @@ export const DJAvatar = styled.div<{ image?: string }>`
   font-size: ${theme.typography.fontSize.xl};
   font-weight: ${theme.typography.fontWeight.bold};
   color: ${theme.colors.background};
+  margin-bottom: ${theme.spacing.sm};
+  border: 2px solid ${theme.colors.border};
+  transition:
+    border-color ${theme.transitions.fast},
+    box-shadow ${theme.transitions.fast};
+
+  ${DJGridItem}:hover & {
+    border-color: ${theme.colors.primary};
+    box-shadow: 0 0 14px rgba(57, 243, 255, 0.35);
+  }
 `;
 
-export const DJDetails = styled.div``;
-
-export const DJName = styled.h3`
-  font-size: ${theme.typography.fontSize.lg};
+export const DJGridName = styled.h3`
+  font-size: ${theme.typography.fontSize.sm};
   font-weight: ${theme.typography.fontWeight.semibold};
   color: ${theme.colors.textPrimary};
+  width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 6px;
+`;
+
+export const DJGridGenreTag = styled.span`
+  font-size: 10px;
+  font-weight: ${theme.typography.fontWeight.medium};
+  color: ${theme.colors.primary};
+  background: rgba(57, 243, 255, 0.1);
+  border: 1px solid rgba(57, 243, 255, 0.2);
+  border-radius: ${theme.borderRadius.full};
+  padding: 2px 8px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  display: inline-block;
   margin-bottom: ${theme.spacing.xs};
 `;
 
-export const DJMeta = styled.div`
+export const DJGridSocials = styled.div`
   display: flex;
-  align-items: center;
-  gap: ${theme.spacing.md};
-  flex-wrap: wrap;
+  flex-direction: column;
+  gap: 4px;
+  align-items: stretch;
+  width: 100%;
+  margin-bottom: ${theme.spacing.xs};
 `;
 
-export const DJGenre = styled.p`
-  font-size: ${theme.typography.fontSize.sm};
-  color: ${theme.colors.textSecondary};
+export const DJGridSocialLink = styled.a<{
+  $platform?: "instagram" | "tiktok";
+}>`
   display: flex;
   align-items: center;
-  gap: ${theme.spacing.xs};
+  justify-content: center;
+  gap: 5px;
+  padding: 3px 8px;
+  border-radius: ${theme.borderRadius.full};
+  background: ${({ $platform }) =>
+    $platform === "instagram"
+      ? "rgba(225, 48, 108, 0.12)"
+      : "rgba(255, 255, 255, 0.06)"};
+  border: 1px solid
+    ${({ $platform }) =>
+      $platform === "instagram"
+        ? "rgba(225, 48, 108, 0.25)"
+        : "rgba(255, 255, 255, 0.12)"};
+  text-decoration: none;
+  transition: all ${theme.transitions.fast};
+  overflow: hidden;
+  min-width: 0;
+  text-align: center;
 
-  svg {
-    width: 14px;
-    height: 14px;
+  &:hover {
+    background: ${({ $platform }) =>
+      $platform === "instagram"
+        ? "rgba(225, 48, 108, 0.22)"
+        : "rgba(255, 255, 255, 0.12)"};
+    transform: translateX(2px);
   }
 `;
 
-export const DJSocial = styled.a`
-  font-size: ${theme.typography.fontSize.xs};
-  color: ${theme.colors.primary};
-  text-decoration: none;
+export const DJGridSocialPlatform = styled.span<{
+  $platform?: "instagram" | "tiktok";
+}>`
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  color: ${({ $platform }) =>
+    $platform === "instagram" ? "#E1306C" : theme.colors.textMuted};
+
+  svg {
+    width: 10px;
+    height: 10px;
+  }
+`;
+
+export const DJGridSocialHandle = styled.span`
+  font-size: 10px;
+  font-weight: ${theme.typography.fontWeight.medium};
+  color: ${theme.colors.textSecondary};
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+`;
+
+export const DJGridActions = styled.div`
+  display: flex;
+  gap: 6px;
+  margin-top: auto;
+  padding-top: ${theme.spacing.sm};
+`;
+
+export const DJGridEditBtn = styled.button`
+  width: 28px;
+  height: 28px;
+  border-radius: ${theme.borderRadius.md};
+  border: 1px solid ${theme.colors.border};
+  background: transparent;
+  color: ${theme.colors.textSecondary};
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
   transition: all ${theme.transitions.fast};
 
   &:hover {
-    text-decoration: underline;
+    border-color: ${theme.colors.primary};
+    color: ${theme.colors.primary};
+    background: rgba(57, 243, 255, 0.08);
+  }
+
+  svg {
+    width: 13px;
+    height: 13px;
   }
 `;
 
-export const DJBio = styled.p`
-  font-size: ${theme.typography.fontSize.sm};
-  color: ${theme.colors.textSecondary};
-  margin-top: ${theme.spacing.md};
-  line-height: 1.5;
-`;
-
-export const DJActions = styled.div`
+export const DJGridDeleteBtn = styled.button`
+  width: 28px;
+  height: 28px;
+  border-radius: ${theme.borderRadius.md};
+  border: 1px solid ${theme.colors.errorLight};
+  background: transparent;
+  color: ${theme.colors.error};
   display: flex;
-  gap: ${theme.spacing.sm};
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all ${theme.transitions.fast};
+
+  &:hover {
+    border-color: ${theme.colors.error};
+    background: ${theme.colors.errorLight};
+  }
+
+  svg {
+    width: 13px;
+    height: 13px;
+  }
 `;
 
 export const EmptyState = styled.div`

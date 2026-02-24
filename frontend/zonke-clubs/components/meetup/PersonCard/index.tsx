@@ -43,9 +43,9 @@ export function PersonCard({
       // Navigate to chat if accepted
       router.push(`/chat/${threadId}` as any);
     } else {
-      // Route to profile tab with userId and clubId parameters
+      // Navigate to view-only profile screen (outside tabs, so no tab bar)
       router.push(
-        `/(tabs)/profile?userId=${intention.user.id}&clubId=${intention.clubId}` as any,
+        `/profile/${intention.user.id}?clubId=${intention.clubId}` as any,
       );
     }
   };

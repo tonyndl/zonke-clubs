@@ -14,7 +14,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { Colors } from "@/constants/ui";
 import { PressableScale } from "@/components/ui/PressableScale";
-import { Modal } from "../modal";
+import { Modal } from "../../modal";
 import { styles, TRIM_BAR_WIDTH, MAX_DURATION } from "./styles";
 
 interface Props {
