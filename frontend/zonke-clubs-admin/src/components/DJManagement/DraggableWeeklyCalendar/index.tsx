@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useToast } from "../../Toast";
 import {
   RiAddLine,
   RiMusic2Line,
@@ -9,6 +10,8 @@ import {
   RiDraggable,
   RiAlertLine,
   RiTrophyFill,
+  RiCloseLine,
+  RiCheckLine,
 } from "react-icons/ri";
 import {
   CalendarContainer,
@@ -23,6 +26,7 @@ import {
   DayName,
   DayDate,
   EventBadgeText,
+  ClosedBadge,
   DaySlots,
   SlotCard,
   DragHandle,
@@ -45,11 +49,12 @@ import {
   DJOptionGenre,
   EmptySlot,
   getGenreColor,
+  getDJColor,
 } from "./styles";
 
 interface DraggableWeeklyCalendarProps {
   schedules: DJScheduleItem[];
-  djs: Array<{ id: string; name: string; genre?: string; image?: string }>;
+  djs: Array<{ id: string; name: string; image?: string }>;
   events?: Array<{
     id: string;
     title: string;
@@ -57,6 +62,7 @@ interface DraggableWeeklyCalendarProps {
     status: string;
     dj_lineup?: string[];
   }>;
+  closedDays?: Set<string>;
   weekStart?: Date;
   onAddSchedule: () => void;
   onEditSchedule: (scheduleId: string) => void;
@@ -147,6 +153,7 @@ export const DraggableWeeklyCalendar: React.FC<
   schedules,
   djs,
   events = [],
+  closedDays = new Set(),
   weekStart,
   onAddSchedule,
   onEditSchedule,
@@ -158,11 +165,38 @@ export const DraggableWeeklyCalendar: React.FC<
   onAddDJToEvent,
   onRemoveDJFromEvent,
 }) => {
+  const toast = useToast();
   const [draggedSchedule, setDraggedSchedule] = useState<DJScheduleItem | null>(
     null,
   );
   const [dragOverDay, setDragOverDay] = useState<number | null>(null);
+  const [invalidDropDay, setInvalidDropDay] = useState<number | null>(null);
   const [openDropdownDay, setOpenDropdownDay] = useState<number | null>(null);
+
+  // Close dropdown when clicking outside
+  React.useEffect(() => {
+    if (openDropdownDay === null) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as Element;
+      if (!target.closest("[data-quick-add]")) {
+        setOpenDropdownDay(null);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [openDropdownDay]);
+
+  // Scroll the open dropdown fully into view
+  React.useEffect(() => {
+    if (openDropdownDay === null) return;
+    const timer = setTimeout(() => {
+      const dropdown = document.querySelector("[data-dj-dropdown]");
+      if (dropdown) {
+        dropdown.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      }
+    }, 30);
+    return () => clearTimeout(timer);
+  }, [openDropdownDay]);
 
   const weekDates = getWeekDates(weekStart);
 
@@ -180,44 +214,54 @@ export const DraggableWeeklyCalendar: React.FC<
     );
 
     // Get all scheduled DJs for this day
-    let slots = schedules.filter(
+    const weeklySlots = schedules.filter(
       (s) => s.dayOfWeek === index && s.type === "weekly",
     );
 
-    // If there's a published event with a DJ lineup, create slots for event DJs
-    if (event && event.dj_lineup && event.dj_lineup.length > 0) {
-      // Create slots for each DJ in the event lineup
-      slots = event.dj_lineup.map((djIdOrName) => {
-        // Check if this DJ already has a schedule for this day (by ID)
-        const existingSlot = slots.find((s) => s.djId === djIdOrName);
-        if (existingSlot) {
-          return existingSlot;
-        }
+    let slots: DJScheduleItem[];
 
-        // Try to find DJ by ID first, then by name
-        let dj = djs.find((d) => d.id === djIdOrName);
-        if (!dj) {
-          // Fallback: try to find by name (case-insensitive)
-          dj = djs.find(
-            (d) => d.name.toLowerCase() === djIdOrName.toLowerCase(),
-          );
-        }
+    // If there's a published event on this day, show ONLY the event's DJ lineup
+    // (never bleed regular weekly DJs into an event day)
+    if (event) {
+      if (event.dj_lineup && event.dj_lineup.length > 0) {
+        // Create slots for each DJ in the event lineup
+        slots = event.dj_lineup.map((djIdOrName) => {
+          // Check if this DJ already has a schedule for this day (by ID)
+          const existingSlot = weeklySlots.find((s) => s.djId === djIdOrName);
+          if (existingSlot) {
+            return { ...existingSlot, notes: `Part of ${event.title}` };
+          }
 
-        // Use the found DJ's ID if we matched by name, otherwise use the provided value
-        const djId = dj?.id || djIdOrName;
+          // Try to find DJ by ID first, then by name
+          let dj = djs.find((d) => d.id === djIdOrName);
+          if (!dj) {
+            // Fallback: try to find by name (case-insensitive)
+            dj = djs.find(
+              (d) => d.name.toLowerCase() === djIdOrName.toLowerCase(),
+            );
+          }
 
-        return {
-          id: `event-${event.id}-${djId}`,
-          djId: djId,
-          djName: dj?.name || djIdOrName,
-          day: day,
-          dayOfWeek: index,
-          startTime: undefined,
-          endTime: undefined,
-          type: "weekly" as const,
-          notes: `Part of ${event.title}`,
-        };
-      });
+          // Use the found DJ's ID if we matched by name, otherwise use the provided value
+          const djId = dj?.id || djIdOrName;
+
+          return {
+            id: `event-${event.id}-${djId}`,
+            djId: djId,
+            djName: dj?.name || djIdOrName,
+            day: day,
+            dayOfWeek: index,
+            startTime: undefined,
+            endTime: undefined,
+            type: "weekly" as const,
+            notes: `Part of ${event.title}`,
+          };
+        });
+      } else {
+        // Event exists but no DJs added to lineup yet — show empty, not weekly DJs
+        slots = [];
+      }
+    } else {
+      slots = weeklySlots;
     }
 
     return {
@@ -237,29 +281,65 @@ export const DraggableWeeklyCalendar: React.FC<
   const handleDragEnd = () => {
     setDraggedSchedule(null);
     setDragOverDay(null);
+    setInvalidDropDay(null);
   };
 
   const handleDragOver = (e: React.DragEvent, dayOfWeek: number) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = "move";
-    setDragOverDay(dayOfWeek);
+    e.preventDefault(); // must always be called to allow drop event to fire
+    if (!draggedSchedule) return;
+
+    // If the target day has a published event, drops add to the event lineup — always allow
+    const targetDate = weekDates[dayOfWeek];
+    const ty = targetDate.getFullYear();
+    const tm = String(targetDate.getMonth() + 1).padStart(2, "0");
+    const td = String(targetDate.getDate()).padStart(2, "0");
+    const hasTargetEvent = events.some(
+      (ev) => ev.date === `${ty}-${tm}-${td}` && ev.status === "published",
+    );
+
+    const djAlreadyOnDay = schedules.some(
+      (s) => s.djId === draggedSchedule.djId && s.dayOfWeek === dayOfWeek,
+    );
+
+    if (
+      !hasTargetEvent &&
+      djAlreadyOnDay &&
+      draggedSchedule.dayOfWeek !== dayOfWeek
+    ) {
+      // Keep dropEffect as move so drop event still fires — we block + toast in handleDrop
+      e.dataTransfer.dropEffect = "move";
+      setInvalidDropDay(dayOfWeek);
+      setDragOverDay(null);
+    } else {
+      e.dataTransfer.dropEffect = "move";
+      setDragOverDay(dayOfWeek);
+      setInvalidDropDay(null);
+    }
   };
 
   const handleDragLeave = () => {
     setDragOverDay(null);
+    setInvalidDropDay(null);
   };
 
   const handleDrop = (e: React.DragEvent, dayOfWeek: number) => {
     e.preventDefault();
-    console.log("🎯 handleDrop called:", { dayOfWeek, draggedSchedule });
 
     if (!draggedSchedule) {
-      console.log("⚠️ No dragged schedule, returning");
       setDragOverDay(null);
+      setInvalidDropDay(null);
       return;
     }
 
-    // Check if the target day has a published event
+    // Block drops onto closed days
+    if (closedDays.has(DAYS[dayOfWeek])) {
+      setDragOverDay(null);
+      setInvalidDropDay(null);
+      return;
+    }
+
+    // Check if the target day has a published event — must come first so we
+    // don't wrongly block drops for DJs who have weekly schedules on an event day
     const targetDate = weekDates[dayOfWeek];
     const year = targetDate.getFullYear();
     const month = String(targetDate.getMonth() + 1).padStart(2, "0");
@@ -269,30 +349,37 @@ export const DraggableWeeklyCalendar: React.FC<
       (e) => e.date === dateStr && e.status === "published",
     );
 
-    console.log("🔍 Checking for event on target day:", {
-      dateStr,
-      targetEvent,
-    });
+    // Block if DJ is already scheduled on this day — but only for non-event days
+    // (on event days a drop adds to the event lineup regardless of weekly schedules)
+    const djAlreadyOnDay = schedules.some(
+      (s) => s.djId === draggedSchedule.djId && s.dayOfWeek === dayOfWeek,
+    );
+    if (
+      !targetEvent &&
+      djAlreadyOnDay &&
+      draggedSchedule.dayOfWeek !== dayOfWeek
+    ) {
+      toast.warning(
+        `Already scheduled on ${DAYS[dayOfWeek]}`,
+        draggedSchedule.djName,
+      );
+      setDraggedSchedule(null);
+      setDragOverDay(null);
+      setInvalidDropDay(null);
+      return;
+    }
 
     // If there's a published event on the target day, add DJ to event
     if (targetEvent && onAddDJToEvent) {
-      console.log("🎉 Adding DJ to event:", targetEvent.title);
       onAddDJToEvent(targetEvent.id, draggedSchedule.djId);
     } else if (draggedSchedule.dayOfWeek !== dayOfWeek) {
       // Otherwise, move the schedule normally
-      console.log(
-        "📅 Moving schedule from day",
-        draggedSchedule.dayOfWeek,
-        "to day",
-        dayOfWeek,
-      );
       onMoveSchedule(draggedSchedule.id, dayOfWeek);
-    } else {
-      console.log("⚠️ Schedule already on this day, no action needed");
     }
 
     setDraggedSchedule(null);
     setDragOverDay(null);
+    setInvalidDropDay(null);
   };
 
   const getDJInfo = (djId: string) => {
@@ -303,7 +390,13 @@ export const DraggableWeeklyCalendar: React.FC<
     setOpenDropdownDay(openDropdownDay === dayOfWeek ? null : dayOfWeek);
   };
 
-  const handleSelectDJ = (djId: string, dayOfWeek: number) => {
+  const handleSelectDJ = (
+    djId: string,
+    dayOfWeek: number,
+    isScheduled: boolean,
+  ) => {
+    if (isScheduled) return;
+
     // Check if the day has a published event
     const date = weekDates[dayOfWeek];
     const year = date.getFullYear();
@@ -474,42 +567,45 @@ export const DraggableWeeklyCalendar: React.FC<
         <CalendarGrid>
           {schedulesByDay.map(({ day, dayOfWeek, date, slots }) => {
             const isSpecial = isSpecialEventDay(dayOfWeek, date, slots);
+            const isClosed = closedDays.has(day);
             return (
               <DayColumn
                 key={day}
                 isDragOver={dragOverDay === dayOfWeek}
+                isInvalidDrop={invalidDropDay === dayOfWeek}
                 isSpecialEvent={isSpecial}
-                onDragOver={(e) => handleDragOver(e, dayOfWeek)}
+                isClosed={isClosed}
+                onDragOver={(e) => !isClosed && handleDragOver(e, dayOfWeek)}
                 onDragLeave={handleDragLeave}
                 onDrop={(e) => handleDrop(e, dayOfWeek)}
               >
-                <DayHeader isSpecialEvent={isSpecial}>
+                <DayHeader isSpecialEvent={isSpecial} isClosed={isClosed}>
                   <DayNameRow>
-                    {isSpecial && (
+                    {isSpecial && !isClosed && (
                       <TrophyIcon>
                         {React.createElement(
                           RiTrophyFill as React.ComponentType,
                         )}
                       </TrophyIcon>
                     )}
-                    <DayName isSpecialEvent={isSpecial}>
+                    <DayName isSpecialEvent={isSpecial && !isClosed}>
                       {window.innerWidth < 768 ? DAYS_SHORT[dayOfWeek] : day}
                     </DayName>
                   </DayNameRow>
-                  <DayDate isSpecialEvent={isSpecial}>
+                  <DayDate isSpecialEvent={isSpecial && !isClosed}>
                     {date.toLocaleDateString("en-US", {
                       month: "short",
                       day: "numeric",
                     })}
                   </DayDate>
-                  {isSpecial && (
+                  {!isClosed && isSpecial ? (
                     <EventBadgeText>
                       {getEventBadgeText(date, slots)}
                     </EventBadgeText>
-                  )}
+                  ) : null}
                 </DayHeader>
                 <DaySlots>
-                  {slots.length > 0 ? (
+                  {slots.length > 0 && !isClosed ? (
                     slots
                       .sort((a, b) => {
                         if (!a.startTime) return 1;
@@ -521,11 +617,12 @@ export const DraggableWeeklyCalendar: React.FC<
                         const hasConflict = hasTimeConflict(slot, slots);
                         const slotInfo = isEventSlot(slot.id);
 
+                        const djColor = getDJColor(slot.djId);
                         return (
                           <SlotCard
                             key={slot.id}
-                            genre={djInfo?.genre}
                             isDragging={draggedSchedule?.id === slot.id}
+                            $borderColor={djColor}
                             draggable
                             onDragStart={(e) => handleDragStart(e, slot)}
                             onDragEnd={handleDragEnd}
@@ -581,7 +678,7 @@ export const DraggableWeeklyCalendar: React.FC<
                             </QuickActions>
 
                             <SlotHeader>
-                              <DJAvatar image={djInfo?.image}>
+                              <DJAvatar image={djInfo?.image} $color={djColor}>
                                 {!djInfo?.image &&
                                   React.createElement(
                                     RiMusic2Line as React.ComponentType,
@@ -589,11 +686,6 @@ export const DraggableWeeklyCalendar: React.FC<
                               </DJAvatar>
                               <SlotInfo>
                                 <SlotDJ>{slot.djName}</SlotDJ>
-                                {djInfo?.genre && (
-                                  <GenreTag genre={djInfo.genre}>
-                                    {djInfo.genre}
-                                  </GenreTag>
-                                )}
                               </SlotInfo>
                             </SlotHeader>
 
@@ -608,14 +700,14 @@ export const DraggableWeeklyCalendar: React.FC<
                               </SlotTime>
                             )}
 
-                            {!slot.startTime && (
+                            {/* {!slot.startTime && (
                               <SlotTime>
                                 {React.createElement(
                                   RiTimeLine as React.ComponentType,
                                 )}
                                 Time TBD
                               </SlotTime>
-                            )}
+                            )} */}
 
                             {slot.notes && <SlotNotes>{slot.notes}</SlotNotes>}
 
@@ -632,14 +724,20 @@ export const DraggableWeeklyCalendar: React.FC<
                       })
                   ) : (
                     <EmptySlot>
-                      {React.createElement(RiMusic2Line as React.ComponentType)}
-                      No DJs scheduled
+                      {isClosed
+                        ? React.createElement(
+                            RiCloseLine as React.ComponentType,
+                          )
+                        : React.createElement(
+                            RiMusic2Line as React.ComponentType,
+                          )}
+                      {isClosed ? "Club is closed" : "No DJs scheduled"}
                     </EmptySlot>
                   )}
                 </DaySlots>
 
-                {onQuickAddDJ && djs.length > 0 && (
-                  <QuickAddContainer>
+                {onQuickAddDJ && djs.length > 0 && !isClosed && (
+                  <QuickAddContainer data-quick-add="true">
                     <QuickAddButton
                       isOpen={openDropdownDay === dayOfWeek}
                       onClick={() => handleToggleDropdown(dayOfWeek)}
@@ -651,23 +749,33 @@ export const DraggableWeeklyCalendar: React.FC<
                     </QuickAddButton>
 
                     {openDropdownDay === dayOfWeek && (
-                      <DJDropdown>
-                        {djs.map((dj) => (
-                          <DJOption
-                            key={dj.id}
-                            onClick={() => handleSelectDJ(dj.id, dayOfWeek)}
-                          >
-                            {React.createElement(
-                              RiMusic2Line as React.ComponentType,
-                            )}
-                            <DJOptionInfo>
-                              <DJOptionName>{dj.name}</DJOptionName>
-                              {dj.genre && (
-                                <DJOptionGenre>{dj.genre}</DJOptionGenre>
-                              )}
-                            </DJOptionInfo>
-                          </DJOption>
-                        ))}
+                      <DJDropdown data-dj-dropdown>
+                        {djs.map((dj) => {
+                          const isScheduled = slots.some(
+                            (s) => s.djId === dj.id,
+                          );
+                          return (
+                            <DJOption
+                              key={dj.id}
+                              $isScheduled={isScheduled}
+                              disabled={isScheduled}
+                              onClick={() =>
+                                handleSelectDJ(dj.id, dayOfWeek, isScheduled)
+                              }
+                            >
+                              {isScheduled
+                                ? React.createElement(
+                                    RiCheckLine as React.ComponentType,
+                                  )
+                                : React.createElement(
+                                    RiMusic2Line as React.ComponentType,
+                                  )}
+                              <DJOptionInfo>
+                                <DJOptionName>{dj.name}</DJOptionName>
+                              </DJOptionInfo>
+                            </DJOption>
+                          );
+                        })}
                       </DJDropdown>
                     )}
                   </QuickAddContainer>

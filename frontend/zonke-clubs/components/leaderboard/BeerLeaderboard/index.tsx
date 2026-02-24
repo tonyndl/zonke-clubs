@@ -828,7 +828,7 @@ export const BeerLeaderboard = () => {
     const medal = getMedalEmoji(entry.rank);
 
     const handleProfilePress = () => {
-      router.push(`/(tabs)/profile?userId=${entry.userId}` as any);
+      router.push(`/profile/${entry.userId}` as any);
     };
 
     return (

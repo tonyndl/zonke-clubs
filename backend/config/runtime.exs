@@ -127,5 +127,6 @@ if config_env() == :prod do
 end
 
 # Geoapify API configuration (all environments)
+# Falls back to value set in dev.exs if env var is not set
 config :backend, :geoapify_api_key,
-  System.get_env("GEOAPIFY_API_KEY") || ""
+  System.get_env("GEOAPIFY_API_KEY") || Application.get_env(:backend, :geoapify_api_key, "")

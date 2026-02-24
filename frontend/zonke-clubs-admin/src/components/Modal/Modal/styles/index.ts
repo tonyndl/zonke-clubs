@@ -3,10 +3,7 @@ import { theme } from "../../../../styles/theme";
 
 export const Overlay = styled.div<{ isOpen: boolean }>`
   position: fixed;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  left: 280px; /* Offset by sidebar width */
+  inset: 0;
   background: rgba(0, 0, 0, 0.8);
   backdrop-filter: blur(8px);
   display: flex;

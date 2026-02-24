@@ -15,7 +15,8 @@ defmodule BackendWeb.Admin.ContentModerationController do
       per_page = Map.get(params, "per_page", "20") |> String.to_integer()
       status = Map.get(params, "status", "pending")
 
-      opts = [page: page, per_page: per_page, status: status]
+      source = Map.get(params, "source", "users")
+      opts = [page: page, per_page: per_page, status: status, user_tagged_only: source == "users"]
       result = Posts.list_posts(club.id, opts)
 
       conn
@@ -78,6 +79,38 @@ defmodule BackendWeb.Admin.ContentModerationController do
       conn
       |> put_status(:ok)
       |> render(:show, post: updated_post)
+    end
+  end
+
+  @doc """
+  Updates a club post's caption.
+  Only club-owned posts (user_id = nil) can be updated via this endpoint.
+  """
+  def update(conn, %{"id" => id} = params, session) do
+    caption = Map.get(params, "caption", "")
+
+    with {:ok, club} <- Clubs.get_admin_club(session.id),
+         {:ok, post} <- Posts.get_post(id),
+         :ok <- verify_club_ownership(post, club),
+         {:ok, updated_post} <- Posts.update_post(post, %{caption: caption}) do
+      conn
+      |> put_status(:ok)
+      |> render(:show, post: updated_post)
+    end
+  end
+
+  @doc """
+  Deletes a club post and its assets.
+  Only club-owned posts (user_id = nil) can be deleted via this endpoint.
+  """
+  def delete(conn, %{"id" => id}, session) do
+    with {:ok, club} <- Clubs.get_admin_club(session.id),
+         {:ok, post} <- Posts.get_post(id),
+         :ok <- verify_club_ownership(post, club),
+         {:ok, _} <- Posts.delete_post(post) do
+      conn
+      |> put_status(:no_content)
+      |> send_resp(:no_content, "")
     end
   end
 

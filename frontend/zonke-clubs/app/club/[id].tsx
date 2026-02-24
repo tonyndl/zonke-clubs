@@ -5,6 +5,7 @@ import {
   StyleSheet,
   ImageBackground,
   ActivityIndicator,
+  Linking,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
@@ -19,7 +20,7 @@ import Animated, {
   Extrapolation,
 } from "react-native-reanimated";
 
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons, FontAwesome5 } from "@expo/vector-icons";
 import { Colors } from "@/constants/ui";
 import { PressableScale } from "@/components/ui/PressableScale";
 import { ClubMeetupSection } from "@/components/meetup/ClubMeetupSection";
@@ -62,15 +63,29 @@ type Gig = {
   headliner: string;
   genre?: string;
   price?: string;
+  cover_image?: string;
 };
 
 type DJ = {
   id: string;
   name: string;
   playingFrom?: string;
+  instagram?: string;
+  tiktok?: string;
 };
 
 type SectionTab = "info" | "people";
+
+const getDJInitial = (name: string): string => {
+  const trimmed = name.trim();
+  if (/^dj\s+/i.test(trimmed)) {
+    return trimmed
+      .replace(/^dj\s+/i, "")
+      .charAt(0)
+      .toUpperCase();
+  }
+  return trimmed.charAt(0).toUpperCase();
+};
 
 export default function ClubScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -292,14 +307,20 @@ export default function ClubScreen() {
 
   const loadIntentions = () => {
     setLoadingIntentions(true);
-    // Pass user ID to backend to exclude current user's intentions from the list
+    // Fetch all intentions (no exclusion) so we can also find the current user's own
     intentionsService
-      .getClubIntentions(clubId, user?.id)
+      .getClubIntentions(clubId)
       .then((response) => {
-        // Use only real API intentions
-        const intentions = getIntentionsForClub(response.intentions);
-        console.log("Intentions loaded:", intentions.length);
-        setIntentions(intentions);
+        const allIntentions = getIntentionsForClub(response.intentions);
+        // Split: user's own intention vs others
+        const myIntention = user?.id
+          ? allIntentions.find((i) => i.user.id === user.id) || null
+          : null;
+        const otherIntentions = user?.id
+          ? allIntentions.filter((i) => i.user.id !== user.id)
+          : allIntentions;
+        setUserIntention(myIntention);
+        setIntentions(otherIntentions);
       })
       .catch((error) => {
         console.error("Failed to load intentions:", error);
@@ -544,6 +565,7 @@ export default function ClubScreen() {
         headliner: event.title,
         genre: djNames.join(", ") || undefined,
         price,
+        cover_image: event.cover_image || undefined,
       };
     });
   }, [events]); // Removed djIdToNameMap dependency - no longer needed
@@ -702,6 +724,8 @@ export default function ClubScreen() {
             id: dj.id,
             name: dj.name,
             playingFrom,
+            instagram: dj.instagram,
+            tiktok: dj.tiktok,
           };
         });
       } else {
@@ -730,6 +754,8 @@ export default function ClubScreen() {
             id: schedule.id,
             name: schedule.dj_name,
             playingFrom,
+            instagram: schedule.dj_instagram,
+            tiktok: schedule.dj_tiktok,
           };
         });
       }
@@ -1028,8 +1054,38 @@ export default function ClubScreen() {
               style={styles.sectionCard}
             >
               <Text style={styles.subsectionTitle}>Upcoming Big Events</Text>
+              {upcomingGigs.length === 0 && (
+                <View style={styles.noEventsContainer}>
+                  <View style={styles.noEventsIconWrap}>
+                    <Ionicons
+                      name="calendar-outline"
+                      size={28}
+                      color={Colors.gold}
+                    />
+                  </View>
+                  <Text style={styles.noEventsTitle}>
+                    Nothing scheduled yet
+                  </Text>
+                  <Text style={styles.noEventsSub}>
+                    Big events will appear here when they're announced
+                  </Text>
+                </View>
+              )}
               {upcomingGigs.map((gig, index) => (
-                <PressableScale key={gig.id} style={styles.gigCard}>
+                <PressableScale
+                  key={gig.id}
+                  style={styles.gigCard}
+                  onPress={() => {
+                    if (gig.cover_image) {
+                      const asset: MediaAsset = {
+                        id: gig.id,
+                        type: "image",
+                        url: gig.cover_image,
+                      };
+                      handleMediaPress(asset, [asset]);
+                    }
+                  }}
+                >
                   <View style={styles.gigDateBox}>
                     <Text style={styles.gigDateDay}>
                       {gig.date.split(",")[0]}
@@ -1167,12 +1223,20 @@ export default function ClubScreen() {
               {(djSchedule[selectedDay] || []).length === 0 ? (
                 <View style={styles.emptyState}>
                   <Ionicons
-                    name="musical-note"
+                    name={
+                      openingHours[selectedDay]
+                        ?.toLowerCase()
+                        .includes("closed")
+                        ? "moon"
+                        : "musical-note"
+                    }
                     size={32}
                     color={Colors.lightGrey}
                   />
                   <Text style={styles.emptyText}>
-                    No DJs scheduled for {selectedDay}
+                    {openingHours[selectedDay]?.toLowerCase().includes("closed")
+                      ? "Club is closed on " + selectedDay
+                      : "No DJs scheduled for " + selectedDay}
                   </Text>
                 </View>
               ) : (
@@ -1180,13 +1244,15 @@ export default function ClubScreen() {
                   horizontal
                   showsHorizontalScrollIndicator={false}
                   style={{ paddingVertical: 4 }}
+                  contentContainerStyle={{ alignItems: "stretch" }}
                 >
                   {(djSchedule[selectedDay] || []).map((dj, index) => (
                     <Animated.View
                       key={dj.id}
                       entering={FadeInDown.delay(100 + index * 50).springify()}
+                      style={{ alignSelf: "stretch" }}
                     >
-                      <PressableScale style={styles.djCard}>
+                      <View style={styles.djCard}>
                         <LinearGradient
                           colors={[
                             "rgba(57, 243, 255, 0.15)",
@@ -1198,16 +1264,66 @@ export default function ClubScreen() {
                         >
                           <View style={styles.djAvatarRing}>
                             <View style={styles.djAvatar}>
-                              <Ionicons
-                                name="person"
-                                size={28}
-                                color={Colors.gold}
-                              />
+                              <Text style={styles.djAvatarInitial}>
+                                {getDJInitial(dj.name)}
+                              </Text>
                             </View>
                           </View>
                           <Text style={styles.djName}>{dj.name}</Text>
+                          {(dj.instagram || dj.tiktok) && (
+                            <View style={styles.djSocials}>
+                              {dj.instagram && (
+                                <PressableScale
+                                  style={styles.djSocialBtn}
+                                  onPress={() =>
+                                    Linking.openURL(
+                                      `https://instagram.com/${dj.instagram}`,
+                                    )
+                                  }
+                                >
+                                  <FontAwesome5
+                                    name="instagram"
+                                    size={12}
+                                    color="#C13584"
+                                    brand
+                                    style={{ marginRight: 5 }}
+                                  />
+                                  <Text
+                                    style={styles.djSocialLabel}
+                                    numberOfLines={1}
+                                  >
+                                    @{dj.instagram}
+                                  </Text>
+                                </PressableScale>
+                              )}
+                              {dj.tiktok && (
+                                <PressableScale
+                                  style={styles.djSocialBtn}
+                                  onPress={() =>
+                                    Linking.openURL(
+                                      `https://tiktok.com/@${dj.tiktok}`,
+                                    )
+                                  }
+                                >
+                                  <FontAwesome5
+                                    name="tiktok"
+                                    size={12}
+                                    color={Colors.platinum}
+                                    brand
+                                    style={{ marginRight: 5 }}
+                                  />
+                                  <Text
+                                    style={styles.djSocialLabel}
+                                    numberOfLines={1}
+                                  >
+                                    @{dj.tiktok}
+                                  </Text>
+                                </PressableScale>
+                              )}
+                            </View>
+                          )}
                         </LinearGradient>
-                      </PressableScale>
+                      </View>
                     </Animated.View>
                   ))}
                 </Animated.ScrollView>
@@ -1316,6 +1432,7 @@ export default function ClubScreen() {
                   clubId={clubId}
                   intentions={intentions}
                   currentUserId={user?.id}
+                  userIntention={userIntention}
                   connectionStatuses={connectionStatuses}
                   onPostIntention={() => setShowIntentionModal(true)}
                   onConnect={(intention: MeetupIntention) => {
@@ -1727,6 +1844,35 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(57, 243, 255, 0.2)",
     marginLeft: 16,
   },
+  noEventsContainer: {
+    alignItems: "center",
+    paddingVertical: 28,
+    gap: 10,
+  },
+  noEventsIconWrap: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: "rgba(57,243,255,0.07)",
+    borderWidth: 1,
+    borderColor: "rgba(57,243,255,0.18)",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 4,
+  },
+  noEventsTitle: {
+    color: Colors.platinum,
+    fontSize: 15,
+    fontWeight: "700",
+    letterSpacing: 0.2,
+  },
+  noEventsSub: {
+    color: Colors.smoke,
+    fontSize: 12,
+    textAlign: "center",
+    lineHeight: 18,
+    paddingHorizontal: 16,
+  },
   gigCard: {
     flexDirection: "row",
     alignItems: "center",
@@ -1909,6 +2055,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(57, 243, 255, 0.3)",
     backgroundColor: Colors.bgSecondary,
+    flex: 1,
   },
   djAvatarRing: {
     padding: 3,
@@ -1925,11 +2072,41 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  djAvatarInitial: {
+    fontSize: 24,
+    fontWeight: "800",
+    color: Colors.gold,
+    letterSpacing: 0.5,
+  },
   djName: {
     color: Colors.platinum,
     fontWeight: "700",
     fontSize: 14,
     textAlign: "center",
+  },
+  djSocials: {
+    flexDirection: "column",
+    alignItems: "stretch",
+    gap: 5,
+    marginTop: "auto" as any,
+    paddingTop: 10,
+    width: "100%",
+  },
+  djSocialBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "rgba(57, 243, 255, 0.25)",
+    backgroundColor: "rgba(255, 255, 255, 0.05)",
+  },
+  djSocialLabel: {
+    color: Colors.platinum,
+    fontSize: 10,
+    fontWeight: "600",
+    flexShrink: 1,
   },
   djTimeWrap: {
     flexDirection: "row",
@@ -1943,6 +2120,7 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   djCardGradient: {
+    flex: 1,
     width: "100%",
     alignItems: "center",
     borderRadius: 16,

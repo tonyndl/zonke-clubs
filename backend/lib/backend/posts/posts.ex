@@ -19,6 +19,8 @@ defmodule Backend.Posts do
     status = Keyword.get(opts, :status)
     user_id = Keyword.get(opts, :user_id)
 
+    user_tagged_only = Keyword.get(opts, :user_tagged_only, false)
+
     # Only show posts that have at least one asset
     query =
       from p in Post,
@@ -31,6 +33,14 @@ defmodule Backend.Posts do
           ),
         order_by: [desc: p.inserted_at],
         preload: [:user, :assets]
+
+    # When fetching for moderation, exclude club's own posts (user_id = nil)
+    query =
+      if user_tagged_only do
+        from p in query, where: not is_nil(p.user_id)
+      else
+        query
+      end
 
     query =
       if status do
@@ -159,11 +169,12 @@ defmodule Backend.Posts do
   Only counts posts that have at least one asset.
   """
   def get_stats(club_id) do
-    # Base query - only posts with assets
+    # Base query - only user-tagged posts with assets (exclude club's own posts)
     query =
       from p in Post,
         as: :post,
         where: p.club_id == ^club_id,
+        where: not is_nil(p.user_id),
         where:
           exists(
             from a in Asset,

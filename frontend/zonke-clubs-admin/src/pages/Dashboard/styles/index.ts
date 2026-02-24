@@ -1040,6 +1040,51 @@ export const MiniStatValue = styled.div<{ highlight?: boolean }>`
     props.highlight ? theme.colors.primary : theme.colors.textPrimary};
 `;
 
+export const EmptyLeaderboard = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: ${theme.spacing["3xl"]} ${theme.spacing.xl};
+  gap: ${theme.spacing.lg};
+  text-align: center;
+`;
+
+export const EmptyLeaderboardIcon = styled.div`
+  width: 72px;
+  height: 72px;
+  border-radius: ${theme.borderRadius["2xl"]};
+  background: linear-gradient(
+    135deg,
+    rgba(57, 243, 255, 0.08) 0%,
+    rgba(15, 25, 35, 0.9) 100%
+  );
+  border: 2px dashed rgba(57, 243, 255, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(57, 243, 255, 0.3);
+
+  svg {
+    width: 36px;
+    height: 36px;
+  }
+`;
+
+export const EmptyLeaderboardTitle = styled.div`
+  font-size: ${theme.typography.fontSize.lg};
+  font-weight: ${theme.typography.fontWeight.bold};
+  color: ${theme.colors.textPrimary};
+  opacity: 0.7;
+`;
+
+export const EmptyLeaderboardSubtitle = styled.div`
+  font-size: ${theme.typography.fontSize.sm};
+  color: ${theme.colors.textSecondary};
+  max-width: 320px;
+  line-height: 1.6;
+`;
+
 export const RankPosition = styled.div<{ direction: "up" | "down" | "same" }>`
   display: flex;
   align-items: center;

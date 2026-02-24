@@ -177,10 +177,18 @@ class ApiService {
   }
 
   // Posts/Content Moderation endpoints
-  getPosts(page: number = 1, perPage: number = 20, status?: string) {
+  getPosts(
+    page: number = 1,
+    perPage: number = 20,
+    status?: string,
+    source?: string,
+  ) {
     const params: any = { page: page.toString(), per_page: perPage.toString() };
     if (status) {
       params.status = status;
+    }
+    if (source) {
+      params.source = source;
     }
     return this.client
       .get("/admin/content-moderation", { params })
@@ -203,6 +211,18 @@ class ApiService {
     return this.client
       .get("/admin/content-moderation/stats")
       .then((response) => response.data);
+  }
+
+  updateClubPost(postId: string, caption: string) {
+    return this.client
+      .put(`/admin/content-moderation/${postId}`, { caption })
+      .then((response) => response.data);
+  }
+
+  deleteClubPost(postId: string) {
+    return this.client
+      .delete(`/admin/content-moderation/${postId}`)
+      .then(() => undefined);
   }
 
   getDashboardStats() {

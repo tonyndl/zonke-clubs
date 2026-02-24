@@ -15,7 +15,7 @@ import { LinearGradient } from "expo-linear-gradient";
 
 import * as Haptics from "expo-haptics";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Modal } from "../modal";
+import { Modal } from "../../modal";
 import { styles } from "./styles";
 
 interface Props {
@@ -429,9 +429,9 @@ export function PeopleBrowse({
                 onConnect={() => onConnect(intention)}
                 onViewProfile={() => {
                   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  // Route to profile tab with userId and clubId parameters
+                  // Navigate to view-only profile screen (outside tabs, so no tab bar)
                   router.push(
-                    `/(tabs)/profile?userId=${intention.user.id}&clubId=${intention.clubId}` as any,
+                    `/profile/${intention.user.id}?clubId=${intention.clubId}` as any,
                   );
                   // router.push({
                   //   pathname: `/(tabs)/profile?userId=${intention.user.id}`,

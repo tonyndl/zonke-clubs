@@ -77,6 +77,10 @@ import {
   MiniStatLabel,
   MiniStatValue,
   RankPosition,
+  EmptyLeaderboard,
+  EmptyLeaderboardIcon,
+  EmptyLeaderboardTitle,
+  EmptyLeaderboardSubtitle,
 } from "./styles";
 
 export const Dashboard: React.FC = () => {
@@ -339,6 +343,18 @@ export const Dashboard: React.FC = () => {
         </TableHeader>
 
         <RecordsList>
+          {topSpenders.length === 0 && (
+            <EmptyLeaderboard>
+              <EmptyLeaderboardIcon>
+                {React.createElement(HiTrophy as React.ComponentType)}
+              </EmptyLeaderboardIcon>
+              <EmptyLeaderboardTitle>No rankings yet</EmptyLeaderboardTitle>
+              <EmptyLeaderboardSubtitle>
+                The leaderboard will populate once patrons start spending at
+                your club. Top spenders will appear here.
+              </EmptyLeaderboardSubtitle>
+            </EmptyLeaderboard>
+          )}
           {topSpenders.map((spender, index) => {
             const rank = index + 1;
             const isTopSpender = rank === 1;
@@ -433,70 +449,72 @@ export const Dashboard: React.FC = () => {
         </RecordsList>
       </TableCard>
 
-      <div
-        style={{
-          marginTop: theme.spacing.xl,
-          padding: theme.spacing.xl,
-          background:
-            "linear-gradient(135deg, rgba(57, 243, 255, 0.08) 0%, rgba(138, 43, 226, 0.05) 100%)",
-          border: "2px solid rgba(57, 243, 255, 0.2)",
-          borderRadius: theme.borderRadius.xl,
-          textAlign: "center",
-          backdropFilter: "blur(10px)",
-        }}
-      >
+      {topSpenders.length > 0 && (
         <div
           style={{
-            fontSize: theme.typography.fontSize.sm,
-            color: theme.colors.textSecondary,
-            marginBottom: theme.spacing.md,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: theme.spacing.sm,
-          }}
-        >
-          {React.createElement(HiSparkles as any, {
-            style: {
-              width: "20px",
-              height: "20px",
-              color: theme.colors.primary,
-            },
-          })}
-          <span>Want to see the complete rankings?</span>
-          {React.createElement(HiSparkles as any, {
-            style: {
-              width: "20px",
-              height: "20px",
-              color: theme.colors.primary,
-            },
-          })}
-        </div>
-        <OutlineButton
-          style={{
-            width: "100%",
-            fontSize: theme.typography.fontSize.lg,
-            padding: `${theme.spacing.lg} ${theme.spacing.xl}`,
+            marginTop: theme.spacing.xl,
+            padding: theme.spacing.xl,
             background:
-              "linear-gradient(135deg, rgba(57, 243, 255, 0.1) 0%, rgba(138, 43, 226, 0.05) 100%)",
-            borderWidth: "2px",
-            fontWeight: theme.typography.fontWeight.bold,
+              "linear-gradient(135deg, rgba(57, 243, 255, 0.08) 0%, rgba(138, 43, 226, 0.05) 100%)",
+            border: "2px solid rgba(57, 243, 255, 0.2)",
+            borderRadius: theme.borderRadius.xl,
+            textAlign: "center",
+            backdropFilter: "blur(10px)",
           }}
-          onClick={() => navigate("/spending")}
         >
-          <span
-            style={{ width: "24px", height: "24px", display: "inline-flex" }}
+          <div
+            style={{
+              fontSize: theme.typography.fontSize.sm,
+              color: theme.colors.textSecondary,
+              marginBottom: theme.spacing.md,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: theme.spacing.sm,
+            }}
           >
-            {React.createElement(HiTrophy as React.ComponentType)}
-          </span>
-          View Full Leaderboard
-          <span
-            style={{ width: "24px", height: "24px", display: "inline-flex" }}
+            {React.createElement(HiSparkles as any, {
+              style: {
+                width: "20px",
+                height: "20px",
+                color: theme.colors.primary,
+              },
+            })}
+            <span>Want to see the complete rankings?</span>
+            {React.createElement(HiSparkles as any, {
+              style: {
+                width: "20px",
+                height: "20px",
+                color: theme.colors.primary,
+              },
+            })}
+          </div>
+          <OutlineButton
+            style={{
+              width: "100%",
+              fontSize: theme.typography.fontSize.lg,
+              padding: `${theme.spacing.lg} ${theme.spacing.xl}`,
+              background:
+                "linear-gradient(135deg, rgba(57, 243, 255, 0.1) 0%, rgba(138, 43, 226, 0.05) 100%)",
+              borderWidth: "2px",
+              fontWeight: theme.typography.fontWeight.bold,
+            }}
+            onClick={() => navigate("/spending")}
           >
-            {React.createElement(HiArrowTrendingUp as React.ComponentType)}
-          </span>
-        </OutlineButton>
-      </div>
+            <span
+              style={{ width: "24px", height: "24px", display: "inline-flex" }}
+            >
+              {React.createElement(HiTrophy as React.ComponentType)}
+            </span>
+            View Full Leaderboard
+            <span
+              style={{ width: "24px", height: "24px", display: "inline-flex" }}
+            >
+              {React.createElement(HiArrowTrendingUp as React.ComponentType)}
+            </span>
+          </OutlineButton>
+        </div>
+      )}
     </DashboardContainer>
   );
 };

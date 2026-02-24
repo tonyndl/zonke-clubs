@@ -1,10 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Card, CardTitle, CardDescription } from "../../../components/Card";
-import {
-  PrimaryButton,
-  OutlineButton,
-  DangerButton,
-} from "../../../components/Buttons";
+import { PrimaryButton } from "../../../components/Buttons";
 import { theme } from "../../../styles/theme";
 import {
   RiMusic2Line,
@@ -13,6 +9,7 @@ import {
   RiDeleteBinLine,
   RiCalendar2Line,
 } from "react-icons/ri";
+import { SiInstagram, SiTiktok } from "react-icons/si";
 import {
   AddDJModal,
   DJFormData,
@@ -36,17 +33,17 @@ import {
   SectionHeader,
   SectionTitle,
   SectionDescription,
-  DJCard,
-  DJHeader,
-  DJInfo,
-  DJAvatar,
-  DJDetails,
-  DJName,
-  DJMeta,
-  DJGenre,
-  DJSocial,
-  DJBio,
-  DJActions,
+  DJGrid,
+  DJGridItem,
+  DJGridAvatar,
+  DJGridName,
+  DJGridSocials,
+  DJGridSocialLink,
+  DJGridSocialPlatform,
+  DJGridSocialHandle,
+  DJGridActions,
+  DJGridEditBtn,
+  DJGridDeleteBtn,
   EmptyState,
   WeekToggleContainer,
   WeekToggleButton,
@@ -54,13 +51,23 @@ import {
   UpcomingBadge,
 } from "./styles";
 
+const getDJInitial = (name: string): string => {
+  const upper = name.trim();
+  if (/^dj\s+/i.test(upper)) {
+    return upper
+      .replace(/^dj\s+/i, "")
+      .charAt(0)
+      .toUpperCase();
+  }
+  return upper.charAt(0).toUpperCase();
+};
+
 interface DJ {
   id: string;
   name: string;
-  genre?: string;
   bio?: string;
   instagram?: string;
-  soundcloud?: string;
+  tiktok?: string;
   image?: string;
 }
 
@@ -128,11 +135,34 @@ const dateToString = (date: Date): string => {
   return `${y}-${m}-${d}`;
 };
 
+// Returns the set of day names (e.g. "Monday") that are closed in the given hours map
+function getClosedDays(
+  hours: Record<string, any> | null | undefined,
+): Set<string> {
+  const allDays = [
+    "Sunday",
+    "Monday",
+    "Tuesday",
+    "Wednesday",
+    "Thursday",
+    "Friday",
+    "Saturday",
+  ];
+  if (!hours || Object.keys(hours).length === 0) return new Set();
+  return new Set(
+    allDays.filter(
+      (day) => !hours[day] || (!hours[day].open && !hours[day].close),
+    ),
+  );
+}
+
 export const DJSchedule: React.FC = () => {
   const toast = useToast();
   const [djs, setDJs] = useState<DJ[]>([]);
   const [schedules, setSchedules] = useState<Schedule[]>([]);
   const [events, setEvents] = useState<any[]>([]);
+  const [openingHours, setOpeningHours] = useState<Record<string, any>>({});
+  const [nextWeekHours, setNextWeekHours] = useState<Record<string, any>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [isAddDJModalOpen, setIsAddDJModalOpen] = useState(false);
   const [editingDJ, setEditingDJ] = useState<DJ | null>(null);
@@ -159,11 +189,11 @@ export const DJSchedule: React.FC = () => {
     Promise.all([
       apiService.getDJs(),
       apiService.getDJSchedules(),
-      eventService.getEvents().catch(() => ({ events: [] })), // Fetch events, but don't fail if it errors
+      eventService.getEvents().catch(() => ({ events: [] })),
+      apiService.getMyClub().catch(() => null),
     ])
-      .then(([djsData, schedulesData, eventsData]) => {
+      .then(([djsData, schedulesData, eventsData, clubData]) => {
         setDJs(djsData);
-        // Transform schedule data to match frontend interface
         const transformedSchedules = schedulesData.map((s: any) => ({
           id: s.id,
           djId: s.dj_id,
@@ -178,6 +208,10 @@ export const DJSchedule: React.FC = () => {
         }));
         setSchedules(transformedSchedules);
         setEvents(eventsData.events || []);
+        if (clubData) {
+          setOpeningHours(clubData.opening_hours || {});
+          setNextWeekHours(clubData.next_week_hours || {});
+        }
         setIsLoading(false);
       })
       .catch((error) => {
@@ -670,6 +704,11 @@ export const DJSchedule: React.FC = () => {
     return dateToString(d);
   });
 
+  // Compute closed days based on selected week
+  const closedDays = getClosedDays(
+    selectedWeek === "current" ? openingHours : nextWeekHours,
+  );
+
   // For current week: show only weekly recurring schedules
   // For upcoming week: show weekly schedules + any specific schedules for that week
   const calendarSchedules =
@@ -730,55 +769,64 @@ export const DJSchedule: React.FC = () => {
         </SectionHeader>
 
         {djs.length > 0 ? (
-          djs.map((dj) => (
-            <DJCard key={dj.id}>
-              <DJHeader>
-                <DJInfo>
-                  <DJAvatar image={dj.image}>
-                    {!dj.image && dj.name.charAt(0)}
-                  </DJAvatar>
-                  <DJDetails>
-                    <DJName>{dj.name}</DJName>
-                    <DJMeta>
-                      {dj.genre && (
-                        <DJGenre>
+          <DJGrid>
+            {djs.map((dj) => (
+              <DJGridItem key={dj.id}>
+                <DJGridAvatar image={dj.image}>
+                  {!dj.image && getDJInitial(dj.name)}
+                </DJGridAvatar>
+                <DJGridName>{dj.name}</DJGridName>
+                {(dj.instagram || dj.tiktok) && (
+                  <DJGridSocials>
+                    {dj.instagram && (
+                      <DJGridSocialLink
+                        href={`https://instagram.com/${dj.instagram}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        $platform="instagram"
+                      >
+                        <DJGridSocialPlatform $platform="instagram">
                           {React.createElement(
-                            RiMusic2Line as React.ComponentType,
+                            SiInstagram as React.ComponentType,
                           )}
-                          {dj.genre}
-                        </DJGenre>
-                      )}
-                      {dj.instagram && (
-                        <DJSocial
-                          href={`https://instagram.com/${dj.instagram}`}
-                          target="_blank"
-                        >
-                          @{dj.instagram}
-                        </DJSocial>
-                      )}
-                      {dj.soundcloud && (
-                        <DJSocial href={dj.soundcloud} target="_blank">
-                          SoundCloud
-                        </DJSocial>
-                      )}
-                    </DJMeta>
-                    {dj.bio && <DJBio>{dj.bio}</DJBio>}
-                  </DJDetails>
-                </DJInfo>
-                <DJActions>
-                  <OutlineButton onClick={() => handleEditDJ(dj.id)}>
+                        </DJGridSocialPlatform>
+                        <DJGridSocialHandle>@{dj.instagram}</DJGridSocialHandle>
+                      </DJGridSocialLink>
+                    )}
+                    {dj.tiktok && (
+                      <DJGridSocialLink
+                        href={`https://tiktok.com/@${dj.tiktok}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        $platform="tiktok"
+                      >
+                        <DJGridSocialPlatform $platform="tiktok">
+                          {React.createElement(SiTiktok as React.ComponentType)}
+                        </DJGridSocialPlatform>
+                        <DJGridSocialHandle>@{dj.tiktok}</DJGridSocialHandle>
+                      </DJGridSocialLink>
+                    )}
+                  </DJGridSocials>
+                )}
+                <DJGridActions>
+                  <DJGridEditBtn
+                    onClick={() => handleEditDJ(dj.id)}
+                    title="Edit DJ"
+                  >
                     {React.createElement(RiEditLine as React.ComponentType)}
-                    Edit
-                  </OutlineButton>
-                  <DangerButton onClick={() => setDJToDelete(dj.id)}>
+                  </DJGridEditBtn>
+                  <DJGridDeleteBtn
+                    onClick={() => setDJToDelete(dj.id)}
+                    title="Delete DJ"
+                  >
                     {React.createElement(
                       RiDeleteBinLine as React.ComponentType,
                     )}
-                  </DangerButton>
-                </DJActions>
-              </DJHeader>
-            </DJCard>
-          ))
+                  </DJGridDeleteBtn>
+                </DJGridActions>
+              </DJGridItem>
+            ))}
+          </DJGrid>
         ) : (
           <Card>
             <EmptyState>
@@ -791,7 +839,7 @@ export const DJSchedule: React.FC = () => {
                 style={{ marginTop: theme.spacing.lg }}
                 onClick={() => setIsAddDJModalOpen(true)}
               >
-                {React.createElement(RiAddLine as React.ComponentType)}
+                {/* {React.createElement(RiAddLine as React.ComponentType)} */}
                 Add Your First DJ
               </PrimaryButton>
             </EmptyState>
@@ -851,10 +899,10 @@ export const DJSchedule: React.FC = () => {
           djs={djs.map((dj) => ({
             id: dj.id,
             name: dj.name,
-            genre: dj.genre,
             image: dj.image,
           }))}
           events={events}
+          closedDays={closedDays}
           weekStart={
             selectedWeek === "upcoming"
               ? getUpcomingWeekSunday()
@@ -887,9 +935,8 @@ export const DJSchedule: React.FC = () => {
             ? {
                 name: editingDJ.name,
                 bio: editingDJ.bio ?? "",
-                genre: editingDJ.genre ?? "",
                 instagram: editingDJ.instagram ?? "",
-                soundcloud: editingDJ.soundcloud ?? "",
+                tiktok: editingDJ.tiktok ?? "",
                 image: editingDJ.image ?? "",
               }
             : undefined

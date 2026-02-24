@@ -33,6 +33,7 @@ defmodule BackendWeb.API.ClubJSON do
       dress_code: club.dress_code,
       entry_fee: club.entry_fee,
       opening_hours: club.opening_hours || %{},
+      table_reservation_numbers: club.table_reservation_numbers || [],
       inserted_at: club.inserted_at,
       updated_at: club.updated_at
     }

@@ -8,11 +8,8 @@ import {
   RiTimeLine,
   RiImageLine,
   RiMusic2Line,
-  RiLockLine,
-  RiUserForbidLine,
-  RiFileTextLine,
-  RiVipCrownLine,
   RiLogoutBoxRLine,
+  RiArrowLeftSLine,
 } from "react-icons/ri";
 import type { IconType } from "react-icons";
 import {
@@ -23,11 +20,13 @@ import {
   LogoText,
   LogoTitle,
   LogoSubtitle,
+  CollapseToggle,
   Nav,
   NavSection,
   NavSectionTitle,
   StyledNavLink,
   IconWrapper,
+  NavLinkLabel,
   UserSection,
   LogoutButton,
 } from "./styles";
@@ -35,22 +34,34 @@ import {
 interface SidebarProps {
   clubName?: string;
   onLogout?: () => void;
+  collapsed?: boolean;
+  onToggle?: () => void;
 }
 
 interface NavItemProps {
   to: string;
   icon: IconType;
   label: string;
+  collapsed?: boolean;
 }
 
-const NavItem: React.FC<NavItemProps> = ({ to, icon: Icon, label }) => {
+const NavItem: React.FC<NavItemProps> = ({
+  to,
+  icon: Icon,
+  label,
+  collapsed,
+}) => {
   const IconComponent = Icon as React.ComponentType;
   return (
-    <StyledNavLink to={to}>
-      <IconWrapper>
+    <StyledNavLink
+      to={to}
+      collapsed={collapsed}
+      title={collapsed ? label : undefined}
+    >
+      <IconWrapper collapsed={collapsed}>
         <IconComponent />
       </IconWrapper>
-      {label}
+      <NavLinkLabel collapsed={collapsed}>{label}</NavLinkLabel>
     </StyledNavLink>
   );
 };
@@ -58,6 +69,8 @@ const NavItem: React.FC<NavItemProps> = ({ to, icon: Icon, label }) => {
 export const Sidebar: React.FC<SidebarProps> = ({
   clubName = "My Club",
   onLogout,
+  collapsed = false,
+  onToggle,
 }) => {
   const initials = clubName
     .split(" ")
@@ -66,77 +79,91 @@ export const Sidebar: React.FC<SidebarProps> = ({
     .toUpperCase()
     .slice(0, 2);
 
+  const ArrowIcon = RiArrowLeftSLine as React.ComponentType;
+
   return (
-    <SidebarContainer>
-      <LogoSection>
-        <LogoContainer>
-          <LogoIcon>{initials}</LogoIcon>
-          <LogoText>
+    <SidebarContainer collapsed={collapsed}>
+      <LogoSection collapsed={collapsed}>
+        <LogoContainer collapsed={collapsed}>
+          <LogoIcon collapsed={collapsed}>{initials}</LogoIcon>
+          <LogoText collapsed={collapsed}>
             <LogoTitle>{clubName}</LogoTitle>
             <LogoSubtitle>Admin Panel</LogoSubtitle>
           </LogoText>
         </LogoContainer>
+        <CollapseToggle
+          collapsed={collapsed}
+          onClick={onToggle}
+          title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+        >
+          <ArrowIcon />
+        </CollapseToggle>
       </LogoSection>
 
       <Nav>
         <NavSection>
-          <NavSectionTitle>Main</NavSectionTitle>
-          <NavItem to="/dashboard" icon={RiDashboardLine} label="Dashboard" />
-          <NavItem to="/events" icon={RiCalendarEventLine} label="Events" />
-          <NavItem to="/content" icon={RiFileListLine} label="Content" />
-          <NavItem to="/spending" icon={RiWallet3Line} label="Spending" />
+          <NavSectionTitle collapsed={collapsed}>Main</NavSectionTitle>
+          <NavItem
+            to="/dashboard"
+            icon={RiDashboardLine}
+            label="Dashboard"
+            collapsed={collapsed}
+          />
+          <NavItem
+            to="/events"
+            icon={RiCalendarEventLine}
+            label="Events"
+            collapsed={collapsed}
+          />
+          <NavItem
+            to="/content"
+            icon={RiFileListLine}
+            label="Content"
+            collapsed={collapsed}
+          />
+          <NavItem
+            to="/spending"
+            icon={RiWallet3Line}
+            label="Spending"
+            collapsed={collapsed}
+          />
         </NavSection>
 
         <NavSection>
-          <NavSectionTitle>Settings</NavSectionTitle>
+          <NavSectionTitle collapsed={collapsed}>Settings</NavSectionTitle>
           <NavItem
             to="/settings/club-info"
             icon={RiStore2Line}
             label="Club Info"
+            collapsed={collapsed}
           />
           <NavItem
             to="/settings/opening-hours"
             icon={RiTimeLine}
             label="Opening Hours"
+            collapsed={collapsed}
           />
-          <NavItem to="/settings/media" icon={RiImageLine} label="Media" />
+          <NavItem
+            to="/settings/media"
+            icon={RiImageLine}
+            label="Media"
+            collapsed={collapsed}
+          />
           <NavItem
             to="/settings/dj-schedule"
             icon={RiMusic2Line}
             label="DJ Schedule"
-          />
-          <NavItem
-            to="/settings/permissions"
-            icon={RiLockLine}
-            label="Permissions"
-          />
-          <NavItem
-            to="/settings/blocked-users"
-            icon={RiUserForbidLine}
-            label="Blocked Users"
-          />
-          <NavItem
-            to="/settings/guidelines"
-            icon={RiFileTextLine}
-            label="Guidelines"
-          />
-          <NavItem
-            to="/settings/subscription"
-            icon={RiVipCrownLine}
-            label="Subscription"
+            collapsed={collapsed}
           />
         </NavSection>
       </Nav>
 
-      <UserSection>
-        {/* <UserInfo>
-          <UserAvatar>{initials}</UserAvatar>
-          <UserDetails>
-            <UserName>{clubName}</UserName>
-            <UserRole>Club Owner</UserRole>
-          </UserDetails>
-        </UserInfo> */}
-        <LogoutButton onClick={onLogout}>
+      <UserSection collapsed={collapsed}>
+        <LogoutButton
+          collapsed={collapsed}
+          onClick={onLogout}
+          title={collapsed ? "Logout" : undefined}
+        >
           <span>Logout</span>
           {React.createElement(RiLogoutBoxRLine as React.ComponentType)}
         </LogoutButton>

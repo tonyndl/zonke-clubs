@@ -39,8 +39,6 @@ IO.puts("Creating admin user...")
 admin_user =
   Repo.insert!(%User{
     email: "admin@zonkeclubs.com",
-    first_name: "Zonke",
-    last_name: "Admin",
     username: "zonke_admin",
     phone: "+27123456789",
     password_hash: Bcrypt.hash_pwd_salt("password123"),
@@ -55,7 +53,7 @@ clubs_data = [
     name: "The Grand Africa Café & Beach",
     description:
       "Iconic beachfront venue with stunning ocean views, multiple dance floors, and top DJs. Famous for sunset parties and international acts.",
-    location: "Granger Bay Blvd, Victoria & Alfred Waterfront, Cape Town, 8002",
+    location: %{"name" => "Granger Bay Blvd, Victoria & Alfred Waterfront, Cape Town, 8002"},
     phone: "+27 21 425 0551",
     email: "info@grandafrica.com",
     vibes: ["Beachfront", "Upscale", "Energetic", "Sunset Views"],
@@ -68,7 +66,7 @@ clubs_data = [
     name: "Kong",
     description:
       "Multi-level nightclub and restaurant in the heart of Cape Town's nightlife district. Known for themed parties and celebrity appearances.",
-    location: "Pepper St, Cape Town City Centre, Cape Town, 8001",
+    location: %{"name" => "Pepper St, Cape Town City Centre, Cape Town, 8001"},
     phone: "+27 21 422 2330",
     email: "bookings@kong.co.za",
     vibes: ["Urban", "Trendy", "Multi-Level", "Celebrity Hotspot"],
@@ -81,7 +79,7 @@ clubs_data = [
     name: "ERA",
     description:
       "Sophisticated nightclub in Sandton with state-of-the-art sound system and lighting. Premier destination for Johannesburg's elite.",
-    location: "Nelson Mandela Square, Sandton, Johannesburg, 2196",
+    location: %{"name" => "Nelson Mandela Square, Sandton, Johannesburg, 2196"},
     phone: "+27 11 784 1527",
     email: "info@era.co.za",
     vibes: ["Luxurious", "Elite", "High-Energy", "Sophisticated"],
@@ -94,7 +92,7 @@ clubs_data = [
     name: "Taboo",
     description:
       "High-energy nightclub in Sandton known for themed nights and international DJ performances. Features VIP sections and bottle service.",
-    location: "Rivonia Rd, Sandhurst, Sandton, 2196",
+    location: %{"name" => "Rivonia Rd, Sandhurst, Sandton, 2196"},
     phone: "+27 11 883 3452",
     email: "bookings@taboo.co.za",
     vibes: ["Energetic", "VIP Experience", "Glamorous", "Party Central"],
@@ -107,7 +105,7 @@ clubs_data = [
     name: "Origin Nightclub",
     description:
       "Ultra-modern club in Durban's Florida Road entertainment district. Known for cutting-edge electronic music and immersive lighting.",
-    location: "18 Windermere Rd, Morningside, Durban, 4001",
+    location: %{"name" => "18 Windermere Rd, Morningside, Durban, 4001"},
     phone: "+27 31 303 4501",
     email: "info@origindbn.com",
     vibes: ["Modern", "Electronic", "Underground", "Immersive"],
@@ -120,7 +118,7 @@ clubs_data = [
     name: "The Chairman",
     description:
       "Upmarket nightclub and lounge in Umhlanga Ridge. Features resident DJs, live performances, and an extensive cocktail menu.",
-    location: "Chartwell Dr, Umhlanga Ridge, Umhlanga, 4319",
+    location: %{"name" => "Chartwell Dr, Umhlanga Ridge, Umhlanga, 4319"},
     phone: "+27 31 561 5847",
     email: "bookings@thechairman.co.za",
     vibes: ["Upmarket", "Sophisticated", "Lounge Atmosphere", "Cocktail Bar"],
@@ -133,7 +131,7 @@ clubs_data = [
     name: "Cubana",
     description:
       "Latin-inspired nightclub in Waterfall with vibrant energy, salsa dancing, and tropical cocktails. Popular weekend destination.",
-    location: "Waterfall Corner, Midrand, Johannesburg, 1686",
+    location: %{"name" => "Waterfall Corner, Midrand, Johannesburg, 1686"},
     phone: "+27 11 549 1010",
     email: "info@cubana.co.za",
     vibes: ["Latin", "Tropical", "Vibrant", "Dancing"],
@@ -146,7 +144,7 @@ clubs_data = [
     name: "Rockets",
     description:
       "Legendary Braamfontein nightclub known for live music, indie bands, and alternative crowd. A staple of Johannesburg's music scene.",
-    location: "50 De Korte St, Braamfontein, Johannesburg, 2001",
+    location: %{"name" => "50 De Korte St, Braamfontein, Johannesburg, 2001"},
     phone: "+27 11 403 1630",
     email: "info@rockets.co.za",
     vibes: ["Alternative", "Live Music", "Indie", "Underground"],
@@ -159,7 +157,7 @@ clubs_data = [
     name: "Ayepyep Lifestyle Lounge",
     description:
       "Premier Pretoria nightclub featuring Afro House, Hip Hop, and live performances. Known for energetic atmosphere and top-tier sound.",
-    location: "Cnr Burnett & Festival St, Hatfield, Pretoria, 0083",
+    location: %{"name" => "Cnr Burnett & Festival St, Hatfield, Pretoria, 0083"},
     phone: "+27 12 362 3344",
     email: "bookings@ayepyep.co.za",
     vibes: ["Energetic", "Afrocentric", "High-Energy", "Young Crowd"],
@@ -172,7 +170,7 @@ clubs_data = [
     name: "Arcade Empire",
     description:
       "Innovative Pretoria venue combining gaming arcade with nightclub. Features retro games, modern music, and unique atmosphere.",
-    location: "123 Lilian Ngoyi St, Pretoria Central, Pretoria, 0002",
+    location: %{"name" => "123 Lilian Ngoyi St, Pretoria Central, Pretoria, 0002"},
     phone: "+27 12 004 0300",
     email: "info@arcadeempire.co.za",
     vibes: ["Unique", "Gaming", "Retro", "Fun"],
@@ -185,7 +183,7 @@ clubs_data = [
     name: "Tiger's Milk",
     description:
       "Popular chain with locations across SA. Beachfront dining and clubbing venue with laid-back atmosphere and great music.",
-    location: "Shop 27, Victoria Wharf, V&A Waterfront, Cape Town, 8001",
+    location: %{"name" => "Shop 27, Victoria Wharf, V&A Waterfront, Cape Town, 8001"},
     phone: "+27 21 433 2125",
     email: "info@tigersmilk.co.za",
     vibes: ["Beachfront", "Casual", "Family-Friendly Early", "Party Late"],
@@ -198,7 +196,7 @@ clubs_data = [
     name: "Coco",
     description:
       "Exclusive Cape Town nightclub in Green Point with strict door policy. Features international DJs and premium bottle service.",
-    location: "70 Main Rd, Green Point, Cape Town, 8005",
+    location: %{"name" => "70 Main Rd, Green Point, Cape Town, 8005"},
     phone: "+27 21 418 8686",
     email: "bookings@cococapetown.com",
     vibes: ["Exclusive", "Premium", "International", "Elite"],
@@ -211,7 +209,7 @@ clubs_data = [
     name: "MODULAR",
     description:
       "Underground electronic music venue in Observatory, Cape Town. Known for cutting-edge techno, house, and experimental sounds.",
-    location: "8 Canterbury St, Observatory, Cape Town, 7925",
+    location: %{"name" => "8 Canterbury St, Observatory, Cape Town, 7925"},
     phone: "+27 21 448 3773",
     email: "info@modular.co.za",
     vibes: ["Underground", "Authentic", "Electronic", "Music-Focused"],
@@ -224,7 +222,7 @@ clubs_data = [
     name: "Fiction",
     description:
       "Premium nightclub in Sandton featuring world-class DJs, sophisticated crowd, and luxurious VIP areas. Johannesburg's finest.",
-    location: "Maude St, Sandown, Sandton, 2196",
+    location: %{"name" => "Maude St, Sandown, Sandton, 2196"},
     phone: "+27 11 784 5527",
     email: "info@fiction.co.za",
     vibes: ["Premium", "Luxurious", "World-Class", "VIP Experience"],
@@ -237,7 +235,7 @@ clubs_data = [
     name: "The Avenue",
     description:
       "Sophisticated Rosebank venue with rooftop terrace. Features live music, DJ sets, and extensive drinks menu.",
-    location: "Tyrwhitt Ave, Rosebank, Johannesburg, 2196",
+    location: %{"name" => "Tyrwhitt Ave, Rosebank, Johannesburg, 2196"},
     phone: "+27 11 447 4794",
     email: "bookings@theavenue.co.za",
     vibes: ["Rooftop", "Sophisticated", "After-Work Drinks", "Live Music"],
@@ -250,7 +248,7 @@ clubs_data = [
     name: "Selective Live",
     description:
       "Durban's premier electronic music venue featuring local and international DJs. Known for quality sound system and intimate atmosphere.",
-    location: "45 Florence Nzama St, Durban Central, Durban, 4001",
+    location: %{"name" => "45 Florence Nzama St, Durban Central, Durban, 4001"},
     phone: "+27 31 303 1305",
     email: "info@selectivelive.com",
     vibes: ["Electronic", "Intimate", "Quality Sound", "Music Lovers"],
@@ -263,7 +261,7 @@ clubs_data = [
     name: "Clico Boutique Hotel & Club",
     description:
       "Unique concept combining boutique hotel with nightclub. Located in Rosebank with luxurious atmosphere and exclusive events.",
-    location: "Corner Tyrwhitt & Sturdee Ave, Rosebank, Johannesburg, 2196",
+    location: %{"name" => "Corner Tyrwhitt & Sturdee Ave, Rosebank, Johannesburg, 2196"},
     phone: "+27 11 447 7471",
     email: "info@clico.co.za",
     vibes: ["Boutique", "Exclusive", "Luxurious", "Hotel + Club"],
@@ -276,7 +274,7 @@ clubs_data = [
     name: "Sutra",
     description:
       "Opulent Oriental-themed nightclub in Sandton. Features dramatic décor, VIP lounges, and premium entertainment.",
-    location: "Grayston Dr, Sandton, Johannesburg, 2196",
+    location: %{"name" => "Grayston Dr, Sandton, Johannesburg, 2196"},
     phone: "+27 11 784 5588",
     email: "bookings@sutra.co.za",
     vibes: ["Opulent", "Oriental", "Theatrical", "VIP Focused"],
@@ -289,7 +287,7 @@ clubs_data = [
     name: "Assembly",
     description:
       "Historic Cape Town venue hosting major events, concerts, and club nights. Known for massive dance floors and top international acts.",
-    location: "61 Harrington St, Cape Town City Centre, Cape Town, 8001",
+    location: %{"name" => "61 Harrington St, Cape Town City Centre, Cape Town, 8001"},
     phone: "+27 21 465 7286",
     email: "info@assembly.co.za",
     vibes: ["Massive", "Events", "Concerts", "Warehouse"],
@@ -302,7 +300,7 @@ clubs_data = [
     name: "Propaganda",
     description:
       "Popular LGBTQ+ friendly nightclub in Cape Town's city center. Known for inclusive atmosphere, themed parties, and vibrant energy.",
-    location: "33 Somerset Rd, Green Point, Cape Town, 8005",
+    location: %{"name" => "33 Somerset Rd, Green Point, Cape Town, 8005"},
     phone: "+27 21 300 1906",
     email: "info@propaganda.bar",
     vibes: ["Inclusive", "LGBTQ+ Friendly", "Themed Parties", "Vibrant"],
@@ -354,8 +352,6 @@ IO.puts("\nCreating test users for messaging...")
 test_users = [
   Repo.insert!(%User{
     email: "john@test.com",
-    first_name: "John",
-    last_name: "Smith",
     username: "johnsmith",
     phone: "+27823456789",
     password_hash: Bcrypt.hash_pwd_salt("password123"),
@@ -365,8 +361,6 @@ test_users = [
   }),
   Repo.insert!(%User{
     email: "sarah@test.com",
-    first_name: "Sarah",
-    last_name: "Johnson",
     username: "sarahjohnson",
     phone: "+27823456790",
     password_hash: Bcrypt.hash_pwd_salt("password123"),
@@ -376,8 +370,6 @@ test_users = [
   }),
   Repo.insert!(%User{
     email: "mike@test.com",
-    first_name: "Mike",
-    last_name: "Williams",
     username: "mikewilliams",
     phone: "+27823456791",
     password_hash: Bcrypt.hash_pwd_salt("password123"),
@@ -435,7 +427,7 @@ Enum.each(test_users, fn user ->
     inserted_at: now
   })
 
-  IO.puts("✓ Created thread with #{user.first_name}")
+  IO.puts("✓ Created thread with #{user.username}")
 end)
 
 IO.puts("\n✅ Messaging seed data complete!")
@@ -738,8 +730,6 @@ created_users =
     user =
       Repo.insert!(%User{
         email: user_data.email,
-        first_name: user_data.first_name,
-        last_name: user_data.last_name,
         username: user_data.username,
         phone: user_data.phone,
         password_hash: Bcrypt.hash_pwd_salt("password123"),
@@ -749,7 +739,7 @@ created_users =
         avatar_url: user_data.avatar_url
       })
 
-    IO.puts("✓ Created user: #{user.first_name} #{user.last_name}")
+    IO.puts("✓ Created user: #{user.username}")
     user
   end)
 
@@ -923,7 +913,7 @@ Enum.each(intention_data, fn data ->
     expires_at: data.expires_at
   })
 
-  IO.puts("✓ Created intention for #{data.user.first_name} at #{data.club.name}")
+  IO.puts("✓ Created intention for #{data.user.username} at #{data.club.name}")
 end)
 
 intention_count = Repo.aggregate(Intention, :count)
@@ -933,7 +923,7 @@ IO.puts("\nCreated #{length(created_users)} users with #{intention_count} intent
 IO.puts("\nTest users for intentions (all with password: password123):")
 
 Enum.each(intention_users, fn user ->
-  IO.puts("  • #{user.email} (#{user.first_name} #{user.last_name})")
+  IO.puts("  • #{user.email} (#{user.username})")
 end)
 
 IO.puts("\n🎉 All seed data complete!")

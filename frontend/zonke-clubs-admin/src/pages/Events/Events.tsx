@@ -42,6 +42,7 @@ import {
   EventsGrid,
   EventCard,
   EventImage,
+  EventCoverImg,
   EventContent,
   EventHeader,
   EventTitle,
@@ -56,10 +57,9 @@ import {
 interface DJ {
   id: string;
   name: string;
-  genre?: string;
   bio?: string;
   instagram?: string;
-  soundcloud?: string;
+  tiktok?: string;
   image?: string;
 }
 
@@ -153,11 +153,6 @@ export const Events: React.FC = () => {
   };
 
   const handleCreateEvent = (formData: EventFormData) => {
-    // Don't send blob URLs to backend - only send real URLs or empty string
-    const coverImage = formData.cover_image?.startsWith("blob:")
-      ? ""
-      : formData.cover_image;
-
     const eventData = {
       title: formData.title,
       description: formData.description,
@@ -167,7 +162,7 @@ export const Events: React.FC = () => {
       general_entry_price: parseFloat(formData.general_entry_price),
       vip_entry_price: parseFloat(formData.vip_entry_price),
       dj_lineup: formData.dj_lineup.filter((dj) => dj.trim() !== ""),
-      cover_image: coverImage,
+      cover_image: formData.cover_image || "",
       status: formData.status,
     };
 
@@ -191,11 +186,6 @@ export const Events: React.FC = () => {
   const handleEditEvent = (formData: EventFormData) => {
     if (!editingEvent) return;
 
-    // Don't send blob URLs to backend - only send real URLs or empty string
-    const coverImage = formData.cover_image?.startsWith("blob:")
-      ? ""
-      : formData.cover_image;
-
     const eventData = {
       title: formData.title,
       description: formData.description,
@@ -205,7 +195,7 @@ export const Events: React.FC = () => {
       general_entry_price: parseFloat(formData.general_entry_price),
       vip_entry_price: parseFloat(formData.vip_entry_price),
       dj_lineup: formData.dj_lineup.filter((dj) => dj.trim() !== ""),
-      cover_image: coverImage,
+      cover_image: formData.cover_image || "",
       status: formData.status,
     };
 
@@ -402,11 +392,14 @@ export const Events: React.FC = () => {
         <EventsGrid>
           {filteredEvents.map((event) => (
             <EventCard key={event.id}>
-              <EventImage src={event.cover_image}>
-                {!event.cover_image &&
+              <EventImage>
+                {event.cover_image ? (
+                  <EventCoverImg src={event.cover_image} alt={event.title} />
+                ) : (
                   React.createElement(
                     RiCalendarEventLine as React.ComponentType,
-                  )}
+                  )
+                )}
               </EventImage>
 
               <EventContent>

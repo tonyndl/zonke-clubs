@@ -6,7 +6,7 @@ defmodule Backend.DJs.DJ do
   @foreign_key_type :binary_id
 
   @required_fields [:name, :club_id]
-  @optional_fields [:genre, :bio, :instagram, :soundcloud, :image_url]
+  @optional_fields [:genre, :bio, :instagram, :tiktok, :soundcloud, :image_url]
   @all_fields @required_fields ++ @optional_fields
 
   schema "djs" do
@@ -14,6 +14,7 @@ defmodule Backend.DJs.DJ do
     field :genre, :string
     field :bio, :string
     field :instagram, :string
+    field :tiktok, :string
     field :soundcloud, :string
     field :image_url, :string
 

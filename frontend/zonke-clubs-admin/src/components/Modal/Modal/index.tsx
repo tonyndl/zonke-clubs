@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useRef } from "react";
 import { RiCloseLine } from "react-icons/ri";
 import {
   Overlay,
@@ -46,8 +46,28 @@ export const Modal: React.FC<ModalProps> = ({
     };
   }, [isOpen]);
 
+  // When a file picker opens, the window loses focus then regains it on close.
+  // The browser fires a synthetic click on the overlay at that moment — block it.
+  const blockOverlayClick = useRef(false);
+  useEffect(() => {
+    const handleFocus = () => {
+      blockOverlayClick.current = true;
+      setTimeout(() => {
+        blockOverlayClick.current = false;
+      }, 300);
+    };
+    window.addEventListener("focus", handleFocus);
+    return () => window.removeEventListener("focus", handleFocus);
+  }, []);
+
   return (
-    <Overlay isOpen={isOpen} onClick={onClose}>
+    <Overlay
+      isOpen={isOpen}
+      onClick={(e) => {
+        if (e.target === e.currentTarget && !blockOverlayClick.current)
+          onClose();
+      }}
+    >
       <ModalContainer
         isOpen={isOpen}
         maxWidth={maxWidth}

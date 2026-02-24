@@ -1,14 +1,18 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { Modal } from "../Modal";
 import { PrimaryButton, OutlineButton } from "../../Buttons";
 import { DatePicker } from "../../DatePicker";
 import { TimePicker } from "../../TimePicker";
+import { apiService } from "../../../services/api";
+import { useToast } from "../../Toast";
 import {
   RiCalendarLine,
   RiTimeLine,
   RiImageAddLine,
   RiMusicLine,
   RiAddLine,
+  RiCloseLine,
+  RiCheckLine,
 } from "react-icons/ri";
 import {
   Form,
@@ -18,13 +22,9 @@ import {
   TextArea,
   FormRow,
   ImageUploadArea,
+  ImagePreview,
   ImageUploadText,
   ImageUploadHint,
-  DJLineupContainer,
-  DJInput,
-  RemoveButton,
-  AddButton,
-  Select,
   FormActions,
   HiddenInput,
   SwitchContainer,
@@ -34,6 +34,23 @@ import {
   StatusText,
   DJSelectHeader,
   QuickAddDJButton,
+  ImagePreviewOverlay,
+  ImageProgressBar,
+  ImageProgressText,
+  ImageRemoveButton,
+  ImageChangeHint,
+  SelectedDJsArea,
+  EmptyDJHint,
+  DJChip,
+  DJChipIcon,
+  DJChipName,
+  DJChipRemove,
+  DJPickerGrid,
+  DJPickerCard,
+  DJPickerAvatar,
+  DJPickerName,
+  DJPickerCheck,
+  DJPickerEmpty,
 } from "./styles";
 
 interface CreateEventModalProps {
@@ -81,12 +98,16 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
       end_time: "",
       general_entry_price: "",
       vip_entry_price: "",
-      dj_lineup: [""],
+      dj_lineup: [],
       cover_image: "",
       status: "draft",
     };
   };
 
+  const toast = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [imageUploadProgress, setImageUploadProgress] = useState(0);
   const [formData, setFormData] = useState<EventFormData>(getInitialFormData());
   const [originalData, setOriginalData] =
     useState<EventFormData>(getInitialFormData());
@@ -111,7 +132,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
         formData.end_time !== "" ||
         formData.general_entry_price !== "" ||
         formData.vip_entry_price !== "" ||
-        formData.dj_lineup.some((dj) => dj.trim() !== "") ||
+        formData.dj_lineup.length > 0 ||
         formData.cover_image !== ""
       );
     }
@@ -136,30 +157,50 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
-  const handleDJChange = (index: number, value: string) => {
-    const newLineup = [...formData.dj_lineup];
-    newLineup[index] = value;
-    setFormData((prev) => ({ ...prev, dj_lineup: newLineup }));
-  };
-
-  const addDJ = () => {
-    setFormData((prev) => ({ ...prev, dj_lineup: [...prev.dj_lineup, ""] }));
-  };
-
-  const removeDJ = (index: number) => {
+  const toggleDJ = (djId: string) => {
     setFormData((prev) => ({
       ...prev,
-      dj_lineup: prev.dj_lineup.filter((_, i) => i !== index),
+      dj_lineup: prev.dj_lineup.includes(djId)
+        ? prev.dj_lineup.filter((id) => id !== djId)
+        : [...prev.dj_lineup, djId],
     }));
   };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      // In a real app, you'd upload to a server and get back a URL
-      const imageUrl = URL.createObjectURL(file);
-      setFormData((prev) => ({ ...prev, cover_image: imageUrl }));
-    }
+    if (!file) return;
+
+    // Show local preview immediately
+    const previewUrl = URL.createObjectURL(file);
+    setFormData((prev) => ({ ...prev, cover_image: previewUrl }));
+    setUploadingImage(true);
+    setImageUploadProgress(0);
+
+    const uploadData = new FormData();
+    uploadData.append("file", file);
+    uploadData.append("meta", JSON.stringify({ type: "image" }));
+
+    apiService
+      .uploadAsset(uploadData, (progress) => setImageUploadProgress(progress))
+      .then((asset) => {
+        URL.revokeObjectURL(previewUrl);
+        setFormData((prev) => ({ ...prev, cover_image: asset.url }));
+      })
+      .catch(() => {
+        URL.revokeObjectURL(previewUrl);
+        setFormData((prev) => ({ ...prev, cover_image: "" }));
+        toast.error("Failed to upload image. Please try again.");
+      })
+      .finally(() => {
+        setUploadingImage(false);
+        setImageUploadProgress(0);
+      });
+  };
+
+  const handleRemoveImage = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setFormData((prev) => ({ ...prev, cover_image: "" }));
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -175,7 +216,23 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
       end_time: "",
       general_entry_price: "",
       vip_entry_price: "",
-      dj_lineup: [""],
+      dj_lineup: [],
+      cover_image: "",
+      status: "draft",
+    });
+  };
+
+  const handleOnClose = () => {
+    onClose();
+    setFormData({
+      title: "",
+      description: "",
+      date: "",
+      start_time: "",
+      end_time: "",
+      general_entry_price: "",
+      vip_entry_price: "",
+      dj_lineup: [],
       cover_image: "",
       status: "draft",
     });
@@ -185,7 +242,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
   const submitButtonText = mode === "edit" ? "Save Changes" : "Create Event";
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={modalTitle}>
+    <Modal isOpen={isOpen} onClose={handleOnClose} title={modalTitle}>
       <Form onSubmit={handleSubmit}>
         <FormGroup>
           <Label>
@@ -282,61 +339,79 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
               {React.createElement(RiMusicLine as React.ComponentType)}
               DJ Lineup
             </Label>
-            {onAddDJ && availableDJs.length > 0 && (
+            {onAddDJ && (
               <QuickAddDJButton type="button" onClick={onAddDJ}>
                 {React.createElement(RiAddLine as React.ComponentType)}
-                Quick Add DJ
+                Add New DJ
               </QuickAddDJButton>
             )}
           </DJSelectHeader>
-          <DJLineupContainer>
-            {formData.dj_lineup.map((dj, index) => (
-              <DJInput key={index}>
-                {availableDJs.length > 0 ? (
-                  <Select
-                    value={dj}
-                    onChange={(e) => handleDJChange(index, e.target.value)}
-                    required
-                    style={{ flex: 1 }}
-                  >
-                    <option value="">Choose a DJ...</option>
-                    {availableDJs.map((availableDJ) => (
-                      <option key={availableDJ.id} value={availableDJ.id}>
-                        {availableDJ.name}
-                      </option>
-                    ))}
-                  </Select>
-                ) : (
-                  <Input
-                    type="text"
-                    placeholder={`DJ ${index + 1} name`}
-                    value={dj}
-                    onChange={(e) => handleDJChange(index, e.target.value)}
-                    style={{ flex: 1 }}
-                  />
-                )}
-                {formData.dj_lineup.length > 1 && (
-                  <RemoveButton type="button" onClick={() => removeDJ(index)}>
-                    Remove
-                  </RemoveButton>
-                )}
-              </DJInput>
-            ))}
-            <AddButton type="button" onClick={addDJ}>
-              {React.createElement(RiMusicLine as React.ComponentType)}
-              Add Another DJ
-            </AddButton>
-            {onAddDJ && availableDJs.length === 0 && (
-              <QuickAddDJButton
-                type="button"
-                onClick={onAddDJ}
-                style={{ width: "fit-content" }}
-              >
-                {React.createElement(RiAddLine as React.ComponentType)}
-                Add Your First DJ
-              </QuickAddDJButton>
+
+          {/* Selected DJs chips */}
+          <SelectedDJsArea>
+            {formData.dj_lineup.length === 0 ? (
+              <EmptyDJHint>
+                {availableDJs.length === 0
+                  ? "Add DJs to your roster first"
+                  : "Select DJs from below"}
+              </EmptyDJHint>
+            ) : (
+              formData.dj_lineup.map((djId) => {
+                const dj = availableDJs.find((d) => d.id === djId);
+                return dj ? (
+                  <DJChip key={djId}>
+                    <DJChipIcon>
+                      {React.createElement(RiMusicLine as React.ComponentType)}
+                    </DJChipIcon>
+                    <DJChipName>{dj.name}</DJChipName>
+                    <DJChipRemove type="button" onClick={() => toggleDJ(djId)}>
+                      {React.createElement(RiCloseLine as React.ComponentType)}
+                    </DJChipRemove>
+                  </DJChip>
+                ) : null;
+              })
             )}
-          </DJLineupContainer>
+          </SelectedDJsArea>
+
+          {/* DJ picker grid */}
+          {availableDJs.length > 0 ? (
+            <DJPickerGrid>
+              {availableDJs.map((dj) => {
+                const isSelected = formData.dj_lineup.includes(dj.id);
+                return (
+                  <DJPickerCard
+                    key={dj.id}
+                    type="button"
+                    selected={isSelected}
+                    onClick={() => toggleDJ(dj.id)}
+                  >
+                    <DJPickerAvatar selected={isSelected}>
+                      {React.createElement(RiMusicLine as React.ComponentType)}
+                    </DJPickerAvatar>
+                    <DJPickerName>{dj.name}</DJPickerName>
+                    {isSelected && (
+                      <DJPickerCheck>
+                        {React.createElement(
+                          RiCheckLine as React.ComponentType,
+                        )}
+                      </DJPickerCheck>
+                    )}
+                  </DJPickerCard>
+                );
+              })}
+            </DJPickerGrid>
+          ) : (
+            <DJPickerEmpty>
+              {React.createElement(RiMusicLine as React.ComponentType)}
+              <span>No DJs in your roster yet</span>
+              {onAddDJ && (
+                <QuickAddDJButton type="button" onClick={onAddDJ}>
+                  {React.createElement(RiAddLine as React.ComponentType)}
+                  Add Your First DJ
+                </QuickAddDJButton>
+              )}
+            </DJPickerEmpty>
+          )}
         </FormGroup>
 
         <FormGroup>
@@ -345,27 +420,42 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
             Cover Image
           </Label>
           <HiddenInput
+            ref={fileInputRef}
             id="image-upload"
             type="file"
             accept="image/*"
             onChange={handleImageUpload}
           />
           <ImageUploadArea
-            as="label"
-            htmlFor="image-upload"
+            onClick={() => !uploadingImage && fileInputRef.current?.click()}
             style={{
-              backgroundImage: formData.cover_image
-                ? `url(${formData.cover_image})`
-                : "none",
-              backgroundSize: "cover",
-              backgroundPosition: "center",
+              cursor: uploadingImage ? "default" : "pointer",
+              padding: formData.cover_image ? 0 : undefined,
+              minHeight: formData.cover_image ? "unset" : undefined,
             }}
           >
-            {!formData.cover_image && (
+            {!formData.cover_image && !uploadingImage && (
               <>
                 {React.createElement(RiImageAddLine as React.ComponentType)}
                 <ImageUploadText>Click to upload cover image</ImageUploadText>
                 <ImageUploadHint>PNG, JPG up to 10MB</ImageUploadHint>
+              </>
+            )}
+            {uploadingImage && (
+              <ImagePreviewOverlay>
+                <ImageProgressText>
+                  Uploading... {imageUploadProgress}%
+                </ImageProgressText>
+                <ImageProgressBar progress={imageUploadProgress} />
+              </ImagePreviewOverlay>
+            )}
+            {formData.cover_image && !uploadingImage && (
+              <>
+                <ImagePreview src={formData.cover_image} alt="Cover preview" />
+                <ImageRemoveButton type="button" onClick={handleRemoveImage}>
+                  {React.createElement(RiCloseLine as React.ComponentType)}
+                </ImageRemoveButton>
+                <ImageChangeHint>Click to change image</ImageChangeHint>
               </>
             )}
           </ImageUploadArea>
@@ -397,8 +487,8 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
           <OutlineButton type="button" onClick={onClose}>
             Cancel
           </OutlineButton>
-          <PrimaryButton type="submit" disabled={!hasChanges}>
-            {submitButtonText}
+          <PrimaryButton type="submit" disabled={!hasChanges || uploadingImage}>
+            {uploadingImage ? "Uploading image..." : submitButtonText}
           </PrimaryButton>
         </FormActions>
       </Form>

@@ -8,10 +8,44 @@ export const Form = styled.form`
   padding: ${theme.spacing.xl};
 `;
 
+export const DJIconHero = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: ${theme.spacing.sm};
+  padding: ${theme.spacing.sm} 0 ${theme.spacing.md};
+`;
+
+export const DJIconBadge = styled.div`
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: ${theme.gradients.primary};
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: ${theme.colors.background};
+  box-shadow: 0 0 28px rgba(57, 243, 255, 0.35);
+
+  svg {
+    width: 32px;
+    height: 32px;
+    display: block;
+  }
+`;
+
+export const DJIconHeroText = styled.span`
+  font-size: ${theme.typography.fontSize.xs};
+  font-weight: ${theme.typography.fontWeight.semibold};
+  color: ${theme.colors.primary};
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+`;
+
 export const FormGroup = styled.div`
   display: flex;
   flex-direction: column;
-  gap: ${theme.spacing.sm};
+  gap: 6px;
 `;
 
 export const Label = styled.label`
@@ -22,122 +56,150 @@ export const Label = styled.label`
   align-items: center;
   gap: ${theme.spacing.xs};
 
-  svg {
-    width: 16px;
-    height: 16px;
+  span {
     color: ${theme.colors.primary};
   }
 `;
 
+export const OptionalTag = styled.span`
+  font-size: ${theme.typography.fontSize.xs};
+  font-weight: ${theme.typography.fontWeight.normal};
+  color: ${theme.colors.textSecondary} !important;
+  background: ${theme.colors.backgroundGray};
+  padding: 1px 6px;
+  border-radius: ${theme.borderRadius.full};
+  border: 1px solid ${theme.colors.border};
+  letter-spacing: 0.02em;
+`;
+
 export const Input = styled.input`
-  padding: ${theme.spacing.md};
-  background: ${theme.colors.background};
+  padding: 0.7rem ${theme.spacing.md};
+  background: ${theme.colors.backgroundGray};
   border: 1px solid ${theme.colors.border};
   border-radius: ${theme.borderRadius.lg};
   color: ${theme.colors.textPrimary};
-  font-size: ${theme.typography.fontSize.base};
+  font-size: ${theme.typography.fontSize.sm};
   font-family: ${theme.typography.fontFamily.base};
   transition: all ${theme.transitions.fast};
 
   &:focus {
     outline: none;
     border-color: ${theme.colors.primary};
-    box-shadow: 0 0 0 3px ${theme.colors.primaryLight};
+    box-shadow: 0 0 0 3px rgba(57, 243, 255, 0.1);
+    background: ${theme.colors.backgroundHover};
   }
 
   &::placeholder {
-    color: ${theme.colors.textSecondary};
+    color: ${theme.colors.textMuted};
   }
 `;
 
 export const TextArea = styled.textarea`
-  padding: ${theme.spacing.md};
-  background: ${theme.colors.background};
+  padding: 0.7rem ${theme.spacing.md};
+  background: ${theme.colors.backgroundGray};
   border: 1px solid ${theme.colors.border};
   border-radius: ${theme.borderRadius.lg};
   color: ${theme.colors.textPrimary};
-  font-size: ${theme.typography.fontSize.base};
+  font-size: ${theme.typography.fontSize.sm};
   font-family: ${theme.typography.fontFamily.base};
-  min-height: 100px;
+  min-height: 88px;
   resize: vertical;
   transition: all ${theme.transitions.fast};
+  line-height: ${theme.typography.lineHeight.relaxed};
 
   &:focus {
     outline: none;
     border-color: ${theme.colors.primary};
-    box-shadow: 0 0 0 3px ${theme.colors.primaryLight};
+    box-shadow: 0 0 0 3px rgba(57, 243, 255, 0.1);
+    background: ${theme.colors.backgroundHover};
   }
 
   &::placeholder {
-    color: ${theme.colors.textSecondary};
+    color: ${theme.colors.textMuted};
   }
 `;
 
-export const ImageUploadArea = styled.div<{ hasImage: boolean }>`
-  border: 2px dashed ${theme.colors.border};
-  border-radius: ${theme.borderRadius.lg};
-  padding: ${(props) => (props.hasImage ? theme.spacing.sm : theme.spacing.xl)};
-  text-align: center;
-  cursor: pointer;
-  transition: all ${theme.transitions.fast};
-  background: ${theme.colors.background};
-  position: relative;
-  overflow: hidden;
-  min-height: ${(props) => (props.hasImage ? "150px" : "auto")};
-
-  &:hover {
-    border-color: ${theme.colors.primary};
-    background: ${theme.colors.sidebarActiveBg};
-
-    &::after {
-      opacity: 0.05;
-    }
-  }
-
-  &::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    background: ${theme.gradients.primary};
-    opacity: 0;
-    transition: opacity ${theme.transitions.fast};
-  }
-
-  svg {
-    width: 48px;
-    height: 48px;
-    color: ${theme.colors.primary};
-    margin-bottom: ${theme.spacing.md};
-    position: relative;
-    z-index: 1;
-  }
+export const SectionDivider = styled.div`
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing.sm};
+  margin: -4px 0;
 `;
 
-export const ImagePreview = styled.img`
-  width: 100%;
-  height: 150px;
-  object-fit: cover;
-  border-radius: ${theme.borderRadius.lg};
+export const SectionDividerLine = styled.div`
+  flex: 1;
+  height: 1px;
+  background: ${theme.colors.border};
 `;
 
-export const ImageUploadText = styled.div`
-  color: ${theme.colors.textPrimary};
-  font-size: ${theme.typography.fontSize.base};
-  font-weight: ${theme.typography.fontWeight.medium};
-  margin-bottom: ${theme.spacing.xs};
-  position: relative;
-  z-index: 1;
-`;
-
-export const ImageUploadHint = styled.div`
+export const SectionDividerLabel = styled.span`
+  font-size: ${theme.typography.fontSize.xs};
+  font-weight: ${theme.typography.fontWeight.semibold};
   color: ${theme.colors.textSecondary};
-  font-size: ${theme.typography.fontSize.sm};
-  position: relative;
-  z-index: 1;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
 `;
 
-export const HiddenInput = styled.input`
-  display: none;
+export const SocialsRow = styled.div`
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: ${theme.spacing.md};
+`;
+
+export const SocialField = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+`;
+
+export const SocialPrefix = styled.div<{ platform: "instagram" | "tiktok" }>`
+  display: flex;
+  align-items: center;
+  background: ${theme.colors.backgroundGray};
+  border: 1px solid ${theme.colors.border};
+  border-radius: ${theme.borderRadius.lg};
+  overflow: hidden;
+  transition: all ${theme.transitions.fast};
+
+  &:focus-within {
+    border-color: ${theme.colors.primary};
+    box-shadow: 0 0 0 3px rgba(57, 243, 255, 0.1);
+    background: ${theme.colors.backgroundHover};
+  }
+
+  > span {
+    padding: 0 10px 0 12px;
+    font-size: ${theme.typography.fontSize.sm};
+    font-weight: ${theme.typography.fontWeight.semibold};
+    background: ${({ platform }) =>
+      platform === "instagram"
+        ? "linear-gradient(135deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%)"
+        : "linear-gradient(135deg, #010101 0%, #69C9D0 50%, #EE1D52 100%)"};
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    line-height: 1;
+    flex-shrink: 0;
+  }
+`;
+
+export const SocialInput = styled.input`
+  flex: 1;
+  padding: 0.7rem 0.75rem 0.7rem 0;
+  background: transparent;
+  border: none;
+  color: ${theme.colors.textPrimary};
+  font-size: ${theme.typography.fontSize.sm};
+  font-family: ${theme.typography.fontFamily.base};
+
+  &:focus {
+    outline: none;
+  }
+
+  &::placeholder {
+    color: ${theme.colors.textMuted};
+  }
 `;
 
 export const FormActions = styled.div`
@@ -146,10 +208,12 @@ export const FormActions = styled.div`
   justify-content: flex-end;
   padding-top: ${theme.spacing.lg};
   border-top: 1px solid ${theme.colors.border};
+  margin-top: ${theme.spacing.sm};
 `;
 
-export const HelperText = styled.p`
-  font-size: ${theme.typography.fontSize.xs};
-  color: ${theme.colors.textSecondary};
-  margin-top: ${theme.spacing.xs};
-`;
+// Legacy exports kept for any other consumers
+export const ImageUploadArea = styled.div<{ hasImage: boolean }>``;
+export const ImagePreview = styled.img``;
+export const ImageUploadText = styled.div``;
+export const ImageUploadHint = styled.div``;
+export const HelperText = styled.p``;

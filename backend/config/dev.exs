@@ -65,6 +65,9 @@ config :phoenix, :plug_init_mode, :runtime
 # Disable swoosh api client as it is only required for production adapters.
 config :swoosh, :api_client, false
 
+# Geoapify API key for location search (dev only)
+config :backend, :geoapify_api_key, "dfc6d77d231945f089757618363498de"
+
 # Configure ExAws to use LocalStack for development
 config :ex_aws,
   access_key_id: "test",

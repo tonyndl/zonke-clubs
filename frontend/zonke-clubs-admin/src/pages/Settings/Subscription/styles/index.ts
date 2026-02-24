@@ -3,7 +3,7 @@ import { Card } from "../../../../components/Card";
 import { theme } from "../../../../styles/theme";
 
 export const SettingsContainer = styled.div`
-  max-width: 1200px;
+  width: 100%;
 `;
 
 export const PageHeader = styled.div`

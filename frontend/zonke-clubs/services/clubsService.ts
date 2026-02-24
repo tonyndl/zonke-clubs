@@ -25,6 +25,7 @@ export type Club = {
   music_genres?: string[];
   dress_code?: string;
   entry_fee?: string;
+  table_reservation_numbers?: string[];
   is_liked?: boolean;
   opening_hours?: Record<string, { open: string; close: string } | null>;
   inserted_at: string;
@@ -45,6 +46,8 @@ export type DJSchedule = {
   id: string;
   dj_id: string;
   dj_name: string;
+  dj_instagram?: string;
+  dj_tiktok?: string;
   day: string;
   day_of_week: number;
   start_time?: string;
@@ -63,7 +66,12 @@ export type ClubEvent = {
   end_time: string; // HH:MM format
   general_entry_price: number;
   vip_entry_price: number;
-  dj_lineup: Array<{ id: string; name: string }>; // Backend returns DJ objects with id and name
+  dj_lineup: Array<{
+    id: string;
+    name: string;
+    instagram?: string;
+    tiktok?: string;
+  }>;
   cover_image?: string;
   status: "draft" | "published";
 };

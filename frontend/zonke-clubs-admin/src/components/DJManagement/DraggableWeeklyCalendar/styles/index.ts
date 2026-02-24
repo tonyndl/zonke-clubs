@@ -80,9 +80,23 @@ export const CalendarGrid = styled.div`
 
 export const DayColumn = styled.div<{
   isDragOver?: boolean;
+  isInvalidDrop?: boolean;
   isSpecialEvent?: boolean;
+  isClosed?: boolean;
 }>`
   background: ${(props) => {
+    if (props.isClosed) {
+      return `repeating-linear-gradient(
+        -45deg,
+        ${theme.colors.background} 0px,
+        ${theme.colors.background} 8px,
+        ${theme.colors.backgroundGray} 8px,
+        ${theme.colors.backgroundGray} 16px
+      )`;
+    }
+    if (props.isInvalidDrop) {
+      return `linear-gradient(180deg, rgba(239,68,68,0.08) 0%, ${theme.colors.background} 100%)`;
+    }
     if (props.isSpecialEvent) {
       return `linear-gradient(135deg,
         ${theme.colors.primary}08 0%,
@@ -93,10 +107,13 @@ export const DayColumn = styled.div<{
       ? `linear-gradient(180deg, ${theme.colors.primaryLight}20 0%, ${theme.colors.background} 100%)`
       : theme.colors.background;
   }};
+  opacity: ${(props) => (props.isClosed ? 0.7 : 1)};
   min-height: 300px;
   display: flex;
   flex-direction: column;
-  border-right: 1px solid ${theme.colors.border};
+  border-right: 1px solid
+    ${(props) =>
+      props.isInvalidDrop ? `rgba(239,68,68,0.4)` : theme.colors.border};
   transition: all ${theme.transitions.normal};
   position: relative;
   overflow: visible;
@@ -139,17 +156,46 @@ export const DayColumn = styled.div<{
   }
 `;
 
-export const DayHeader = styled.div<{ isSpecialEvent?: boolean }>`
+export const ClosedBadge = styled.div`
+  display: inline-flex;
+  align-items: center;
+  gap: ${theme.spacing.xs};
+  padding: 2px ${theme.spacing.sm};
+  background: ${theme.colors.backgroundGray};
+  border: 1px solid ${theme.colors.border};
+  border-radius: ${theme.borderRadius.sm};
+  color: ${theme.colors.textSecondary};
+  font-size: ${theme.typography.fontSize.xs};
+  font-weight: ${theme.typography.fontWeight.semibold};
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  margin-top: ${theme.spacing.xs};
+
+  svg {
+    width: 12px;
+    height: 12px;
+    opacity: 0.7;
+  }
+`;
+
+export const DayHeader = styled.div<{
+  isSpecialEvent?: boolean;
+  isClosed?: boolean;
+}>`
   padding: ${theme.spacing.lg} ${theme.spacing.md};
   background: ${(props) =>
-    props.isSpecialEvent
-      ? `linear-gradient(135deg, ${theme.colors.primary}15 0%, ${theme.colors.cardBackground} 100%)`
-      : theme.colors.cardBackground};
+    props.isClosed
+      ? theme.colors.backgroundDark
+      : props.isSpecialEvent
+        ? `linear-gradient(135deg, ${theme.colors.primary}15 0%, ${theme.colors.cardBackground} 100%)`
+        : theme.colors.cardBackground};
   border-bottom: 2px solid
     ${(props) =>
-      props.isSpecialEvent
-        ? theme.colors.primary
-        : `${theme.colors.primary}40`};
+      props.isClosed
+        ? theme.colors.border
+        : props.isSpecialEvent
+          ? theme.colors.primary
+          : `${theme.colors.primary}40`};
   text-align: center;
   position: sticky;
   top: 0;
@@ -253,21 +299,53 @@ export const DaySlots = styled.div`
   flex: 1;
 `;
 
-export const SlotCard = styled.div<{ isDragging?: boolean; genre?: string }>`
-  background: ${theme.colors.cardBackground};
-  border: 2px solid ${(props) => getGenreColor(props.genre)};
+export const SlotCard = styled.div<{
+  isDragging?: boolean;
+  $borderColor?: string;
+}>`
+  background: ${({ $borderColor }) =>
+    $borderColor
+      ? `linear-gradient(160deg, ${$borderColor}0A 0%, ${theme.colors.cardBackground} 55%)`
+      : theme.colors.cardBackground};
+  border: 1px solid
+    ${({ $borderColor }) =>
+      $borderColor ? `${$borderColor}28` : theme.colors.border};
   border-radius: ${theme.borderRadius.lg};
   padding: ${theme.spacing.md};
-  transition: all ${theme.transitions.fast};
+  transition: all 0.2s ease;
   position: relative;
   cursor: grab;
-  opacity: ${(props) => (props.isDragging ? 0.5 : 1)};
-  transform: ${(props) => (props.isDragging ? "rotate(5deg)" : "none")};
+  opacity: ${(props) => (props.isDragging ? 0.45 : 1)};
+  transform: ${(props) =>
+    props.isDragging ? "rotate(3deg) scale(0.97)" : "none"};
+
+  /* Thin top shimmer line in the DJ's color */
+  &::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 10%;
+    right: 10%;
+    height: 1px;
+    background: ${({ $borderColor }) =>
+      $borderColor
+        ? `linear-gradient(90deg, transparent, ${$borderColor}90, transparent)`
+        : "transparent"};
+    border-radius: 0 0 4px 4px;
+  }
 
   &:hover {
-    border-color: ${theme.colors.primary};
-    transform: translateY(-4px) scale(1.02);
-    box-shadow: ${theme.shadows.lg};
+    border-color: ${({ $borderColor }) =>
+      $borderColor ? `${$borderColor}55` : `${theme.colors.primary}55`};
+    transform: translateY(-3px);
+    background: ${({ $borderColor }) =>
+      $borderColor
+        ? `linear-gradient(160deg, ${$borderColor}12 0%, ${theme.colors.cardBackground} 60%)`
+        : theme.colors.cardBackground};
+    box-shadow: ${({ $borderColor }) =>
+      $borderColor
+        ? `0 6px 20px ${$borderColor}18, 0 2px 6px rgba(0,0,0,0.25)`
+        : `0 6px 20px rgba(0,0,0,0.3)`};
 
     .quick-actions {
       opacity: 1;
@@ -307,27 +385,30 @@ export const SlotHeader = styled.div`
   padding-left: ${theme.spacing.lg};
 `;
 
-export const DJAvatar = styled.div<{ image?: string }>`
-  width: 40px;
-  height: 40px;
+export const DJAvatar = styled.div<{ image?: string; $color?: string }>`
+  width: 38px;
+  height: 38px;
   border-radius: ${theme.borderRadius.full};
-  background: ${(props) =>
-    props.image
-      ? `url(${props.image})`
-      : `linear-gradient(135deg, ${theme.colors.primary} 0%, ${theme.colors.secondary} 100%)`};
+  background: ${({ image, $color }) =>
+    image
+      ? `url(${image})`
+      : $color
+        ? `linear-gradient(135deg, ${$color}55 0%, ${$color}22 100%)`
+        : `linear-gradient(135deg, ${theme.colors.primary}55 0%, ${theme.colors.secondary}33 100%)`};
   background-size: cover;
   background-position: center;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  border: 2px solid ${theme.colors.border};
-  box-shadow: ${theme.shadows.sm};
+  border: 1px solid
+    ${({ $color }) => ($color ? `${$color}40` : theme.colors.border)};
 
   svg {
-    width: 20px;
-    height: 20px;
-    color: white;
+    width: 18px;
+    height: 18px;
+    color: ${({ $color }) => $color || theme.colors.primary};
+    opacity: 0.9;
   }
 `;
 
@@ -542,34 +623,40 @@ export const DJDropdown = styled.div`
   }
 `;
 
-export const DJOption = styled.button`
+export const DJOption = styled.button<{ $isScheduled?: boolean }>`
   width: 100%;
   padding: ${theme.spacing.sm} ${theme.spacing.md};
-  background: transparent;
+  background: ${({ $isScheduled }) =>
+    $isScheduled ? `rgba(57, 243, 255, 0.04)` : "transparent"};
   border: none;
   border-bottom: 1px solid ${theme.colors.border};
-  color: ${theme.colors.textPrimary};
+  color: ${({ $isScheduled }) =>
+    $isScheduled ? theme.colors.textSecondary : theme.colors.textPrimary};
   font-size: ${theme.typography.fontSize.sm};
   text-align: left;
-  cursor: pointer;
+  cursor: ${({ $isScheduled }) => ($isScheduled ? "default" : "pointer")};
   transition: all ${theme.transitions.fast};
   display: flex;
   align-items: center;
   gap: ${theme.spacing.sm};
+  opacity: ${({ $isScheduled }) => ($isScheduled ? 0.65 : 1)};
 
   &:last-child {
     border-bottom: none;
   }
 
   &:hover {
-    background: ${theme.colors.primary}20;
-    color: ${theme.colors.primary};
+    background: ${({ $isScheduled }) =>
+      $isScheduled ? `rgba(57, 243, 255, 0.04)` : `${theme.colors.primary}20`};
+    color: ${({ $isScheduled }) =>
+      $isScheduled ? theme.colors.textSecondary : theme.colors.primary};
   }
 
   svg {
     width: 16px;
     height: 16px;
-    color: ${theme.colors.primary};
+    color: ${({ $isScheduled }) =>
+      $isScheduled ? "#4ade80" : theme.colors.primary};
     flex-shrink: 0;
   }
 `;
@@ -591,6 +678,30 @@ export const DJOptionGenre = styled.div`
   color: ${theme.colors.textSecondary};
   margin-top: 2px;
 `;
+
+// Palette of muted, sophisticated colors for DJ cards
+const DJ_COLORS = [
+  "#60A5FA", // soft blue
+  "#F472B6", // dusty rose
+  "#FBBF24", // warm amber
+  "#34D399", // sage green
+  "#A78BFA", // soft violet
+  "#FB923C", // muted orange
+  "#38BDF8", // sky
+  "#E879F9", // soft magenta
+  "#4ADE80", // mint
+  "#F87171", // muted red
+  "#2DD4BF", // teal
+  "#818CF8", // indigo
+];
+
+export function getDJColor(djId: string): string {
+  let hash = 0;
+  for (let i = 0; i < djId.length; i++) {
+    hash = (hash * 31 + djId.charCodeAt(i)) & 0xffffffff;
+  }
+  return DJ_COLORS[Math.abs(hash) % DJ_COLORS.length];
+}
 
 // Helper function needed in styles (used for border colors)
 export function getGenreColor(genre?: string): string {
