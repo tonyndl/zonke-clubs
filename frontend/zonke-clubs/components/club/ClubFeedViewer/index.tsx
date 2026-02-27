@@ -11,7 +11,7 @@ import {
   ScrollView,
   NativeScrollEvent,
   NativeSyntheticEvent,
-  Alert,
+  StyleSheet,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { VideoView, useVideoPlayer } from "expo-video";
@@ -27,6 +27,7 @@ import { LikeButton } from "@/components/ui/LikeButton";
 import { ClubPost, MediaAsset } from "@/types/post";
 import postsService from "@/services/postsService";
 import { clubsService } from "@/services/clubsService";
+import { Toast } from "@/components/ui/Toast";
 import { styles } from "./styles";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
@@ -40,6 +41,7 @@ interface Props {
   onPostDeleted?: (postId: string) => void;
   onPostUpdated?: (postId: string, updatedCaption: string) => void;
   onPostLiked?: (postId: string, liked: boolean, likeCount: number) => void;
+  onPostPinToggled?: (postId: string, pinnedAt?: string) => void;
 }
 
 export function ClubFeedViewer({
@@ -51,6 +53,7 @@ export function ClubFeedViewer({
   onPostDeleted,
   onPostUpdated,
   onPostLiked,
+  onPostPinToggled,
 }: Props) {
   const [currentIndex, setCurrentIndex] = useState(initialPostIndex);
   const [localPosts, setLocalPosts] = useState<ClubPost[]>(posts);
@@ -155,6 +158,7 @@ export function ClubFeedViewer({
                   onPostDeleted={onPostDeleted}
                   onPostUpdated={onPostUpdated}
                   onToggleLike={handleToggleLike}
+                  onPostPinToggled={onPostPinToggled}
                 />
               )}
               pagingEnabled
@@ -193,6 +197,7 @@ interface FeedItemProps {
   onPostDeleted?: (postId: string) => void;
   onPostUpdated?: (postId: string, updatedCaption: string) => void;
   onToggleLike: (postId: string) => void;
+  onPostPinToggled?: (postId: string, pinnedAt?: string) => void;
 }
 
 function FeedItem({
@@ -203,6 +208,7 @@ function FeedItem({
   onPostDeleted,
   onPostUpdated,
   onToggleLike,
+  onPostPinToggled,
 }: FeedItemProps) {
   const [currentMediaIndex, setCurrentMediaIndex] = useState(0);
   const [showControls, setShowControls] = useState(true);
@@ -210,6 +216,12 @@ function FeedItem({
   const [isMuted, setIsMuted] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [toastVisible, setToastVisible] = useState(false);
+  const [toastMessage, setToastMessage] = useState("");
+  const [toastType, setToastType] = useState<"success" | "error" | "info">(
+    "error",
+  );
   const scrollViewRef = useRef<ScrollView>(null);
   const progressBarWidthRef = useRef<number>(0);
   const insets = useSafeAreaInsets();
@@ -401,22 +413,50 @@ function FeedItem({
     if (lowerValue === "edit info") {
       setShowEditModal(true);
     } else if (lowerValue === "delete") {
-      Alert.alert(
-        "Delete Post",
-        "Are you sure you want to delete this post? This action cannot be undone.",
-        [
-          {
-            text: "Cancel",
-            style: "cancel",
-          },
-          {
-            text: "Delete",
-            style: "destructive",
-            onPress: handleDeletePost,
-          },
-        ],
-      );
+      setShowDeleteConfirm(true);
+    } else if (lowerValue === "pin to top") {
+      handlePinPost();
+    } else if (lowerValue === "unpin") {
+      handleUnpinPost();
     }
+  };
+
+  const handlePinPost = () => {
+    postsService
+      .pinPost(post.id)
+      .then((result) => {
+        if (onPostPinToggled) {
+          onPostPinToggled(post.id, result.pinned_at);
+        }
+        setToastType("success");
+        setToastMessage("Post pinned!");
+        setToastVisible(true);
+      })
+      .catch((error) => {
+        console.error("Failed to pin post:", error);
+        setToastType("error");
+        setToastMessage("Failed to pin post");
+        setToastVisible(true);
+      });
+  };
+
+  const handleUnpinPost = () => {
+    postsService
+      .unpinPost(post.id)
+      .then(() => {
+        if (onPostPinToggled) {
+          onPostPinToggled(post.id, undefined);
+        }
+        setToastType("success");
+        setToastMessage("Post unpinned");
+        setToastVisible(true);
+      })
+      .catch((error) => {
+        console.error("Failed to unpin post:", error);
+        setToastType("error");
+        setToastMessage("Failed to unpin post");
+        setToastVisible(true);
+      });
   };
 
   const handleDeletePost = () => {
@@ -431,8 +471,10 @@ function FeedItem({
       })
       .catch((error) => {
         console.error("Failed to delete post:", error);
-        Alert.alert("Error", "Failed to delete post. Please try again.");
         setIsDeleting(false);
+        setToastType("error");
+        setToastMessage("Failed to delete post");
+        setToastVisible(true);
       });
   };
 
@@ -460,10 +502,14 @@ function FeedItem({
       {currentUserId && post.user?.id === currentUserId && (
         <Animated.View
           entering={FadeIn.delay(300)}
-          style={[styles.menuButton, { top: insets.top + 34 }]}
+          style={[styles.menuButton, { top: insets.top + 26 }]}
         >
           <PopupMenu
-            options={["Edit Info", "Delete"]}
+            options={
+              post.pinnedAt
+                ? ["Edit Info", "Unpin", "Delete"]
+                : ["Edit Info", "Pin to Top", "Delete"]
+            }
             onSelect={handleMenuSelect}
             menuWidth={180}
           >
@@ -588,46 +634,6 @@ function FeedItem({
             ))}
           </Animated.View>
         )}
-
-        {/* Media Navigation Arrows */}
-        {hasMultipleMedia && showControls && (
-          <>
-            {currentMediaIndex > 0 && (
-              <Animated.View
-                entering={FadeIn}
-                exiting={FadeOut}
-                style={styles.navLeft}
-              >
-                <PressableScale onPress={handlePreviousMedia}>
-                  <View style={styles.navButton}>
-                    <Ionicons
-                      name="chevron-back"
-                      size={24}
-                      color={Colors.platinum}
-                    />
-                  </View>
-                </PressableScale>
-              </Animated.View>
-            )}
-            {currentMediaIndex < post.media.length - 1 && (
-              <Animated.View
-                entering={FadeIn}
-                exiting={FadeOut}
-                style={styles.navRight}
-              >
-                <PressableScale onPress={handleNextMedia}>
-                  <View style={styles.navButton}>
-                    <Ionicons
-                      name="chevron-forward"
-                      size={24}
-                      color={Colors.platinum}
-                    />
-                  </View>
-                </PressableScale>
-              </Animated.View>
-            )}
-          </>
-        )}
       </View>
 
       {/* Post Info Overlay */}
@@ -665,6 +671,47 @@ function FeedItem({
         onClose={() => setShowEditModal(false)}
         onSuccess={handleEditSuccess}
       />
+
+      <Toast
+        visible={toastVisible}
+        message={toastMessage}
+        type={toastType}
+        onHide={() => setToastVisible(false)}
+      />
+
+      {/* Delete Confirmation Overlay */}
+      {showDeleteConfirm && (
+        <View style={deleteConfirmStyles.overlay}>
+          <View style={deleteConfirmStyles.card}>
+            <View style={deleteConfirmStyles.iconWrap}>
+              <Ionicons name="trash-outline" size={28} color="#FF6B6B" />
+            </View>
+            <Text style={deleteConfirmStyles.title}>Delete Post</Text>
+            <Text style={deleteConfirmStyles.body}>
+              Are you sure you want to delete this post? This action cannot be
+              undone.
+            </Text>
+            <View style={deleteConfirmStyles.actions}>
+              <Pressable
+                style={deleteConfirmStyles.cancelBtn}
+                onPress={() => setShowDeleteConfirm(false)}
+              >
+                <Text style={deleteConfirmStyles.cancelText}>Cancel</Text>
+              </Pressable>
+              <Pressable
+                style={deleteConfirmStyles.deleteBtn}
+                onPress={() => {
+                  setShowDeleteConfirm(false);
+                  handleDeletePost();
+                }}
+              >
+                <Ionicons name="trash-outline" size={16} color="#fff" />
+                <Text style={deleteConfirmStyles.deleteText}>Delete</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      )}
     </View>
   );
 }
@@ -675,3 +722,82 @@ function formatNumber(num: number): string {
   }
   return num.toString();
 }
+
+const deleteConfirmStyles = StyleSheet.create({
+  overlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0,0,0,0.75)",
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 100,
+    padding: 24,
+  },
+  card: {
+    backgroundColor: Colors.bgCard,
+    borderRadius: 24,
+    padding: 24,
+    width: "100%",
+    alignItems: "center",
+    gap: 12,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.08)",
+  },
+  iconWrap: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: "rgba(255,107,107,0.12)",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 4,
+  },
+  title: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#E2E8F0",
+  },
+  body: {
+    fontSize: 14,
+    color: "#94A3B8",
+    textAlign: "center",
+    lineHeight: 20,
+  },
+  actions: {
+    flexDirection: "row",
+    gap: 12,
+    marginTop: 8,
+    width: "100%",
+  },
+  cancelBtn: {
+    flex: 1,
+    paddingVertical: 13,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.12)",
+    alignItems: "center",
+  },
+  cancelText: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#94A3B8",
+  },
+  deleteBtn: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    paddingVertical: 13,
+    borderRadius: 14,
+    backgroundColor: "#FF6B6B",
+  },
+  deleteText: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#fff",
+  },
+});

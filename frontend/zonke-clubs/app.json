@@ -10,7 +10,10 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.tonyndlovu.zonkeclubs"
+      "bundleIdentifier": "com.tonyndlovu.zonkeclubs",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -44,11 +47,18 @@
       "expo-font",
       "expo-web-browser",
       "expo-secure-store",
-      "expo-video"
+      "expo-video",
+      "expo-notifications"
     ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "4f84503b-5f0b-43b5-a070-49adf3f69733"
+      }
     }
   }
 }

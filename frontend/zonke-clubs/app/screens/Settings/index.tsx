@@ -10,6 +10,7 @@ import {
   Switch,
   ActivityIndicator,
 } from "react-native";
+import { Toast } from "@/components/ui/Toast";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
@@ -28,6 +29,17 @@ export default function SettingsScreen() {
   const { user, logout, refreshUser } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [toastVisible, setToastVisible] = useState(false);
+  const [toastMessage, setToastMessage] = useState("");
+  const [toastType, setToastType] = useState<"success" | "error" | "info">(
+    "success",
+  );
+
+  const showToast = (message: string, type: "success" | "error" | "info") => {
+    setToastMessage(message);
+    setToastType(type);
+    setToastVisible(true);
+  };
 
   // Account info state
   const [username, setUsername] = useState(user?.username || "");
@@ -64,12 +76,12 @@ export default function SettingsScreen() {
 
     // Validation
     if (!username.trim()) {
-      Alert.alert("Error", "Username is required");
+      showToast("Username is required", "error");
       return;
     }
 
     if (email.trim() && !/^[^\s]+@[^\s]+$/.test(email.trim())) {
-      Alert.alert("Error", "Please enter a valid email address");
+      showToast("Please enter a valid email address", "error");
       return;
     }
 
@@ -89,7 +101,7 @@ export default function SettingsScreen() {
       .then(() => refreshUser())
       .then(() => {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        Alert.alert("Success", "Account information updated successfully!");
+        showToast("Account information updated successfully!", "success");
         setIsEditing(false);
       })
       .catch((error) => {
@@ -99,7 +111,7 @@ export default function SettingsScreen() {
           typeof error.message === "string"
             ? error.message
             : "Failed to update account information.";
-        Alert.alert("Error", errorMessage);
+        showToast(errorMessage, "error");
       })
       .finally(() => {
         setIsSaving(false);
@@ -108,24 +120,24 @@ export default function SettingsScreen() {
 
   const handleChangePassword = () => {
     if (!currentPassword || !newPassword || !confirmPassword) {
-      Alert.alert("Error", "Please fill in all password fields");
+      showToast("Please fill in all password fields", "error");
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      Alert.alert("Error", "New passwords do not match");
+      showToast("New passwords do not match", "error");
       return;
     }
 
     if (newPassword.length < 6) {
-      Alert.alert("Error", "New password must be at least 6 characters");
+      showToast("New password must be at least 6 characters", "error");
       return;
     }
 
     if (currentPassword === newPassword) {
-      Alert.alert(
-        "Error",
+      showToast(
         "New password must be different from current password",
+        "error",
       );
       return;
     }
@@ -139,7 +151,7 @@ export default function SettingsScreen() {
       })
       .then(() => {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        Alert.alert("Success", "Password changed successfully!");
+        showToast("Password changed successfully!", "success");
 
         // Reset password fields
         setCurrentPassword("");
@@ -150,10 +162,10 @@ export default function SettingsScreen() {
       .catch((error) => {
         console.error("Password change failed:", error);
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-        Alert.alert(
-          "Error",
+        showToast(
           error.message ||
             "Failed to change password. Please check your current password.",
+          "error",
         );
       });
   };
@@ -175,7 +187,7 @@ export default function SettingsScreen() {
             })
             .catch((error) => {
               console.error("Logout error:", error);
-              Alert.alert("Error", "Failed to logout");
+              showToast("Failed to logout", "error");
             });
         },
       },
@@ -631,6 +643,12 @@ export default function SettingsScreen() {
 
         <View style={styles.bottomSpacer} />
       </KeyboardAwareScrollView>
+      <Toast
+        visible={toastVisible}
+        message={toastMessage}
+        type={toastType}
+        onHide={() => setToastVisible(false)}
+      />
     </SafeAreaView>
   );
 }

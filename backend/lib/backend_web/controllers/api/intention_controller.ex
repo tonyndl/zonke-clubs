@@ -6,6 +6,20 @@ defmodule BackendWeb.API.IntentionController do
   alias Backend.Intentions
 
   @doc """
+  List all active intentions across all clubs.
+  Public endpoint - no authentication required.
+  Optionally exclude a specific user's intentions by passing exclude_user_id param.
+  """
+  def all_intentions(conn, params, _session) do
+    exclude_user_id = Map.get(params, "exclude_user_id")
+    intentions = Intentions.list_all_intentions(exclude_user_id)
+
+    conn
+    |> put_status(:ok)
+    |> render(:index, intentions: intentions)
+  end
+
+  @doc """
   List all intentions for a specific club.
   Public endpoint - no authentication required.
   Optionally exclude a specific user's intentions by passing exclude_user_id param.
@@ -13,6 +27,18 @@ defmodule BackendWeb.API.IntentionController do
   def club_intentions(conn, %{"club_id" => club_id} = params, _session) do
     exclude_user_id = Map.get(params, "exclude_user_id")
     intentions = Intentions.list_club_intentions(club_id, exclude_user_id)
+
+    conn
+    |> put_status(:ok)
+    |> render(:index, intentions: intentions)
+  end
+
+  @doc """
+  List the authenticated user's own active intentions (with club info).
+  Requires authentication.
+  """
+  def my_intentions(conn, _params, session) do
+    intentions = Intentions.list_user_intentions(session.id)
 
     conn
     |> put_status(:ok)

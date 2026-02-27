@@ -86,8 +86,11 @@ defmodule Backend.Clubs do
 
       {:error, :not_found} ->
         IO.puts("📝 No existing club found, creating new one")
+        admin = Repo.get!(Backend.Admin.Admin, admin_id)
         # Use string key to match the rest of the params keys
-        Map.put(attrs, "admin_id", admin_id)
+        attrs
+        |> Map.put("admin_id", admin_id)
+        |> Map.put_new("name", admin.name)
         |> create_club()
     end
   end

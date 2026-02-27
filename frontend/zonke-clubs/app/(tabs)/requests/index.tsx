@@ -43,6 +43,9 @@ export default function RequestsScreen() {
   } | null>(null);
   const [toastVisible, setToastVisible] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
+  const [toastType, setToastType] = useState<"success" | "error" | "info">(
+    "success",
+  );
   const [acceptedUserName, setAcceptedUserName] = useState("");
 
   const loadRequests = () => {
@@ -96,6 +99,7 @@ export default function RequestsScreen() {
       );
 
       setToastMessage("Your connection request was accepted!");
+      setToastType("success");
       setToastVisible(true);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     };
@@ -109,6 +113,7 @@ export default function RequestsScreen() {
       );
 
       setToastMessage("Your connection request was declined");
+      setToastType("info");
       setToastVisible(true);
     };
 
@@ -169,6 +174,7 @@ export default function RequestsScreen() {
         // Show success toast
         setAcceptedUserName(userName);
         setToastMessage(`You can now chat with ${userName}!`);
+        setToastType("success");
         setToastVisible(true);
       })
       .catch((error) => {
@@ -179,6 +185,7 @@ export default function RequestsScreen() {
           error?.error ||
           "Failed to accept request. Please try again.";
         setToastMessage(errorMessage);
+        setToastType("error");
         setToastVisible(true);
       })
       .finally(() => {
@@ -196,6 +203,9 @@ export default function RequestsScreen() {
         setReceivedRequests((prev) =>
           prev.filter((req) => req.id !== requestId),
         );
+        setToastMessage("Request declined");
+        setToastType("info");
+        setToastVisible(true);
       })
       .catch((error) => {
         console.error("Error declining request:", error);
@@ -205,6 +215,7 @@ export default function RequestsScreen() {
           error?.error ||
           "Failed to decline request. Please try again.";
         setToastMessage(errorMessage);
+        setToastType("error");
         setToastVisible(true);
       })
       .finally(() => {
@@ -220,6 +231,9 @@ export default function RequestsScreen() {
       .cancelRequest(requestId)
       .then(() => {
         setSentRequests((prev) => prev.filter((req) => req.id !== requestId));
+        setToastMessage("Request cancelled");
+        setToastType("info");
+        setToastVisible(true);
       })
       .catch((error) => {
         console.error("Error canceling request:", error);
@@ -229,6 +243,7 @@ export default function RequestsScreen() {
           error?.error ||
           "Failed to cancel request. Please try again.";
         setToastMessage(errorMessage);
+        setToastType("error");
         setToastVisible(true);
       })
       .finally(() => {
@@ -602,7 +617,7 @@ export default function RequestsScreen() {
         visible={toastVisible}
         message={toastMessage}
         onHide={() => setToastVisible(false)}
-        type="success"
+        type={toastType}
       />
     </SafeAreaView>
   );

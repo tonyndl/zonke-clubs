@@ -352,6 +352,7 @@ export const PopupMenu = ({
           >
             {label && <Text style={styles.label}>{label}</Text>}
             <FlatList
+              keyboardShouldPersistTaps="handled"
               data={options}
               keyExtractor={(item, index) => {
                 const value = getOptionValue(item);
@@ -376,6 +377,18 @@ export const PopupMenu = ({
                     lowerLabel.includes("remove")
                   )
                     return { name: "trash-outline", color: "#FF3B30" };
+                  if (lowerLabel.includes("unpin"))
+                    return {
+                      name: "push-pin",
+                      color: Colors.smoke,
+                      library: "MaterialIcons" as const,
+                    };
+                  if (lowerLabel.includes("pin"))
+                    return {
+                      name: "push-pin",
+                      color: Colors.gold,
+                      library: "MaterialIcons" as const,
+                    };
                   if (lowerLabel.includes("share"))
                     return { name: "share-outline", color: Colors.gold };
                   if (lowerLabel.includes("copy"))
@@ -393,14 +406,21 @@ export const PopupMenu = ({
                     onPress={() => handleSelect(item)}
                     activeOpacity={0.7}
                   >
-                    {iconInfo && (
+                    {iconInfo && iconInfo.library === "MaterialIcons" ? (
+                      <MaterialIcons
+                        name={iconInfo.name as any}
+                        size={20}
+                        color={iconInfo.color}
+                        style={{ marginRight: 4 }}
+                      />
+                    ) : iconInfo ? (
                       <Ionicons
                         name={iconInfo.name as any}
                         size={20}
                         color={iconInfo.color}
                         style={{ marginRight: 4 }}
                       />
-                    )}
+                    ) : null}
                     <Text
                       style={[
                         styles.popupText,

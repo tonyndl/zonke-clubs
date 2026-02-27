@@ -61,15 +61,17 @@ defmodule BackendWeb.API.PostController do
     page = Map.get(params, "page", "1") |> String.to_integer()
     per_page = Map.get(params, "per_page", "20") |> String.to_integer()
 
-    # Fetch user's own posts (all statuses)
-    posts = Repo.all(
-      from p in Backend.Posts.Post,
-      where: p.user_id == ^session.id,
-      order_by: [desc: p.inserted_at],
-      limit: ^per_page,
-      offset: ^((page - 1) * per_page),
-      preload: [:user, :assets]
-    )
+    # Fetch user's own posts (all statuses), pinned posts first
+    posts =
+      Repo.all(
+        from p in Backend.Posts.Post,
+        where: p.user_id == ^session.id,
+        order_by: [asc: fragment("? IS NULL", p.pinned_at), desc: p.pinned_at, desc: p.inserted_at],
+        limit: ^per_page,
+        offset: ^((page - 1) * per_page),
+        preload: [:user, :assets]
+      )
+      |> Posts.enrich_posts_with_likes(session.id)
 
     total_count = Repo.one(
       from p in Backend.Posts.Post,
@@ -119,6 +121,28 @@ defmodule BackendWeb.API.PostController do
       conn
       |> put_status(:no_content)
       |> send_resp(:no_content, "")
+    end
+  end
+
+  @doc """
+  Pins a post to the top of the user's profile grid.
+  """
+  def pin(conn, %{"id" => id}, session) do
+    with {:ok, post} <- Posts.pin_post(id, session) do
+      conn
+      |> put_status(:ok)
+      |> render(:show, post: post)
+    end
+  end
+
+  @doc """
+  Unpins a post from the user's profile grid.
+  """
+  def unpin(conn, %{"id" => id}, session) do
+    with {:ok, post} <- Posts.unpin_post(id, session) do
+      conn
+      |> put_status(:ok)
+      |> render(:show, post: post)
     end
   end
 

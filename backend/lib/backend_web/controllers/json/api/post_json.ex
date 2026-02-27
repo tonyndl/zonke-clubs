@@ -33,6 +33,7 @@ defmodule BackendWeb.API.PostJSON do
       user_id: post.user_id,
       club_id: post.club_id,
       club_approved_at: post.club_approved_at,
+      pinned_at: post.pinned_at,
       is_club_approved: post.status == "approved",
       user: user_data(post.user),
       assets: assets_data(post.assets),

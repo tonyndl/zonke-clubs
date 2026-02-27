@@ -441,6 +441,7 @@ export function GroupSpendingModal({
           <View style={styles.selectedPreview}>
             <ScrollView
               horizontal
+              keyboardShouldPersistTaps="handled"
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.selectedPreviewContent}
             >
@@ -465,6 +466,7 @@ export function GroupSpendingModal({
 
         {/* Members Grid */}
         <ScrollView
+          keyboardShouldPersistTaps="handled"
           style={styles.membersScroll}
           contentContainerStyle={styles.membersGrid}
           showsVerticalScrollIndicator={false}
@@ -647,6 +649,7 @@ export function GroupSpendingModal({
 
         {/* Members Split List */}
         <ScrollView
+          keyboardShouldPersistTaps="handled"
           style={styles.splitScroll}
           contentContainerStyle={styles.splitList}
           showsVerticalScrollIndicator={false}

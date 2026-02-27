@@ -179,6 +179,7 @@ export function PostIntentionModal({
           <Text style={styles.sectionLabel}>When are you going?</Text>
           <ScrollView
             horizontal
+            keyboardShouldPersistTaps="handled"
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.dateOptionsContainer}
           >

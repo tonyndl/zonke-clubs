@@ -100,6 +100,7 @@ export const styles = StyleSheet.create({
     flex: 1,
   },
   contentContainer: {
+    flexGrow: 1,
     padding: 20,
     paddingBottom: 40,
   },
@@ -269,9 +270,9 @@ export const styles = StyleSheet.create({
     color: Colors.lightGrey,
   },
   emptyContainer: {
+    flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 80,
     paddingHorizontal: 40,
   },
   emptyIcon: {

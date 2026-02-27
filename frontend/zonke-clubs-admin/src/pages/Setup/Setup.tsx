@@ -5,6 +5,14 @@ import { Input, FormGroup, Label, TextArea } from "../../components/Input";
 import { Button } from "../../components/Button";
 import { LocationAutocomplete } from "../../components/LocationAutocomplete";
 import { useToast } from "../../components/Toast";
+import { theme } from "../../styles/theme";
+import {
+  RiAddLine,
+  RiCheckLine,
+  RiCloseLine,
+  RiPencilLine,
+  RiDeleteBinLine,
+} from "react-icons/ri";
 import {
   PageContainer,
   SetupCard,
@@ -27,8 +35,8 @@ import {
 
 interface SetupData {
   // Step 1: Basic Info
-  name: string;
   phone: string;
+  table_reservation_numbers: string[];
   location: string | { name: string; latitude: number; longitude: number };
   description: string;
 
@@ -50,8 +58,8 @@ export const Setup: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
 
   const [setupData, setSetupData] = useState<SetupData>({
-    name: "",
     phone: "",
+    table_reservation_numbers: [],
     location: "",
     description: "",
     openingHoursType: "always",
@@ -60,6 +68,10 @@ export const Setup: React.FC = () => {
     facebook: "",
   });
 
+  const [newReservationNumber, setNewReservationNumber] = useState("");
+  const [editingResIndex, setEditingResIndex] = useState<number | null>(null);
+  const [editingResValue, setEditingResValue] = useState("");
+
   const updateField = <K extends keyof SetupData>(
     field: K,
     value: SetupData[K],
@@ -67,10 +79,54 @@ export const Setup: React.FC = () => {
     setSetupData((prev) => ({ ...prev, [field]: value }));
   };
 
+  const addReservationNumber = () => {
+    const trimmed = newReservationNumber.trim();
+    if (!trimmed) return;
+    setSetupData((prev) => ({
+      ...prev,
+      table_reservation_numbers: [...prev.table_reservation_numbers, trimmed],
+    }));
+    setNewReservationNumber("");
+  };
+
+  const removeReservationNumber = (index: number) => {
+    setSetupData((prev) => ({
+      ...prev,
+      table_reservation_numbers: prev.table_reservation_numbers.filter(
+        (_, i) => i !== index,
+      ),
+    }));
+    if (editingResIndex === index) {
+      setEditingResIndex(null);
+      setEditingResValue("");
+    }
+  };
+
+  const startEditingRes = (index: number) => {
+    setEditingResIndex(index);
+    setEditingResValue(setupData.table_reservation_numbers[index]);
+  };
+
+  const saveEditingRes = () => {
+    if (editingResIndex === null) return;
+    const trimmed = editingResValue.trim();
+    if (!trimmed) return;
+    const updated = [...setupData.table_reservation_numbers];
+    updated[editingResIndex] = trimmed;
+    setSetupData((prev) => ({ ...prev, table_reservation_numbers: updated }));
+    setEditingResIndex(null);
+    setEditingResValue("");
+  };
+
+  const cancelEditingRes = () => {
+    setEditingResIndex(null);
+    setEditingResValue("");
+  };
+
   const handleNext = () => {
     // Validation for each step
     if (currentStep === 1) {
-      if (!setupData.name || !setupData.location || !setupData.description) {
+      if (!setupData.location || !setupData.description) {
         toast.error("Please fill in all required fields");
         return;
       }
@@ -153,18 +209,6 @@ export const Setup: React.FC = () => {
               </StepDescription>
 
               <FormGroup>
-                <Label htmlFor="name">Club Name *</Label>
-                <Input
-                  id="name"
-                  type="text"
-                  placeholder="Your Club Name"
-                  value={setupData.name}
-                  onChange={(e) => updateField("name", e.target.value)}
-                  required
-                />
-              </FormGroup>
-
-              <FormGroup>
                 <Label htmlFor="location">Location *</Label>
                 <LocationAutocomplete
                   id="location"
@@ -181,7 +225,7 @@ export const Setup: React.FC = () => {
               </FormGroup>
 
               <FormGroup>
-                <Label htmlFor="phone">Phone Number</Label>
+                <Label htmlFor="phone">WhatsApp Number</Label>
                 <Input
                   id="phone"
                   type="tel"
@@ -189,6 +233,197 @@ export const Setup: React.FC = () => {
                   value={setupData.phone}
                   onChange={(e) => updateField("phone", e.target.value)}
                 />
+              </FormGroup>
+
+              <FormGroup>
+                <Label>Reserve Table &amp; Enquiries Numbers</Label>
+
+                {/* Add new number */}
+                <div style={{ display: "flex", gap: theme.spacing.xs }}>
+                  <Input
+                    type="tel"
+                    value={newReservationNumber}
+                    onChange={(e) => setNewReservationNumber(e.target.value)}
+                    onKeyDown={(e) =>
+                      e.key === "Enter" &&
+                      (e.preventDefault(), addReservationNumber())
+                    }
+                    placeholder="+27 XX XXX XXXX"
+                    style={{ flex: 1 }}
+                  />
+                  <button
+                    type="button"
+                    onClick={addReservationNumber}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 4,
+                      padding: `${theme.spacing.sm} ${theme.spacing.md}`,
+                      background: theme.colors.primary,
+                      color: "#000",
+                      border: "none",
+                      borderRadius: theme.borderRadius.lg,
+                      fontWeight: 600,
+                      cursor: "pointer",
+                      fontSize: theme.typography.fontSize.sm,
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {React.createElement(
+                      RiAddLine as React.ComponentType<{ size?: number }>,
+                      { size: 14 },
+                    )}
+                    Add
+                  </button>
+                </div>
+
+                {/* Pills */}
+                {setupData.table_reservation_numbers.length > 0 && (
+                  <div
+                    style={{
+                      display: "flex",
+                      flexWrap: "wrap",
+                      gap: theme.spacing.xs,
+                      marginTop: theme.spacing.sm,
+                    }}
+                  >
+                    {setupData.table_reservation_numbers.map((num, idx) =>
+                      editingResIndex === idx ? (
+                        <div
+                          key={idx}
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 4,
+                            padding: "7px 12px",
+                            background: theme.colors.background,
+                            border: `1px solid ${theme.colors.primary}`,
+                            borderRadius: 999,
+                          }}
+                        >
+                          <input
+                            type="tel"
+                            value={editingResValue}
+                            onChange={(e) => setEditingResValue(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                e.preventDefault();
+                                saveEditingRes();
+                              }
+                              if (e.key === "Escape") cancelEditingRes();
+                            }}
+                            autoFocus
+                            style={{
+                              background: "none",
+                              border: "none",
+                              outline: "none",
+                              color: theme.colors.textPrimary,
+                              fontSize: theme.typography.fontSize.sm,
+                              width: 120,
+                            }}
+                          />
+                          <button
+                            type="button"
+                            onClick={saveEditingRes}
+                            style={{
+                              background: "none",
+                              border: "none",
+                              cursor: "pointer",
+                              color: theme.colors.primary,
+                              display: "flex",
+                              alignItems: "center",
+                              padding: 2,
+                            }}
+                          >
+                            {React.createElement(
+                              RiCheckLine as React.ComponentType<{
+                                size?: number;
+                              }>,
+                              { size: 14 },
+                            )}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={cancelEditingRes}
+                            style={{
+                              background: "none",
+                              border: "none",
+                              cursor: "pointer",
+                              color: theme.colors.textSecondary,
+                              display: "flex",
+                              alignItems: "center",
+                              padding: 2,
+                            }}
+                          >
+                            {React.createElement(
+                              RiCloseLine as React.ComponentType<{
+                                size?: number;
+                              }>,
+                              { size: 14 },
+                            )}
+                          </button>
+                        </div>
+                      ) : (
+                        <div
+                          key={idx}
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 4,
+                            padding: "7px 12px",
+                            background: theme.colors.background,
+                            border: `1px solid ${theme.colors.border}`,
+                            borderRadius: 999,
+                            fontSize: theme.typography.fontSize.sm,
+                            color: theme.colors.textPrimary,
+                          }}
+                        >
+                          <span>{num}</span>
+                          <button
+                            type="button"
+                            onClick={() => startEditingRes(idx)}
+                            style={{
+                              background: "none",
+                              border: "none",
+                              cursor: "pointer",
+                              color: theme.colors.textSecondary,
+                              display: "flex",
+                              alignItems: "center",
+                              padding: 2,
+                            }}
+                          >
+                            {React.createElement(
+                              RiPencilLine as React.ComponentType<{
+                                size?: number;
+                              }>,
+                              { size: 12 },
+                            )}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => removeReservationNumber(idx)}
+                            style={{
+                              background: "none",
+                              border: "none",
+                              cursor: "pointer",
+                              color: theme.colors.error || "#ef4444",
+                              display: "flex",
+                              alignItems: "center",
+                              padding: 2,
+                            }}
+                          >
+                            {React.createElement(
+                              RiDeleteBinLine as React.ComponentType<{
+                                size?: number;
+                              }>,
+                              { size: 12 },
+                            )}
+                          </button>
+                        </div>
+                      ),
+                    )}
+                  </div>
+                )}
               </FormGroup>
 
               <FormGroup>
@@ -263,7 +498,18 @@ export const Setup: React.FC = () => {
               </StepDescription>
 
               <FormGroup>
-                <Label htmlFor="website">Website</Label>
+                <Label htmlFor="website">
+                  Website{" "}
+                  <span
+                    style={{
+                      fontWeight: 400,
+                      color: theme.colors.textSecondary,
+                      fontSize: theme.typography.fontSize.xs,
+                    }}
+                  >
+                    (optional)
+                  </span>
+                </Label>
                 <Input
                   id="website"
                   type="url"
@@ -275,7 +521,18 @@ export const Setup: React.FC = () => {
 
               <Row>
                 <FormGroup>
-                  <Label htmlFor="instagram">Instagram</Label>
+                  <Label htmlFor="instagram">
+                    Instagram{" "}
+                    <span
+                      style={{
+                        fontWeight: 400,
+                        color: theme.colors.textSecondary,
+                        fontSize: theme.typography.fontSize.xs,
+                      }}
+                    >
+                      (optional)
+                    </span>
+                  </Label>
                   <Input
                     id="instagram"
                     type="text"
@@ -286,7 +543,18 @@ export const Setup: React.FC = () => {
                 </FormGroup>
 
                 <FormGroup>
-                  <Label htmlFor="facebook">Facebook</Label>
+                  <Label htmlFor="facebook">
+                    Facebook{" "}
+                    <span
+                      style={{
+                        fontWeight: 400,
+                        color: theme.colors.textSecondary,
+                        fontSize: theme.typography.fontSize.xs,
+                      }}
+                    >
+                      (optional)
+                    </span>
+                  </Label>
                   <Input
                     id="facebook"
                     type="text"

@@ -37,6 +37,7 @@ defmodule BackendWeb.Router do
     delete "/clubs/:id/like", ClubController, :unlike
 
     # Intentions (authenticated actions)
+    get "/intentions/mine", IntentionController, :my_intentions
     post "/intentions", IntentionController, :create
     put "/intentions/:id", IntentionController, :update
     delete "/intentions/:id", IntentionController, :delete
@@ -77,6 +78,8 @@ defmodule BackendWeb.Router do
     put "/posts/:id", PostController, :update
     delete "/posts/:id", PostController, :delete
     get "/posts/user/me", PostController, :user_posts
+    put "/posts/:id/pin", PostController, :pin
+    put "/posts/:id/unpin", PostController, :unpin
 
     # Post likes
     post "/posts/:post_id/like", PostLikeController, :toggle
@@ -126,6 +129,7 @@ defmodule BackendWeb.Router do
     get "/clubs/:id/schedule", DJScheduleController, :club_schedule
 
     # Intentions (public read)
+    get "/intentions", IntentionController, :all_intentions
     get "/clubs/:club_id/intentions", IntentionController, :club_intentions
 
     # Users (public profiles)

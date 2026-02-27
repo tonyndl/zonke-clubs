@@ -25,7 +25,7 @@ export const styles = StyleSheet.create({
   },
   popupMenu: {
     position: "absolute",
-    backgroundColor: "rgba(20, 25, 35, 0.95)", // Dark semi-transparent background
+    backgroundColor: Colors.bgCard, // Dark semi-transparent background
     borderRadius: 16,
     paddingVertical: 8,
     shadowColor: "#000",

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import {
   View,
   Text,
@@ -7,7 +7,7 @@ import {
   useWindowDimensions,
 } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { VideoView, useVideoPlayer } from "expo-video";
 import { Colors } from "@/constants/ui";
@@ -38,7 +38,11 @@ export function UserMediaGrid({
   clubNames = {},
 }: Props) {
   const [activeTab, setActiveTab] = useState<TabType>("all");
-  const { width: windowWidth } = useWindowDimensions();
+  const [containerMinHeight, setContainerMinHeight] = useState<
+    number | undefined
+  >(undefined);
+  const containerRef = useRef<View>(null);
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
 
   // Calculate responsive grid dimensions
   const numColumns = getColumns(windowWidth);
@@ -70,126 +74,147 @@ export function UserMediaGrid({
   ).length;
 
   return (
-    <Animated.View
-      entering={FadeInDown.delay(350).springify()}
-      style={styles.container}
+    <View
+      ref={containerRef}
+      onLayout={() => {
+        containerRef.current?.measure((_x, _y, _w, _h, _pageX, pageY) => {
+          setContainerMinHeight(windowHeight - pageY - 80);
+        });
+      }}
+      style={[
+        styles.container,
+        containerMinHeight ? { minHeight: containerMinHeight } : undefined,
+      ]}
     >
-      {/* Header */}
-      <View style={styles.feedHeader}>
-        <View style={styles.sectionHeaderLeft}>
-          <Ionicons name="images" size={22} color={Colors.gold} />
-          <Text style={styles.sectionTitle}>My Club Vibes</Text>
-        </View>
-        <PressableScale style={styles.addMediaButton} onPress={onAddPost}>
-          <Ionicons name="add" size={24} color={Colors.gold} />
-        </PressableScale>
-      </View>
+      <Animated.View
+        entering={FadeInDown.delay(350).springify()}
+        style={{ flex: 1 }}
+      >
+        {safePosts.length > 0 && (
+          <>
+            {/* Header */}
+            <View style={styles.feedHeader}>
+              <View style={styles.sectionHeaderLeft}>
+                <Ionicons name="images" size={22} color={Colors.gold} />
+                <Text style={styles.sectionTitle}>My Club Vibes</Text>
+              </View>
+              <PressableScale style={styles.addMediaButton} onPress={onAddPost}>
+                <Ionicons name="add" size={24} color={Colors.gold} />
+              </PressableScale>
+            </View>
 
-      {/* Tab Bar */}
-      <View style={styles.tabBar}>
-        <PressableScale
-          style={[styles.tab, activeTab === "all" && styles.tabActive]}
-          onPress={() => setActiveTab("all")}
-        >
-          <Ionicons
-            name="grid"
-            size={16}
-            color={activeTab === "all" ? Colors.bg : Colors.smoke}
-          />
-          <Text
-            style={[
-              styles.tabText,
-              activeTab === "all" && styles.tabTextActive,
-            ]}
-          >
-            All
-          </Text>
-        </PressableScale>
+            {/* Tab Bar */}
+            <View style={styles.tabBar}>
+              <PressableScale
+                style={[styles.tab, activeTab === "all" && styles.tabActive]}
+                onPress={() => setActiveTab("all")}
+              >
+                <Ionicons
+                  name="grid"
+                  size={16}
+                  color={activeTab === "all" ? Colors.bg : Colors.smoke}
+                />
+                <Text
+                  style={[
+                    styles.tabText,
+                    activeTab === "all" && styles.tabTextActive,
+                  ]}
+                >
+                  All
+                </Text>
+              </PressableScale>
 
-        <PressableScale
-          style={[styles.tab, activeTab === "photos" && styles.tabActive]}
-          onPress={() => setActiveTab("photos")}
-        >
-          <Ionicons
-            name="images"
-            size={16}
-            color={activeTab === "photos" ? Colors.bg : Colors.smoke}
-          />
-          <Text
-            style={[
-              styles.tabText,
-              activeTab === "photos" && styles.tabTextActive,
-            ]}
-          >
-            Photos
-          </Text>
-        </PressableScale>
+              <PressableScale
+                style={[styles.tab, activeTab === "photos" && styles.tabActive]}
+                onPress={() => setActiveTab("photos")}
+              >
+                <Ionicons
+                  name="images"
+                  size={16}
+                  color={activeTab === "photos" ? Colors.bg : Colors.smoke}
+                />
+                <Text
+                  style={[
+                    styles.tabText,
+                    activeTab === "photos" && styles.tabTextActive,
+                  ]}
+                >
+                  Photos
+                </Text>
+              </PressableScale>
 
-        <PressableScale
-          style={[styles.tab, activeTab === "videos" && styles.tabActive]}
-          onPress={() => setActiveTab("videos")}
-        >
-          <Ionicons
-            name="videocam"
-            size={16}
-            color={activeTab === "videos" ? Colors.bg : Colors.smoke}
-          />
-          <Text
-            style={[
-              styles.tabText,
-              activeTab === "videos" && styles.tabTextActive,
-            ]}
-          >
-            Videos
-          </Text>
-        </PressableScale>
-      </View>
+              <PressableScale
+                style={[styles.tab, activeTab === "videos" && styles.tabActive]}
+                onPress={() => setActiveTab("videos")}
+              >
+                <Ionicons
+                  name="videocam"
+                  size={16}
+                  color={activeTab === "videos" ? Colors.bg : Colors.smoke}
+                />
+                <Text
+                  style={[
+                    styles.tabText,
+                    activeTab === "videos" && styles.tabTextActive,
+                  ]}
+                >
+                  Videos
+                </Text>
+              </PressableScale>
+            </View>
+          </>
+        )}
 
-      {/* Grid */}
-      {filteredPosts.length > 0 ? (
-        <View style={styles.feedGrid}>
-          {filteredPosts.map((post, index) => {
-            const originalIndex = posts.findIndex((p) => p.id === post.id);
-            return (
-              <PostGridItem
-                key={post.id}
-                post={post}
-                clubName={clubNames[post.clubId]}
-                onPress={() => onPostPress(originalIndex)}
-                index={index}
-                itemWidth={itemWidth}
-              />
-            );
-          })}
-        </View>
-      ) : (
-        <View style={styles.emptyState}>
-          <Ionicons
-            name={
-              activeTab === "photos"
-                ? "images-outline"
+        {/* Grid */}
+        {filteredPosts.length > 0 ? (
+          <View style={styles.feedGrid}>
+            {filteredPosts.map((post, index) => {
+              const originalIndex = posts.findIndex((p) => p.id === post.id);
+              return (
+                <PostGridItem
+                  key={post.id}
+                  post={post}
+                  clubName={clubNames[post.clubId]}
+                  onPress={() => onPostPress(originalIndex)}
+                  index={index}
+                  itemWidth={itemWidth}
+                />
+              );
+            })}
+          </View>
+        ) : (
+          <View style={[styles.emptyState, { flex: 1 }]}>
+            <Ionicons
+              name={
+                activeTab === "photos"
+                  ? "images-outline"
+                  : activeTab === "videos"
+                    ? "videocam-outline"
+                    : "image-outline"
+              }
+              size={48}
+              color={Colors.smoke}
+            />
+            <Text style={styles.emptyText}>
+              No{" "}
+              {activeTab === "photos"
+                ? "photos"
                 : activeTab === "videos"
-                  ? "videocam-outline"
-                  : "image-outline"
-            }
-            size={48}
-            color={Colors.smoke}
-          />
-          <Text style={styles.emptyText}>
-            No{" "}
-            {activeTab === "photos"
-              ? "photos"
-              : activeTab === "videos"
-                ? "videos"
-                : "posts"}{" "}
-            yet
-          </Text>
-          <Text style={styles.emptySubtext}>
-            Share your club moments to build your vibe collection
-          </Text>
-        </View>
-      )}
-    </Animated.View>
+                  ? "videos"
+                  : "posts"}{" "}
+              yet
+            </Text>
+            <Text style={styles.emptySubtext}>
+              Share your club moments to build your vibe collection
+            </Text>
+
+            <Pressable style={styles.addPostBtn} onPress={onAddPost}>
+              <Text style={styles.addPostBtnText}>Add Post</Text>
+            </Pressable>
+          </View>
+        )}
+      </Animated.View>
+    </View>
   );
 }
 
@@ -256,11 +281,6 @@ function PostGridItem({
             style={styles.feedItemImage}
           />
         )}
-        <LinearGradient
-          colors={["transparent", "rgba(10, 10, 15, 0.85)"]}
-          style={styles.feedItemGradient}
-        />
-
         {/* Video Indicator */}
         {isVideo && (
           <View style={styles.videoIndicator}>
@@ -288,7 +308,17 @@ function PostGridItem({
           </View>
         )}
 
-        {/* Club Approved Badge */}
+        {/* Pin Badge — top-right, like Instagram */}
+        {post.pinnedAt && (
+          <MaterialIcons
+            name="push-pin"
+            size={20}
+            color="white"
+            style={styles.pinBadge}
+          />
+        )}
+
+        {/* Club Approved Badge — drops below pin if both showing */}
         {post.isClubApproved && (
           <View style={styles.approvalBadge}>
             <Ionicons name="medal" size={20} color={Colors.gold} />
@@ -306,14 +336,18 @@ function PostGridItem({
         <View style={styles.feedItemInfo}>
           <View style={styles.feedItemStats}>
             <View style={styles.feedStat}>
-              <Ionicons name="heart" size={12} color={Colors.gold} />
+              <Ionicons
+                name={post.isLiked ? "heart" : "heart-outline"}
+                size={12}
+                color={post.isLiked ? "#ef4444" : Colors.smoke}
+              />
               <Text style={styles.feedStatText}>
                 {formatNumber(post.likes)}
               </Text>
             </View>
             {/* <View style={styles.feedStat}>
               <Ionicons name="chatbubble" size={11} color={Colors.smoke} />
-              <Text style={styles.feedStatText}>{formatNumber(post.comments)}</Text>
+              <Text style={styles.feedStatText}>{formatNumber(post.comments)}</Text>onPress={onAddPost}
             </View> */}
           </View>
           {clubName && (

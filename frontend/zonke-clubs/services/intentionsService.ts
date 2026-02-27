@@ -31,6 +31,7 @@ function transformIntention(apiIntention: any): MeetupIntention {
     id: apiIntention.id,
     activityType: apiIntention.activity_type,
     clubId: apiIntention.club_id,
+    clubName: apiIntention.club_name || undefined,
     plannedDate: apiIntention.planned_date,
     plannedTime: apiIntention.planned_time,
     message: apiIntention.message,
@@ -46,6 +47,26 @@ function transformIntention(apiIntention: any): MeetupIntention {
 }
 
 class IntentionsService {
+  /**
+   * Fetch the authenticated user's own active intentions (requires auth)
+   */
+  getMyIntentions(): Promise<IntentionResponse> {
+    return api.get<any>("/intentions/mine", true).then((response) => ({
+      intentions: response.intentions.map(transformIntention),
+    }));
+  }
+
+  /**
+   * Fetch all active intentions across all clubs (public)
+   * @param excludeUserId - Optional user ID to exclude from results
+   */
+  getAllIntentions(excludeUserId?: string): Promise<IntentionResponse> {
+    const params = excludeUserId ? `?exclude_user_id=${excludeUserId}` : "";
+    return api.get<any>(`/intentions${params}`, false).then((response) => ({
+      intentions: response.intentions.map(transformIntention),
+    }));
+  }
+
   /**
    * Fetch all intentions for a specific club (public)
    * @param excludeUserId - Optional user ID to exclude from results

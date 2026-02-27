@@ -2,14 +2,13 @@ import React, { useState, useCallback, useEffect } from "react";
 import { View, Text, ScrollView, RefreshControl, Image } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useFocusEffect } from "expo-router";
-import Animated, { FadeInDown, Layout } from "react-native-reanimated";
+import Animated, { FadeInDown } from "react-native-reanimated";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { Colors } from "@/constants/ui";
 import { PressableScale } from "@/components/ui/PressableScale";
 import { ChatThread } from "@/types/connection";
 import { getThreads } from "@/services/messageService";
-import { LinearGradient } from "expo-linear-gradient";
 import { TextStroke } from "../../screens/Login/utils";
 import { websocketService } from "@/services/websocketService";
 import { styles } from "./styles";
@@ -18,7 +17,7 @@ export default function ChatsScreen() {
   const [threads, setThreads] = useState<ChatThread[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [unreadCount, setUnreadCount] = useState(0);
+  const [_unreadCount, setUnreadCount] = useState(0);
 
   const loadThreads = useCallback(() => {
     setLoading(true);
@@ -256,7 +255,6 @@ export default function ChatsScreen() {
       <Animated.View
         key={thread.id}
         entering={FadeInDown.delay(index * 50).springify()}
-        layout={Layout.springify()}
       >
         <PressableScale
           style={styles.threadCard}
@@ -374,9 +372,7 @@ export default function ChatsScreen() {
         onPress={() => {
           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
           // Navigate to people browse with default club
-          router.push(
-            "/people-browse?clubId=3f1b5bd3-a899-44c1-bfda-ee83f940accb" as any,
-          );
+          router.push("/people-browse" as any);
         }}
       >
         <Ionicons name="people" size={20} color={Colors.bg} />

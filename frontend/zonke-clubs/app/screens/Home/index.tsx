@@ -49,6 +49,7 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import { ClubVideoFeed } from "@/components/discover/ClubVideoFeed";
 import { getAllClubVideos } from "@/data/clubVideos";
+import { Toast } from "@/components/ui/Toast";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 const EVENT_CARD_WIDTH = SCREEN_WIDTH * 0.72;
@@ -135,6 +136,11 @@ const EventInstagramModal = ({
   >(new Map());
   const [showPostIntention, setShowPostIntention] = useState(false);
   const [showPeopleBrowse, setShowPeopleBrowse] = useState(false);
+  const [toastVisible, setToastVisible] = useState(false);
+  const [toastMessage, setToastMessage] = useState("");
+  const [toastType, setToastType] = useState<"success" | "error" | "info">(
+    "success",
+  );
 
   const currentEvent = events[currentIndex];
 
@@ -218,6 +224,11 @@ const EventInstagramModal = ({
       : isTomorrow
         ? "Tomorrow"
         : formatEventDate(item.date);
+    const eventIntentions = intentions.filter(
+      (i) => i.plannedDate === item.date,
+    );
+    const userIntentionForEvent =
+      userIntention?.plannedDate === item.date ? userIntention : null;
 
     return (
       <View style={igStyles.page}>
@@ -304,6 +315,7 @@ const EventInstagramModal = ({
               <Text style={igStyles.reserveLabel}>RESERVE A TABLE</Text>
               <ScrollView
                 horizontal
+                keyboardShouldPersistTaps="handled"
                 showsHorizontalScrollIndicator={false}
                 contentContainerStyle={igStyles.reservePillsRow}
                 style={igStyles.reserveScroll}
@@ -328,25 +340,25 @@ const EventInstagramModal = ({
 
           {/* Action buttons */}
           <View style={igStyles.actionRow}>
-            <PressableScale
-              style={igStyles.ghostBtn}
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                setShowPeopleBrowse(true);
-              }}
-            >
-              <Ionicons name="people-outline" size={15} color={Colors.gold} />
-              <Text style={igStyles.ghostBtnText}>
-                {intentions.length > 0
-                  ? `${intentions.length} Going`
-                  : "Who's Going"}
-              </Text>
-            </PressableScale>
+            {eventIntentions.length > 0 && (
+              <PressableScale
+                style={igStyles.ghostBtn}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  setShowPeopleBrowse(true);
+                }}
+              >
+                <Ionicons name="people-outline" size={15} color={Colors.gold} />
+                <Text style={igStyles.ghostBtnText}>
+                  {eventIntentions.length} Looking to Meet
+                </Text>
+              </PressableScale>
+            )}
 
             <PressableScale
               style={[
                 igStyles.solidBtn,
-                !!userIntention && igStyles.solidBtnActive,
+                !!userIntentionForEvent && igStyles.solidBtnActive,
               ]}
               onPress={() => {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -354,12 +366,16 @@ const EventInstagramModal = ({
               }}
             >
               <Ionicons
-                name={userIntention ? "checkmark-circle" : "add-circle-outline"}
+                name={
+                  userIntentionForEvent
+                    ? "checkmark-circle"
+                    : "add-circle-outline"
+                }
                 size={15}
                 color={Colors.bg}
               />
               <Text style={igStyles.solidBtnText}>
-                {userIntention ? "I'm Going" : "Join Meetup"}
+                {userIntentionForEvent ? "I'm in Meetup" : "Meetup"}
               </Text>
             </PressableScale>
           </View>
@@ -390,6 +406,7 @@ const EventInstagramModal = ({
         {/* Vertical paging list */}
         <FlatList
           ref={flatListRef}
+          keyboardShouldPersistTaps="handled"
           data={events}
           renderItem={renderPage}
           keyExtractor={(item) => item.id}
@@ -414,7 +431,11 @@ const EventInstagramModal = ({
         <PostIntentionModal
           visible={showPostIntention}
           clubName={currentEvent.clubName}
-          existingIntention={userIntention ?? undefined}
+          existingIntention={
+            userIntention?.plannedDate === currentEvent.date
+              ? (userIntention ?? undefined)
+              : undefined
+          }
           fixedDate={currentEvent.date}
           onClose={() => setShowPostIntention(false)}
           onSubmit={(activityType, plannedDate, message) => {
@@ -425,18 +446,40 @@ const EventInstagramModal = ({
                 planned_date: plannedDate,
                 message,
               })
-              .then(() => loadIntentions(currentEvent.clubId))
-              .catch(() => {});
+              .then(() => {
+                loadIntentions(currentEvent.clubId);
+                setToastMessage(
+                  "You're in! Interested people can now link up with you.",
+                );
+                setToastType("success");
+                setToastVisible(true);
+              })
+              .catch(() => {
+                setToastMessage("Failed to post status");
+                setToastType("error");
+                setToastVisible(true);
+              });
           }}
           onRemove={() => {
-            if (userIntention) {
+            const intentionToRemove =
+              userIntention?.plannedDate === currentEvent.date
+                ? userIntention
+                : null;
+            if (intentionToRemove) {
               intentionsService
-                .deleteIntention(userIntention.id)
+                .deleteIntention(intentionToRemove.id)
                 .then(() => {
                   setUserIntention(null);
                   loadIntentions(currentEvent.clubId);
+                  setToastMessage("Status removed");
+                  setToastType("info");
+                  setToastVisible(true);
                 })
-                .catch(() => {});
+                .catch(() => {
+                  setToastMessage("Failed to remove status");
+                  setToastType("error");
+                  setToastVisible(true);
+                });
             }
           }}
         />
@@ -451,7 +494,10 @@ const EventInstagramModal = ({
       >
         {currentEvent && (
           <PeopleBrowse
-            intentions={intentions}
+            intentions={intentions.filter(
+              (i) => i.plannedDate === currentEvent.date,
+            )}
+            onClose={() => setShowPeopleBrowse(false)}
             onConnect={(intention: MeetupIntention) => {
               connectionService
                 .createRequest({
@@ -459,8 +505,17 @@ const EventInstagramModal = ({
                   club_id: currentEvent.clubId,
                   intention_id: intention.id,
                 })
-                .then(() => loadConnectionStatuses())
-                .catch(() => {});
+                .then(() => {
+                  loadConnectionStatuses();
+                  setToastMessage("Connection request sent!");
+                  setToastType("success");
+                  setToastVisible(true);
+                })
+                .catch(() => {
+                  setToastMessage("Failed to send request");
+                  setToastType("error");
+                  setToastVisible(true);
+                });
             }}
             connectionStatuses={connectionStatuses}
             currentUserId={user?.id}
@@ -469,6 +524,12 @@ const EventInstagramModal = ({
           />
         )}
       </Modal>
+      <Toast
+        visible={toastVisible}
+        message={toastMessage}
+        type={toastType}
+        onHide={() => setToastVisible(false)}
+      />
     </Modal>
   );
 };
@@ -931,6 +992,7 @@ export const HomeScreen = () => {
       {clubViewMode === "cards" ? (
         viewMode === "clubs" ? (
           <FlatList
+            keyboardShouldPersistTaps="handled"
             data={filteredClubs}
             keyExtractor={(item) => item.id}
             renderItem={renderClub}
@@ -960,6 +1022,7 @@ export const HomeScreen = () => {
                     </View>
                   ) : events.length > 0 ? (
                     <FlatList
+                      keyboardShouldPersistTaps="handled"
                       data={events}
                       keyExtractor={(item) => item.id}
                       renderItem={renderEventCard}
@@ -1568,6 +1631,7 @@ const igStyles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 16,
+    paddingTop: 10,
     paddingBottom: 8,
   },
   closeBtn: {

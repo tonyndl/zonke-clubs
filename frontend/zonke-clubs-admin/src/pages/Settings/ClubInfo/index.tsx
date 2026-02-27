@@ -75,13 +75,13 @@ export const ClubInfo: React.FC = () => {
     apiService
       .getMyClub()
       .then((response) => {
-        console.log("Fetched club data:", response);
+        const cachedAdmin = apiService.getAdminInfo();
         const data = {
           name: response.name || "",
           description: response.description || "",
           location: response.location || "",
           phone: response.phone || "",
-          email: response.email || "",
+          email: response.email || cachedAdmin?.email || "",
           vibes: response.vibes || [],
           music_genres: response.music_genres || [],
           dress_code: response.dress_code || "",
@@ -93,11 +93,44 @@ export const ClubInfo: React.FC = () => {
         setIsLoading(false);
       })
       .catch((error) => {
-        console.error("Failed to fetch club data:", error);
-        toast.error("Failed to load club information");
-        setIsLoading(false);
+        const status = error.response?.status;
+        if (status === 404) {
+          // Club not set up yet — pre-fill email from cached admin info,
+          // or fall back to fetching the admin profile if cache is cold.
+          const applyInitial = (email: string) => {
+            const initial = {
+              name: "",
+              description: "",
+              location: "",
+              phone: "",
+              email,
+              vibes: [],
+              music_genres: [],
+              dress_code: "",
+              entry_fee: "",
+              table_reservation_numbers: [],
+            };
+            setFormData(initial);
+            setOriginalFormData(initial);
+            setIsLoading(false);
+          };
+
+          const cached = apiService.getAdminInfo();
+          if (cached?.email) {
+            applyInitial(cached.email);
+          } else {
+            apiService
+              .getCurrentUser()
+              .then((admin) => applyInitial(admin?.email || ""))
+              .catch(() => applyInitial(""));
+          }
+        } else {
+          toast.error("Failed to load club information");
+          setIsLoading(false);
+        }
       });
-  }, [toast]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -295,7 +328,7 @@ export const ClubInfo: React.FC = () => {
             <FormGroup>
               <Label>
                 {React.createElement(RiPhoneLine as React.ComponentType)}
-                Phone Number
+                WhatsApp Number
               </Label>
               <Input
                 type="tel"
@@ -327,7 +360,7 @@ export const ClubInfo: React.FC = () => {
             <FormGroup>
               <Label>
                 {React.createElement(RiPhoneLine as React.ComponentType)}
-                Reservation Numbers
+                Reserve Table & Enquiries Numbers
               </Label>
 
               {/* Add new number */}
