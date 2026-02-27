@@ -5,7 +5,6 @@ import { apiService } from "../../services/api";
 import {
   RiCheckLine,
   RiCloseLine,
-  RiEyeLine,
   RiUserLine,
   RiTimeLine,
   RiPlayCircleFill,
@@ -24,13 +23,11 @@ import {
   PostsGrid,
   PostCard,
   PostHeader,
-  QuickViewButton,
   UserAvatar,
   UserInfo,
   Username,
   PostTime,
   StatusBadge,
-  CountdownTimer,
   PostImage,
   PostVideo,
   VideoWrapper,
@@ -111,7 +108,7 @@ export const Content: React.FC = () => {
           return {
             id: post.id,
             user_id: post.user_id,
-            username: post.user?.name || "Unknown User",
+            username: post.user?.username || "Unknown User",
             user_avatar:
               post.user?.avatar_url || "https://i.pravatar.cc/150?img=0",
             caption: post.caption || "",
@@ -175,18 +172,6 @@ export const Content: React.FC = () => {
     if (diffDays > 0) return `${diffDays}d ago`;
     if (diffHours > 0) return `${diffHours}h ago`;
     return "Just now";
-  };
-
-  const formatTimeRemaining = (seconds: number) => {
-    if (seconds <= 0) return "Expired";
-
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-
-    if (hours > 0) {
-      return `${hours}h ${minutes}m left`;
-    }
-    return `${minutes}m left`;
   };
 
   const handleApprove = (postId: string) => {
@@ -410,20 +395,6 @@ export const Content: React.FC = () => {
                     </PostTime>
                   </UserInfo>
                   <StatusBadge status={post.status}>{post.status}</StatusBadge>
-                  {post.status === "pending" &&
-                    post.time_remaining !== undefined &&
-                    post.time_remaining !== null && (
-                      <CountdownTimer urgent={post.time_remaining < 3600}>
-                        {React.createElement(RiTimeLine as React.ComponentType)}
-                        {formatTimeRemaining(post.time_remaining)}
-                      </CountdownTimer>
-                    )}
-                  <QuickViewButton
-                    onClick={() => openViewModal(post)}
-                    title="View Details"
-                  >
-                    {React.createElement(RiEyeLine as React.ComponentType)}
-                  </QuickViewButton>
                 </PostHeader>
 
                 {post.video && (

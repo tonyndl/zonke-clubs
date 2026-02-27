@@ -14,16 +14,18 @@ import {
 import { LinearGradient } from "expo-linear-gradient";
 
 import * as Haptics from "expo-haptics";
-import { SafeAreaView } from "react-native-safe-area-context";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 import { Modal } from "../../modal";
 import { styles } from "./styles";
 
 interface Props {
-  // visible: boolean;
   intentions: MeetupIntention[];
-  // onClose: () => void;
+  onClose?: () => void;
   onConnect: (intention: MeetupIntention) => void;
-  connectionStatuses?: Map<string, { status: string; threadId?: string }>; // Map of user_id to connection status
+  connectionStatuses?: Map<string, { status: string; threadId?: string }>;
   currentUserId?: string | null;
   clubName?: string;
   clubId: string;
@@ -48,6 +50,7 @@ function getDayOfWeek(dateStr: string): string {
 
 export function PeopleBrowse({
   intentions,
+  onClose,
   onConnect,
   connectionStatuses,
   currentUserId,
@@ -55,6 +58,7 @@ export function PeopleBrowse({
   clubId,
 }: Props) {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const [expandedCard, setExpandedCard] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<string>("all");
   const [selectedActivity, setSelectedActivity] = useState<
@@ -147,14 +151,11 @@ export function PeopleBrowse({
   }, [intentions, selectedActivity, availableDates]);
 
   return (
-    <SafeAreaView edges={["top"]} style={styles.container}>
+    <SafeAreaView style={styles.container}>
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top }]}>
         <PressableScale
-          onPress={() => {
-            // Navigate back to the club screen
-            router.push(`/club/${clubId}` as any);
-          }}
+          onPress={() => (onClose ? onClose() : router.back())}
           style={styles.closeButton}
         >
           <Ionicons name="chevron-back" size={28} color={Colors.gold} />
@@ -162,17 +163,9 @@ export function PeopleBrowse({
 
         <View style={styles.headerCenter}>
           <Text style={styles.headerTitle}>People Looking to Meet</Text>
-          {/* <Text style={styles.headerSubtitle}>
-              {filteredIntentions.length} {filteredIntentions.length === 1 ? 'person' : 'people'} available
-            </Text> */}
         </View>
 
-        {/* <PressableScale onPress={onClose} style={styles.headerRight}>
-            <View style={styles.liveIndicator}>
-              <View style={styles.liveDot} />
-              <Text style={styles.liveText}>LIVE</Text>
-            </View>
-          </PressableScale> */}
+        <View style={{ width: 40 }} />
       </View>
 
       {/* Sleek Single-Line Filter Bar */}
@@ -409,6 +402,7 @@ export function PeopleBrowse({
       {/* People Grid/List */}
       <ScrollView
         style={styles.scrollView}
+        keyboardShouldPersistTaps="handled"
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
@@ -532,24 +526,7 @@ function PersonExpandableCard({
                 cache: "force-cache",
               }}
               style={styles.cardImage}
-              resizeMode="cover"
-              onLoad={() =>
-                console.log("Image loaded:", intention.user.avatarUrl)
-              }
-              onError={(error) => {
-                console.error(
-                  "Image load error:",
-                  error.nativeEvent.error,
-                  "URL:",
-                  intention.user.avatarUrl,
-                );
-                setImageError(true);
-              }}
-            />
-            {/* Dark gradient overlay for readability */}
-            <LinearGradient
-              colors={["transparent", "rgba(0,0,0,0.4)", "rgba(0,0,0,0.85)"]}
-              style={styles.cardGradient}
+              onError={() => setImageError(true)}
             />
           </>
         ) : (
@@ -559,12 +536,6 @@ function PersonExpandableCard({
             </Text>
           </View>
         )}
-
-        {/* Dark Gradient Overlay
-        <LinearGradient
-          colors={['transparent', 'rgba(0,0,0,0.4)', 'rgba(0,0,0,0.95)']}
-          style={styles.cardGradient}
-        /> */}
 
         {/* Activity Badge (Top Left) */}
         {!(viewType === "list" && isExpanded) && (
@@ -580,10 +551,15 @@ function PersonExpandableCard({
         )}
 
         {/* Time Ago Badge (Top Right) */}
-        {/* <View style={styles.timeAgoBadge}>
-          <Ionicons name="time-outline" size={12} color={Colors.smoke} />
-          <Text style={styles.timeAgoText}>{getTimeAgo()}</Text>
-        </View> */}
+        {!(viewType === "list" && isExpanded) && (
+          <Animated.View
+            exiting={FadeOut.duration(200)}
+            style={styles.timeAgoBadge}
+          >
+            <Ionicons name="time-outline" size={12} color={Colors.platinum} />
+            <Text style={styles.timeAgoText}>{getTimeAgo()}</Text>
+          </Animated.View>
+        )}
 
         {/* Main Content (Bottom) */}
         <View style={styles.cardContent}>
@@ -686,7 +662,9 @@ function PersonExpandableCard({
           )}
 
           {/* Expand Indicator */}
-          {(intention.message || intention.user.bio) && (
+          {((intention.message && intention.user.bio) ||
+            (viewType === "list" &&
+              (intention.user.bio || intention.message))) && (
             <PressableScale
               onPress={onToggleExpand}
               style={styles.expandIndicator}

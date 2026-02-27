@@ -39,6 +39,7 @@ import { Message } from "@/types/connection";
 import { authService } from "@/services/authService";
 import { websocketService } from "@/services/websocketService";
 import { connectionService } from "@/services/connectionService";
+import { Toast } from "@/components/ui/Toast";
 
 export default function ChatScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -53,6 +54,11 @@ export default function ChatScreen() {
   const [showMenu, setShowMenu] = useState(false);
   const [isDisconnected, setIsDisconnected] = useState(false);
   const [disconnectedByMe, setDisconnectedByMe] = useState(false);
+  const [toastVisible, setToastVisible] = useState(false);
+  const [toastMessage, setToastMessage] = useState("");
+  const [toastType, setToastType] = useState<"success" | "error" | "info">(
+    "success",
+  );
   const flatListRef = useRef<FlatList>(null);
   const inputRef = useRef<TextInput>(null);
 
@@ -405,7 +411,6 @@ export default function ChatScreen() {
 
       sendMessage(threadId, messageText)
         .then((response) => {
-          // Replace temp message with real message from server
           setMessages((prevMessages) =>
             prevMessages.map((msg) =>
               msg.id === tempMessage.id ? response.message : msg,
@@ -415,19 +420,18 @@ export default function ChatScreen() {
         .catch((error) => {
           console.error("Error sending message:", error);
 
-          // Check if the error is due to disconnection or forbidden access
           if (error.message && error.message.includes("no longer connected")) {
-            // Set disconnected state - they disconnected us
             setIsDisconnected(true);
             setDisconnectedByMe(false);
           }
 
-          // Remove temp message on error
           setMessages((prevMessages) =>
             prevMessages.filter((msg) => msg.id !== tempMessage.id),
           );
-          // Restore the input text
           setInputText(messageText);
+          setToastMessage("Failed to send message");
+          setToastType("error");
+          setToastVisible(true);
         });
     }
   };
@@ -453,11 +457,15 @@ export default function ChatScreen() {
             clearThread(threadId)
               .then(() => {
                 setMessages([]);
-                Alert.alert("Success", "Chat cleared successfully");
+                setToastMessage("Chat cleared");
+                setToastType("info");
+                setToastVisible(true);
               })
               .catch((error) => {
                 console.error("Error clearing chat:", error);
-                Alert.alert("Error", "Failed to clear chat. Please try again.");
+                setToastMessage("Failed to clear chat");
+                setToastType("error");
+                setToastVisible(true);
               });
           },
         },
@@ -497,7 +505,9 @@ export default function ChatScreen() {
               })
               .catch((error) => {
                 console.error("Error disconnecting:", error);
-                Alert.alert("Error", "Failed to disconnect. Please try again.");
+                setToastMessage("Failed to disconnect. Please try again.");
+                setToastType("error");
+                setToastVisible(true);
               });
           },
         },
@@ -813,6 +823,7 @@ export default function ChatScreen() {
           {/* Messages */}
           <FlatList
             ref={flatListRef}
+            keyboardShouldPersistTaps="handled"
             data={getMessagesWithDateHeaders()}
             renderItem={renderMessage}
             keyExtractor={(item) => item.id}
@@ -855,18 +866,18 @@ export default function ChatScreen() {
                           connectionService
                             .reconnectByThread(threadId)
                             .then(() => {
-                              Alert.alert(
-                                "Success",
-                                "Connection request sent!",
-                              );
-                              router.back();
+                              setToastMessage("Connection request sent!");
+                              setToastType("success");
+                              setToastVisible(true);
+                              setTimeout(() => router.back(), 1500);
                             })
                             .catch((error) => {
                               console.error("Error reconnecting:", error);
-                              Alert.alert(
-                                "Error",
-                                "Failed to send connection request. Please try again.",
+                              setToastMessage(
+                                "Failed to send connection request",
                               );
+                              setToastType("error");
+                              setToastVisible(true);
                             });
                         },
                       },
@@ -936,6 +947,12 @@ export default function ChatScreen() {
             </Animated.View>
           )}
         </KeyboardAvoidingView>
+        <Toast
+          visible={toastVisible}
+          message={toastMessage}
+          type={toastType}
+          onHide={() => setToastVisible(false)}
+        />
       </SafeAreaView>
     </>
   );

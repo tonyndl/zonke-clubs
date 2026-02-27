@@ -133,9 +133,9 @@ export const styles = StyleSheet.create({
   },
   loadingContainer: {
     flex: 1,
+    minHeight: 400,
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 80,
   },
   loadingText: {
     color: Colors.lightGrey,
@@ -164,9 +164,9 @@ export const styles = StyleSheet.create({
   },
   emptyContainer: {
     flex: 1,
+    minHeight: 400,
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 80,
     paddingHorizontal: 32,
   },
   emptyText: {

@@ -31,8 +31,14 @@ class ApiService {
     this.client.interceptors.response.use(
       (response) => response,
       (error: AxiosError<ApiError>) => {
-        // Clear invalid tokens on 401/403
-        if (error.response?.status === 401 || error.response?.status === 403) {
+        // Only clear token on 401 (truly unauthenticated).
+        // 403 means authenticated but forbidden — do NOT logout, let the
+        // calling component handle it (e.g. club not set up yet).
+        // Also skip if already on the login page to prevent redirect loops.
+        if (
+          error.response?.status === 401 &&
+          window.location.pathname !== "/login"
+        ) {
           this.clearToken();
           window.location.href = "/login";
         }
@@ -52,10 +58,24 @@ class ApiService {
 
   clearToken(): void {
     localStorage.removeItem("auth_token");
+    localStorage.removeItem("admin_info");
   }
 
   isAuthenticated(): boolean {
     return !!this.getToken();
+  }
+
+  getAdminInfo(): { name: string; email: string } | null {
+    try {
+      const raw = localStorage.getItem("admin_info");
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
+  }
+
+  private setAdminInfo(admin: { name: string; email: string }): void {
+    localStorage.setItem("admin_info", JSON.stringify(admin));
   }
 
   // Auth endpoints
@@ -67,6 +87,12 @@ class ApiService {
       })
       .then((response) => {
         this.setToken(response.data.jwt);
+        if (response.data.admin) {
+          this.setAdminInfo({
+            name: response.data.admin.name,
+            email: response.data.admin.email,
+          });
+        }
         return response.data;
       });
   }
@@ -85,6 +111,12 @@ class ApiService {
       })
       .then((response) => {
         this.setToken(response.data.jwt);
+        if (response.data.admin) {
+          this.setAdminInfo({
+            name: response.data.admin.name,
+            email: response.data.admin.email,
+          });
+        }
         return response.data;
       });
   }
@@ -95,9 +127,16 @@ class ApiService {
   }
 
   getCurrentUser() {
-    return this.client
-      .get("/session/current_user")
-      .then((response) => response.data);
+    return this.client.get("/admin/profile").then((response) => {
+      // Cache for pages that need admin email/name without a separate call
+      if (response.data?.email) {
+        this.setAdminInfo({
+          name: response.data.name || "",
+          email: response.data.email,
+        });
+      }
+      return response.data;
+    });
   }
 
   // Club endpoints

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -147,6 +147,7 @@ export default function ClubScreen() {
   const [schedules, setSchedules] = useState<DJSchedule[]>([]);
   const [events, setEvents] = useState<ClubEvent[]>([]);
   const [loadingSchedules, setLoadingSchedules] = useState(false);
+  const [loadingDay, setLoadingDay] = useState(false);
   const [loadingEvents, setLoadingEvents] = useState(false);
 
   // Week selection for DJ lineup: 'current' or 'upcoming'
@@ -580,6 +581,27 @@ export default function ClubScreen() {
   );
   const dayIndex = todayForIndex.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
   const [selectedDay, setSelectedDay] = useState<string>(daysOfWeek[dayIndex]);
+  const dayTabsScrollRef = useRef<any>(null);
+
+  // Brief loading flash when switching day tabs
+  useEffect(() => {
+    setLoadingDay(true);
+    const timer = setTimeout(() => setLoadingDay(false), 150);
+    return () => clearTimeout(timer);
+  }, [selectedDay]);
+
+  // Scroll today's day tab into view on mount
+  useEffect(() => {
+    if (dayIndex > 0) {
+      const estimatedTabWidth = 78; // paddingHorizontal(32) + text(~36) + marginRight(10)
+      setTimeout(() => {
+        dayTabsScrollRef.current?.scrollTo({
+          x: dayIndex * estimatedTabWidth,
+          animated: true,
+        });
+      }, 400);
+    }
+  }, []);
 
   // Calculate the Sunday that starts the current week
   const getWeekSunday = React.useCallback((): Date => {
@@ -1122,6 +1144,12 @@ export default function ClubScreen() {
                     onPress={() => {
                       setSelectedWeekView("current");
                       setSelectedDay(daysOfWeek[dayIndex]);
+                      setTimeout(() => {
+                        dayTabsScrollRef.current?.scrollTo({
+                          x: dayIndex * 78,
+                          animated: true,
+                        });
+                      }, 50);
                     }}
                     style={[
                       styles.weekToggleBtn,
@@ -1143,6 +1171,12 @@ export default function ClubScreen() {
                     onPress={() => {
                       setSelectedWeekView("upcoming");
                       setSelectedDay("Sun");
+                      setTimeout(() => {
+                        dayTabsScrollRef.current?.scrollTo({
+                          x: 0,
+                          animated: true,
+                        });
+                      }, 50);
                     }}
                     style={[
                       styles.weekToggleBtn,
@@ -1163,21 +1197,25 @@ export default function ClubScreen() {
                 </View>
               </View>
 
-              {loadingSchedules ? (
+              {/* {loadingSchedules ? (
                 <ActivityIndicator
                   size="small"
                   color={Colors.accent}
                   style={{ marginVertical: 16 }}
                 />
-              ) : null}
+              ) : null} */}
 
               <Animated.ScrollView
+                ref={dayTabsScrollRef}
                 horizontal
                 showsHorizontalScrollIndicator={false}
                 style={styles.dayTabs}
               >
                 {orderedDays.map((d) => {
                   const hasEvent = dayHasEvent(d);
+                  const isToday =
+                    selectedWeekView === "current" &&
+                    d === daysOfWeek[todayIndexLocal];
                   return (
                     <PressableScale
                       key={d}
@@ -1185,6 +1223,7 @@ export default function ClubScreen() {
                       style={[
                         styles.dayTab,
                         selectedDay === d && styles.dayTabActive,
+                        isToday && selectedDay !== d && styles.dayTabToday,
                       ]}
                     >
                       <View style={styles.dayTabContent}>
@@ -1192,9 +1231,12 @@ export default function ClubScreen() {
                           style={[
                             styles.dayTabText,
                             selectedDay === d && styles.dayTabTextActive,
+                            isToday &&
+                              selectedDay !== d &&
+                              styles.dayTabTodayText,
                           ]}
                         >
-                          {d}
+                          {isToday ? "Today" : d}
                         </Text>
                         {hasEvent && (
                           <Ionicons
@@ -1215,12 +1257,26 @@ export default function ClubScreen() {
                       >
                         {getDayDate(d)}
                       </Text>
+                      {isToday && (
+                        <View
+                          style={[
+                            styles.todayDot,
+                            selectedDay === d && styles.todayDotActive,
+                          ]}
+                        />
+                      )}
                     </PressableScale>
                   );
                 })}
               </Animated.ScrollView>
 
-              {(djSchedule[selectedDay] || []).length === 0 ? (
+              {loadingSchedules || loadingDay ? (
+                <ActivityIndicator
+                  size="small"
+                  color={Colors.accent}
+                  style={{ marginVertical: 16 }}
+                />
+              ) : (djSchedule[selectedDay] || []).length === 0 ? (
                 <View style={styles.emptyState}>
                   <Ionicons
                     name={
@@ -1379,17 +1435,58 @@ export default function ClubScreen() {
                 </View>
               )}
 
-              <View style={styles.contactRow}>
-                {club.phone && (
-                  <View style={styles.contactItem}>
+              {/* Reserve Table & Enquiries */}
+              {((club.table_reservation_numbers &&
+                club.table_reservation_numbers.length > 0) ||
+                club.phone) && (
+                <View style={styles.reserveBlock}>
+                  <View style={styles.contactBlockHeader}>
                     <Ionicons
                       name="call-outline"
-                      size={18}
-                      color={Colors.gold}
+                      size={14}
+                      color={Colors.accent}
                     />
-                    <Text style={styles.contactText}>{club.phone}</Text>
+                    <Text style={styles.contactBlockLabel}>
+                      Reserve Table & Enquiries
+                    </Text>
                   </View>
-                )}
+                  {[
+                    ...(club.table_reservation_numbers || []),
+                    ...(club.phone &&
+                    !(club.table_reservation_numbers || []).includes(club.phone)
+                      ? [club.phone]
+                      : []),
+                  ].map((num, i) => (
+                    <PressableScale
+                      key={i}
+                      style={styles.callButton}
+                      onPress={() => Linking.openURL(`tel:${num}`)}
+                    >
+                      <View style={styles.callButtonLeft}>
+                        <View style={styles.callIconCircle}>
+                          <Ionicons
+                            name="call"
+                            size={16}
+                            color={Colors.accent}
+                          />
+                        </View>
+                        <View>
+                          <Text style={styles.callButtonNumber}>{num}</Text>
+                          <Text style={styles.callButtonSub}>Tap to call</Text>
+                        </View>
+                      </View>
+                      <Ionicons
+                        name="chevron-forward"
+                        size={16}
+                        color="rgba(57,243,255,0.4)"
+                      />
+                    </PressableScale>
+                  ))}
+                </View>
+              )}
+
+              {/* Email & Location */}
+              <View style={styles.contactRow}>
                 {club.email && (
                   <View style={styles.contactItem}>
                     <Ionicons
@@ -1628,6 +1725,9 @@ export default function ClubScreen() {
         }}
         onPostDeleted={(postId) => {
           setClubPosts(clubPosts.filter((p) => p.id !== postId));
+          setToastMessage("Post deleted");
+          setToastType("success");
+          setToastVisible(true);
         }}
         onPostUpdated={(postId, updatedCaption) => {
           setClubPosts(
@@ -1788,7 +1888,7 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: Colors.gold,
     letterSpacing: 0.5,
-    marginBottom: 4,
+    marginBottom: 14,
     textTransform: "uppercase",
   },
   weekRangeLabel: {
@@ -2000,8 +2100,10 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   dayTab: {
-    paddingVertical: 10,
-    paddingHorizontal: 16,
+    width: 70,
+    height: 64,
+    justifyContent: "center",
+    alignItems: "center",
     borderRadius: 10,
     backgroundColor: Colors.bgSecondary,
     marginRight: 10,
@@ -2011,6 +2113,24 @@ const styles = StyleSheet.create({
   dayTabActive: {
     backgroundColor: Colors.gold,
     borderColor: Colors.gold,
+  },
+  dayTabToday: {
+    borderColor: Colors.gold,
+    borderWidth: 1.5,
+  },
+  dayTabTodayText: {
+    color: Colors.gold,
+  },
+  todayDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: Colors.gold,
+    alignSelf: "center",
+    marginTop: 4,
+  },
+  todayDotActive: {
+    backgroundColor: Colors.bg,
   },
   dayTabContent: {
     flexDirection: "row",
@@ -2163,6 +2283,70 @@ const styles = StyleSheet.create({
   contactText: {
     color: Colors.lightGrey,
     fontSize: 14,
+  },
+  reserveBlock: {
+    marginTop: 20,
+    marginBottom: 4,
+  },
+  enquiryBlock: {
+    marginTop: 16,
+    marginBottom: 4,
+  },
+  contactBlockHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginBottom: 10,
+  },
+  contactBlockLabel: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: Colors.accent,
+    letterSpacing: 1.2,
+    textTransform: "uppercase",
+  },
+  callButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: "rgba(57, 243, 255, 0.07)",
+    borderRadius: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderWidth: 1,
+    borderColor: "rgba(57, 243, 255, 0.2)",
+    marginBottom: 8,
+  },
+  callButtonBlue: {
+    backgroundColor: "rgba(57, 243, 255, 0.07)",
+    borderColor: "rgba(57, 243, 255, 0.2)",
+  },
+  callButtonLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  callIconCircle: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: "rgba(57, 243, 255, 0.12)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  callIconCircleBlue: {
+    backgroundColor: "rgba(57, 243, 255, 0.12)",
+  },
+  callButtonNumber: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: Colors.platinum,
+    letterSpacing: 0.3,
+  },
+  callButtonSub: {
+    fontSize: 11,
+    color: Colors.smoke,
+    marginTop: 1,
   },
   loadingContainer: {
     flex: 1,

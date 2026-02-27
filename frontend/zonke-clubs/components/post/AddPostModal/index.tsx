@@ -490,6 +490,7 @@ export function AddPostModal({
 
             <ScrollView
               style={styles.content}
+              keyboardShouldPersistTaps="handled"
               showsVerticalScrollIndicator={false}
             >
               {/* Club Tag Section */}

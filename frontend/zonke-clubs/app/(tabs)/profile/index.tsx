@@ -49,7 +49,122 @@ import { userService } from "@/services/userService";
 import { Alert } from "react-native";
 import { clubsService, Club as ApiClub } from "@/services/clubsService";
 import postsService from "@/services/postsService";
+import { intentionsService } from "@/services/intentionsService";
+import {
+  MeetupIntention,
+  ACTIVITY_CONFIG,
+  ActivityType,
+  formatPlannedDate,
+} from "@/types/meetup";
+import { PostIntentionModal } from "@/components/meetup/PostIntentionModal";
 import { styles } from "./styles";
+
+const intentionStyles = StyleSheet.create({
+  card: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: 12,
+    paddingHorizontal: 4,
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(255,255,255,0.06)",
+  },
+  cardLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    flex: 1,
+  },
+  emoji: {
+    fontSize: 28,
+  },
+  activityLabel: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#E2E8F0",
+  },
+  clubName: {
+    fontSize: 13,
+    color: "#94A3B8",
+    marginTop: 2,
+  },
+  date: {
+    fontSize: 12,
+    color: "#64748B",
+    marginTop: 2,
+  },
+  cardActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  actionBtn: {
+    padding: 8,
+  },
+});
+
+const confirmStyles = StyleSheet.create({
+  container: {
+    alignItems: "center",
+    paddingVertical: 8,
+    paddingHorizontal: 4,
+    gap: 12,
+  },
+  iconWrap: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: "rgba(255,107,107,0.12)",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 4,
+  },
+  title: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#E2E8F0",
+  },
+  body: {
+    fontSize: 14,
+    color: "#94A3B8",
+    textAlign: "center",
+    lineHeight: 20,
+  },
+  actions: {
+    flexDirection: "row",
+    gap: 12,
+    marginTop: 8,
+    width: "100%",
+  },
+  cancelBtn: {
+    flex: 1,
+    paddingVertical: 13,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.12)",
+    alignItems: "center",
+  },
+  cancelText: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#94A3B8",
+  },
+  deleteBtn: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    paddingVertical: 13,
+    borderRadius: 14,
+    backgroundColor: "#FF6B6B",
+  },
+  deleteText: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#fff",
+  },
+});
 
 // Placeholder images for clubs (we'll use random unsplash images)
 const getPlaceholderImage = (index: number) => {
@@ -381,6 +496,16 @@ export default function ProfileScreen() {
     "success",
   );
 
+  // My plans (intentions) state
+  const [myIntentions, setMyIntentions] = useState<MeetupIntention[]>([]);
+  const [editingIntention, setEditingIntention] =
+    useState<MeetupIntention | null>(null);
+  const [deletingIntentionId, setDeletingIntentionId] = useState<string | null>(
+    null,
+  );
+  // Set of "clubId:date" strings for dates that have a big event
+  const [bigEventDates, setBigEventDates] = useState<Set<string>>(new Set());
+
   // Clubs state (loaded from backend)
   const [allClubs, setAllClubs] = useState<
     Array<{ id: string; name: string; image: string; location: string }>
@@ -405,11 +530,14 @@ export default function ProfileScreen() {
           id: post.id,
           clubId: post.club_id,
           description: post.caption || undefined,
-          likes: 0,
+          likes: post.like_count || 0,
+          likeCount: post.like_count || 0,
+          isLiked: post.has_liked || false,
           comments: 0,
           status: post.status,
           isClubApproved: post.is_club_approved,
           clubApprovedAt: post.club_approved_at,
+          pinnedAt: post.pinned_at || undefined,
           createdAt: post.inserted_at,
           media: post.assets.map((asset) => ({
             id: asset.id,
@@ -430,6 +558,89 @@ export default function ProfileScreen() {
       })
       .catch((error) => {
         console.error("Failed to load posts:", error);
+      });
+  };
+
+  // Load the current user's own active intentions
+  const loadMyIntentions = () => {
+    if (!isOwnProfile) return;
+    intentionsService
+      .getMyIntentions()
+      .then((response) => {
+        setMyIntentions(response.intentions);
+
+        // Fetch events for each unique club to identify big event dates
+        const uniqueClubIds = [
+          ...new Set(response.intentions.map((i: MeetupIntention) => i.clubId)),
+        ];
+        Promise.all(
+          uniqueClubIds.map((clubId) =>
+            clubsService
+              .getClubEvents(clubId as string)
+              .catch(() => ({ events: [] })),
+          ),
+        ).then((results) => {
+          const dateSet = new Set<string>();
+          results.forEach((res, idx) => {
+            const clubId = uniqueClubIds[idx] as string;
+            (res.events || []).forEach((event: any) => {
+              dateSet.add(`${clubId}:${event.date}`);
+            });
+          });
+          setBigEventDates(dateSet);
+        });
+      })
+      .catch((error) => {
+        console.error("Failed to load my intentions:", error);
+      });
+  };
+
+  const handleDeleteIntention = (id: string) => {
+    intentionsService
+      .deleteIntention(id)
+      .then(() => {
+        setMyIntentions((prev) => prev.filter((i) => i.id !== id));
+        setEditingIntention(null);
+        setToastMessage("Plan removed");
+        setToastType("info");
+        setToastVisible(true);
+      })
+      .catch((error) => {
+        console.error("Failed to delete intention:", error);
+        setToastMessage("Failed to remove plan");
+        setToastType("error");
+        setToastVisible(true);
+      });
+  };
+
+  const handleUpdateIntention = (
+    activityType: ActivityType,
+    plannedDate: string,
+    message?: string,
+  ) => {
+    if (!editingIntention) return;
+    intentionsService
+      .updateIntention(editingIntention.id, {
+        activity_type: activityType,
+        planned_date: plannedDate,
+        message: message,
+      })
+      .then((response) => {
+        setMyIntentions((prev) =>
+          prev.map((i) =>
+            i.id === response.intention.id ? response.intention : i,
+          ),
+        );
+        setEditingIntention(null);
+        setToastMessage("Plan updated!");
+        setToastType("success");
+        setToastVisible(true);
+      })
+      .catch((error) => {
+        console.error("Failed to update intention:", error);
+        setToastMessage("Failed to update plan");
+        setToastType("error");
+        setToastVisible(true);
       });
   };
 
@@ -559,6 +770,13 @@ export default function ProfileScreen() {
   useFocusEffect(
     React.useCallback(() => {
       loadUserPosts();
+    }, [isOwnProfile]),
+  );
+
+  // Load own meetup intentions when screen comes into focus
+  useFocusEffect(
+    React.useCallback(() => {
+      loadMyIntentions();
     }, [isOwnProfile]),
   );
 
@@ -815,10 +1033,11 @@ export default function ProfileScreen() {
   };
 
   const handleAddPost = () => {
-    // Post is already created via AddPostModal -> postsService.createPost()
-    // Just refresh the posts list
     setShowAddPostModal(false);
     loadUserPosts();
+    setToastMessage("Post added successfully!");
+    setToastType("success");
+    setToastVisible(true);
   };
 
   // Check if profile has been modified
@@ -955,7 +1174,9 @@ export default function ProfileScreen() {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
         const errorMessage =
           error.message || "Failed to save profile changes. Please try again.";
-        Alert.alert("Error", errorMessage);
+        setToastMessage(errorMessage);
+        setToastType("error");
+        setToastVisible(true);
       })
       .finally(() => {
         setIsSaving(false);
@@ -1296,47 +1517,129 @@ export default function ProfileScreen() {
               </View>
             </Animated.View>
 
+            {/* My Plans Section — only visible on own profile */}
+            {isOwnProfile && (
+              <Animated.View
+                entering={FadeInDown.delay(165).springify()}
+                style={styles.section}
+              >
+                <View style={styles.sectionCard}>
+                  <View style={styles.sectionHeader}>
+                    <View style={styles.sectionHeaderLeft}>
+                      <Ionicons name="calendar" size={20} color={Colors.gold} />
+                      <Text style={styles.sectionTitle}>My Plans</Text>
+                    </View>
+                  </View>
+                  {myIntentions.length === 0 ? (
+                    <Text style={styles.emptyText}>No active plans</Text>
+                  ) : (
+                    myIntentions.map((intention, idx) => {
+                      const config = ACTIVITY_CONFIG[intention.activityType];
+                      const isLast = idx === myIntentions.length - 1;
+                      const isBigEvent = bigEventDates.has(
+                        `${intention.clubId}:${intention.plannedDate}`,
+                      );
+                      return (
+                        <View
+                          key={intention.id}
+                          style={[
+                            intentionStyles.card,
+                            isLast && { borderBottomWidth: 0 },
+                          ]}
+                        >
+                          <View style={intentionStyles.cardLeft}>
+                            <Text style={intentionStyles.emoji}>
+                              {config.emoji}
+                            </Text>
+                            <View>
+                              <Text style={intentionStyles.activityLabel}>
+                                {config.shortLabel}
+                              </Text>
+                              <Text style={intentionStyles.clubName}>
+                                {intention.clubName || "Unknown Club"}
+                              </Text>
+                              <View
+                                style={{
+                                  flexDirection: "row",
+                                  alignItems: "center",
+                                  gap: 4,
+                                  marginTop: 2,
+                                }}
+                              >
+                                {isBigEvent && (
+                                  <Ionicons
+                                    name="trophy"
+                                    size={11}
+                                    color={Colors.accent}
+                                  />
+                                )}
+                                <Text style={intentionStyles.date}>
+                                  {formatPlannedDate(intention.plannedDate)}
+                                </Text>
+                              </View>
+                            </View>
+                          </View>
+                          <View style={intentionStyles.cardActions}>
+                            <TouchableOpacity
+                              onPress={() => setEditingIntention(intention)}
+                              style={intentionStyles.actionBtn}
+                            >
+                              <Ionicons
+                                name="pencil-outline"
+                                size={17}
+                                color={Colors.gold}
+                              />
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                              onPress={() =>
+                                setDeletingIntentionId(intention.id)
+                              }
+                              style={intentionStyles.actionBtn}
+                            >
+                              <Ionicons
+                                name="trash-outline"
+                                size={17}
+                                color="#FF6B6B"
+                              />
+                            </TouchableOpacity>
+                          </View>
+                        </View>
+                      );
+                    })
+                  )}
+                </View>
+              </Animated.View>
+            )}
+
             {/* Location Section */}
             <Animated.View
               entering={FadeInDown.delay(175).springify()}
               style={styles.section}
             >
               <View style={styles.sectionCard}>
+                <View style={[styles.sectionHeader, { marginBottom: 4 }]}>
+                  <View style={styles.sectionHeaderLeft}>
+                    <Ionicons name="location" size={20} color={Colors.gold} />
+                    <Text style={styles.sectionTitle}>Location</Text>
+                  </View>
+                </View>
                 {isOwnProfile ? (
                   <LocationPicker
-                    label="Location"
-                    labelIcon={
-                      <Ionicons name="location" size={20} color={Colors.gold} />
-                    }
                     value={location}
                     onChange={setLocation}
                     placeholder="Search for your location..."
                   />
+                ) : location ? (
+                  <View style={styles.locationDisplay}>
+                    <Ionicons
+                      name="location"
+                      size={16}
+                      color={Colors.primaryBlue}
+                    />
+                    <Text style={styles.locationText}>{location.name}</Text>
+                  </View>
                 ) : (
-                  <>
-                    <View style={styles.sectionHeader}>
-                      <View style={styles.sectionHeaderLeft}>
-                        <Ionicons
-                          name="location"
-                          size={20}
-                          color={Colors.gold}
-                        />
-                        <Text style={styles.sectionTitle}>Location</Text>
-                      </View>
-                    </View>
-                    {location ? (
-                      <View style={styles.locationDisplay}>
-                        <Ionicons
-                          name="location"
-                          size={16}
-                          color={Colors.primaryBlue}
-                        />
-                        <Text style={styles.locationText}>{location.name}</Text>
-                      </View>
-                    ) : (
-                      <Text style={styles.emptyText}>No location set</Text>
-                    )}
-                  </>
+                  <Text style={styles.emptyText}>No location set</Text>
                 )}
               </View>
             </Animated.View>
@@ -1590,7 +1893,7 @@ export default function ProfileScreen() {
           <BeerStatsTab userId={viewingUserId} isOwnProfile={isOwnProfile} />
         )}
 
-        <View style={{ height: 120 }} />
+        <View />
       </KeyboardAwareScrollView>
 
       {/* Add Drink Modal - only for own profile */}
@@ -1794,6 +2097,9 @@ export default function ProfileScreen() {
         }}
         onPostDeleted={(postId) => {
           setUserPosts(userPosts.filter((p) => p.id !== postId));
+          setToastMessage("Post deleted");
+          setToastType("success");
+          setToastVisible(true);
         }}
         onPostUpdated={(postId, updatedCaption) => {
           setUserPosts(
@@ -1806,10 +2112,33 @@ export default function ProfileScreen() {
           setUserPosts(
             userPosts.map((p) =>
               p.id === postId
-                ? { ...p, isLiked: liked, likeCount: likeCount }
+                ? {
+                    ...p,
+                    isLiked: liked,
+                    likes: likeCount,
+                    likeCount: likeCount,
+                  }
                 : p,
             ),
           );
+        }}
+        onPostPinToggled={(postId, pinnedAt) => {
+          const updated = userPosts.map((p) =>
+            p.id === postId ? { ...p, pinnedAt } : p,
+          );
+          const sorted = [...updated].sort((a, b) => {
+            if (a.pinnedAt && !b.pinnedAt) return -1;
+            if (!a.pinnedAt && b.pinnedAt) return 1;
+            if (a.pinnedAt && b.pinnedAt) {
+              return (
+                new Date(b.pinnedAt).getTime() - new Date(a.pinnedAt).getTime()
+              );
+            }
+            return (
+              new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+            );
+          });
+          setUserPosts(sorted);
         }}
       />
 
@@ -1822,6 +2151,51 @@ export default function ProfileScreen() {
           showClubSelector={true}
           availableClubs={allClubs}
         />
+      )}
+
+      {/* Edit Intention Modal */}
+      {editingIntention && (
+        <PostIntentionModal
+          visible={!!editingIntention}
+          clubName={editingIntention.clubName || ""}
+          existingIntention={editingIntention}
+          onClose={() => setEditingIntention(null)}
+          onSubmit={handleUpdateIntention}
+          onRemove={() => handleDeleteIntention(editingIntention.id)}
+        />
+      )}
+
+      {/* Delete Intention Confirmation Modal */}
+      {deletingIntentionId && (
+        <Modal onDismiss={() => setDeletingIntentionId(null)}>
+          <View style={confirmStyles.container}>
+            <View style={confirmStyles.iconWrap}>
+              <Ionicons name="trash-outline" size={32} color="#FF6B6B" />
+            </View>
+            <Text style={confirmStyles.title}>Remove Plan</Text>
+            <Text style={confirmStyles.body}>
+              Are you sure you want to remove this meetup plan?
+            </Text>
+            <View style={confirmStyles.actions}>
+              <TouchableOpacity
+                style={confirmStyles.cancelBtn}
+                onPress={() => setDeletingIntentionId(null)}
+              >
+                <Text style={confirmStyles.cancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={confirmStyles.deleteBtn}
+                onPress={() => {
+                  handleDeleteIntention(deletingIntentionId);
+                  setDeletingIntentionId(null);
+                }}
+              >
+                <Ionicons name="trash-outline" size={16} color="#fff" />
+                <Text style={confirmStyles.deleteText}>Remove</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
       )}
 
       {/* Save Button - Fixed at bottom when changes detected */}

@@ -3,13 +3,14 @@ import { View, Text } from "react-native";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
-  withSpring,
+  withTiming,
   withDelay,
+  withSequence,
+  Easing,
   runOnJS,
 } from "react-native-reanimated";
 import { Ionicons } from "@expo/vector-icons";
 import { Colors } from "@/constants/ui";
-import { LinearGradient } from "expo-linear-gradient";
 import { styles } from "./styles";
 
 interface ToastProps {
@@ -25,27 +26,31 @@ export function Toast({
   visible,
   onHide,
   type = "success",
-  duration = 3000,
+  duration = 2000,
 }: ToastProps) {
   const translateY = useSharedValue(-100);
   const opacity = useSharedValue(0);
 
   useEffect(() => {
     if (visible) {
-      // Show toast
-      translateY.value = withSpring(0, { damping: 15 });
-      opacity.value = withSpring(1);
+      const slideIn = { duration: 200, easing: Easing.out(Easing.cubic) };
+      const slideOut = { duration: 200, easing: Easing.in(Easing.cubic) };
 
-      // Hide after duration
-      translateY.value = withDelay(
-        duration,
-        withSpring(-100, { damping: 15 }, () => {
-          runOnJS(onHide)();
-        }),
+      translateY.value = withSequence(
+        withTiming(0, slideIn),
+        withDelay(
+          duration,
+          withTiming(-100, slideOut, () => {
+            runOnJS(onHide)();
+          }),
+        ),
       );
-      opacity.value = withDelay(duration, withSpring(0));
+      opacity.value = withSequence(
+        withTiming(1, { duration: 200 }),
+        withDelay(duration, withTiming(0, { duration: 250 })),
+      );
     }
-  }, [visible, duration, onHide]);
+  }, [visible]);
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: translateY.value }],
@@ -65,16 +70,16 @@ export function Toast({
     }
   };
 
-  const getColors = (): [string, string] => {
+  const getColor = () => {
     switch (type) {
       case "success":
-        return ["#10B981", "#059669"];
+        return "#10B981";
       case "error":
-        return ["#EF4444", "#DC2626"];
+        return "#EF4444";
       case "info":
-        return [Colors.gold, "#E6A854"];
+        return Colors.gold;
       default:
-        return ["#10B981", "#059669"];
+        return "#10B981";
     }
   };
 
@@ -82,15 +87,10 @@ export function Toast({
 
   return (
     <Animated.View style={[styles.container, animatedStyle]}>
-      <LinearGradient
-        colors={getColors()}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 0 }}
-        style={styles.toast}
-      >
+      <View style={[styles.toast, { backgroundColor: getColor() }]}>
         <Ionicons name={getIcon()} size={24} color="white" />
         <Text style={styles.message}>{message}</Text>
-      </LinearGradient>
+      </View>
     </Animated.View>
   );
 }

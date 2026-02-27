@@ -23,11 +23,13 @@ export interface ClubPost {
   media: MediaAsset[];
   likeCount: number;
   isLiked: boolean;
+  likes: number;
   comments: number;
   createdAt: string;
   status: "pending" | "approved" | "rejected";
   isClubApproved: boolean;
   clubApprovedAt?: string;
+  pinnedAt?: string;
   user?: {
     id: string;
     username: string;

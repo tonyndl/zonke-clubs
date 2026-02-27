@@ -23,6 +23,7 @@ export interface Post {
   status: "pending" | "approved" | "rejected";
   is_club_approved: boolean;
   club_approved_at?: string;
+  pinned_at?: string;
   user_id: string;
   club_id: string;
   user: {
@@ -33,6 +34,8 @@ export interface Post {
   assets: Asset[];
   inserted_at: string;
   updated_at: string;
+  like_count: number;
+  has_liked: boolean;
 }
 
 export interface PostsResponse {
@@ -144,6 +147,20 @@ class PostsService {
    */
   async deletePost(postId: string): Promise<void> {
     return api.delete(`/posts/${postId}`, true);
+  }
+
+  /**
+   * Pin a post to the top of the user's profile grid
+   */
+  async pinPost(postId: string): Promise<Post> {
+    return api.put<Post>(`/posts/${postId}/pin`, {}, true);
+  }
+
+  /**
+   * Unpin a post from the user's profile grid
+   */
+  async unpinPost(postId: string): Promise<Post> {
+    return api.put<Post>(`/posts/${postId}/unpin`, {}, true);
   }
 }
 

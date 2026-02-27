@@ -142,6 +142,7 @@ export function ClubMeetupSection({
       {otherIntentions.length > 0 && (
         <ScrollView
           horizontal
+          keyboardShouldPersistTaps="handled"
           showsHorizontalScrollIndicator={false}
           style={styles.filterContainer}
           contentContainerStyle={styles.filterContent}
@@ -196,6 +197,7 @@ export function ClubMeetupSection({
       {dateFilteredIntentions.length > 0 && (
         <ScrollView
           horizontal
+          keyboardShouldPersistTaps="handled"
           showsHorizontalScrollIndicator={false}
           style={styles.activityFilterContainer}
           contentContainerStyle={styles.filterContent}
@@ -262,6 +264,7 @@ export function ClubMeetupSection({
         <>
           <ScrollView
             horizontal
+            keyboardShouldPersistTaps="handled"
             showsHorizontalScrollIndicator={false}
             style={styles.peopleContainer}
             contentContainerStyle={styles.peopleContent}

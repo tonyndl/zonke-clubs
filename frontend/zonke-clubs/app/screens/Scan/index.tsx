@@ -148,7 +148,7 @@ const FONT_STYLES: Record<FontStyle, FontStyleOption> = {
 
 export function ScanScreen() {
   const router = useRouter();
-  const [text, setText] = useState("ZONKE CLUBS • VIP LOUNGE • TONIGHT");
+  const [text, setText] = useState("TAP TO ENTER YOUR TEXT");
   const [speed, setSpeed] = useState(120); // Turbo speed
   const [currentStyle, setCurrentStyle] = useState<LEDStyle>("neon");
   const [currentFontStyle, setCurrentFontStyle] = useState<FontStyle>("solid");
@@ -158,11 +158,7 @@ export function ScanScreen() {
   );
   const [waveEnabled, setWaveEnabled] = useState(false);
   const [isEditingText, setIsEditingText] = useState(false);
-  const [savedMessages, setSavedMessages] = useState<string[]>([
-    "ZONKE CLUBS • VIP LOUNGE • TONIGHT",
-    "🎉 PARTY TONIGHT • VIP ACCESS • FREE DRINKS",
-    "🔥 HOT BEATS • LIVE DJ • OPEN BAR",
-  ]);
+  const [savedMessages, setSavedMessages] = useState<string[]>([]);
 
   const scrollX = useRef(new Animated.Value(SCREEN_WIDTH)).current;
   const scrollY = useRef(new Animated.Value(0)).current;
@@ -289,16 +285,6 @@ export function ScanScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setSavedMessages(savedMessages.filter((m) => m !== message));
   };
-
-  const quickPresets = [
-    "🎉 PARTY TONIGHT • VIP ACCESS • FREE DRINKS",
-    "🔥 HOT BEATS • LIVE DJ • OPEN BAR",
-    "💎 EXCLUSIVE EVENT • DRESS CODE REQUIRED",
-    "🎵 MUSIC FESTIVAL • 3 STAGES • ALL NIGHT",
-    "✨ GRAND OPENING • SPECIAL GUESTS • PRIZES",
-    "🍸 HAPPY HOUR • 2 FOR 1 COCKTAILS",
-    "🎊 BIRTHDAY BASH • BOTTLE SERVICE",
-  ];
 
   // Calculate font size based on text length (simple approach)
   const calculateStaticFontSize = () => {
@@ -1130,28 +1116,6 @@ export function ScanScreen() {
             ))}
           </View>
         )}
-
-        {/* Quick Presets */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: theme.primaryColor }]}>
-            QUICK PRESETS
-          </Text>
-          {quickPresets.map((preset, index) => (
-            <PressableScale
-              key={index}
-              style={styles.presetButton}
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                setText(preset);
-              }}
-            >
-              <Text style={styles.presetText} numberOfLines={1}>
-                {preset}
-              </Text>
-              <Ionicons name="chevron-forward" size={20} color={Colors.smoke} />
-            </PressableScale>
-          ))}
-        </View>
       </ScrollView>
     </SafeAreaView>
   );

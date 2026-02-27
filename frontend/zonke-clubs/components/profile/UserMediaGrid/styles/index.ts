@@ -5,7 +5,7 @@ export const GRID_SPACING = 8;
 
 export const styles = StyleSheet.create({
   container: {
-    marginBottom: 32,
+    flex: 1,
   },
   feedHeader: {
     flexDirection: "row",
@@ -117,6 +117,12 @@ export const styles = StyleSheet.create({
     fontWeight: "700",
     color: Colors.platinum,
   },
+  pinBadge: {
+    position: "absolute",
+    top: 6,
+    right: 6,
+    transform: [{ rotate: "45deg" }],
+  },
   multipleMediaBadge: {
     position: "absolute",
     top: 8,
@@ -137,7 +143,7 @@ export const styles = StyleSheet.create({
   approvalBadge: {
     position: "absolute",
     top: 6,
-    right: 6,
+    left: 6,
     width: 28,
     height: 28,
     backgroundColor: "rgba(0, 0, 0, 0.75)",
@@ -207,11 +213,11 @@ export const styles = StyleSheet.create({
   emptyState: {
     flex: 1,
     alignItems: "center",
-    paddingVertical: 48,
-    backgroundColor: Colors.bgCard,
+    justifyContent: "center",
     borderRadius: 16,
     borderWidth: 1,
     borderColor: "rgba(57, 243, 255, 0.1)",
+    marginBottom: 16,
   },
   emptyText: {
     color: Colors.platinum,
@@ -225,5 +231,18 @@ export const styles = StyleSheet.create({
     marginTop: 4,
     textAlign: "center",
     paddingHorizontal: 32,
+  },
+  addPostBtn: {
+    paddingVertical: 8,
+    paddingHorizontal: 18,
+    backgroundColor: Colors.gold,
+    borderRadius: 10,
+    borderWidth: 1,
+    marginTop: 14,
+  },
+  addPostBtnText: {
+    fontSize: 14,
+    fontWeight: "800",
+    color: Colors.bg,
   },
 });

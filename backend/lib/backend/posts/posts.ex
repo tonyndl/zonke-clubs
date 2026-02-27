@@ -82,7 +82,7 @@ defmodule Backend.Posts do
   end
 
   # Add like information to posts
-  defp enrich_posts_with_likes(posts, user_id) do
+  def enrich_posts_with_likes(posts, user_id) do
     post_ids = Enum.map(posts, & &1.id)
 
     # Get like counts for all posts
@@ -237,6 +237,38 @@ defmodule Backend.Posts do
       total_posts: total_posts,
       pending_posts: pending_posts
     }
+  end
+
+  @doc """
+  Pins a post to the top of the user's profile grid.
+  Only the post owner can pin their post.
+  """
+  def pin_post(id, session) do
+    with {:ok, post} <- get_post(id) do
+      if post.user_id == session.id do
+        post
+        |> Post.changeset(%{pinned_at: NaiveDateTime.utc_now() |> NaiveDateTime.truncate(:second)})
+        |> Repo.update()
+      else
+        {:error, :unauthorized}
+      end
+    end
+  end
+
+  @doc """
+  Unpins a post from the user's profile grid.
+  Only the post owner can unpin their post.
+  """
+  def unpin_post(id, session) do
+    with {:ok, post} <- get_post(id) do
+      if post.user_id == session.id do
+        post
+        |> Post.changeset(%{pinned_at: nil})
+        |> Repo.update()
+      else
+        {:error, :unauthorized}
+      end
+    end
   end
 
   @doc """

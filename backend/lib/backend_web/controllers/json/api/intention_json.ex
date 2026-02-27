@@ -16,6 +16,7 @@ defmodule BackendWeb.API.IntentionJSON do
       id: intention.id,
       activity_type: intention.activity_type,
       club_id: intention.club_id,
+      club_name: club_name(intention),
       planned_date: intention.planned_date,
       planned_time: intention.planned_time,
       message: intention.message,
@@ -26,6 +27,9 @@ defmodule BackendWeb.API.IntentionJSON do
       updated_at: intention.updated_at
     }
   end
+
+  defp club_name(%{club: %{name: name}}), do: name
+  defp club_name(_), do: nil
 
   defp user_data(user) do
     %{

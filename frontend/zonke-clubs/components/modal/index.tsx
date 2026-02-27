@@ -114,7 +114,10 @@ export const Modal = (props: ModalProps) => {
               <BarLine />
             </View>
 
-            <ScrollView showsVerticalScrollIndicator={false}>
+            <ScrollView
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+            >
               {children}
             </ScrollView>
           </Animated.View>

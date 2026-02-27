@@ -12,14 +12,16 @@ import { ConnectSheet } from "@/components/meetup/ConnectSheet";
 import { authService } from "@/services/authService";
 import { View, ActivityIndicator } from "react-native";
 import { Colors } from "@/constants/ui";
+import { Toast } from "@/components/ui/Toast";
 import { websocketService } from "@/services/websocketService";
 import { clubsService } from "@/services/clubsService";
 import { styles } from "./styles";
 
 export default function PeopleBrowseScreen() {
   const params = useLocalSearchParams<{ clubId?: string }>();
-  const clubId = params.clubId || "3f1b5bd3-a899-44c1-bfda-ee83f940accb"; // The Grand Africa Café & Beach (default fallback)
+  const paramClubId = params.clubId;
 
+  const [clubId] = useState<string | null>(paramClubId || null);
   const [intentions, setIntentions] = useState<MeetupIntention[]>([]);
   const [connectionStatuses, setConnectionStatuses] = useState<
     Map<string, { status: string; threadId?: string }>
@@ -30,42 +32,47 @@ export default function PeopleBrowseScreen() {
   const [showConnectSheet, setShowConnectSheet] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [clubName, setClubName] = useState<string>("Club");
+  const [toastVisible, setToastVisible] = useState(false);
+  const [toastMessage, setToastMessage] = useState("");
+  const [toastType, setToastType] = useState<"success" | "error" | "info">(
+    "success",
+  );
 
   const loadData = useCallback(() => {
     setLoading(true);
 
-    // First get current user, then load intentions excluding that user
     authService
       .getCurrentUser()
       .then((user) => {
         setCurrentUserId(user?.id || null);
 
-        return Promise.all([
-          intentionsService.getClubIntentions(clubId, user?.id),
-          connectionService.getReceivedRequests(),
-          connectionService.getSentRequests(),
-          clubsService.getClub(clubId),
-        ]);
+        if (clubId) {
+          // Club-specific view: fetch that club's intentions + club name
+          return Promise.all([
+            intentionsService.getClubIntentions(clubId, user?.id),
+            connectionService.getReceivedRequests(),
+            connectionService.getSentRequests(),
+            clubsService.getClub(clubId),
+          ]).then(([intentionsRes, receivedReqs, sentReqs, clubData]) => {
+            setClubName(clubData.club.name);
+            return { intentionsRes, receivedReqs, sentReqs };
+          });
+        } else {
+          // All-clubs view: fetch intentions from all clubs
+          setClubName("All Clubs");
+          return Promise.all([
+            intentionsService.getAllIntentions(user?.id),
+            connectionService.getReceivedRequests(),
+            connectionService.getSentRequests(),
+          ]).then(([intentionsRes, receivedReqs, sentReqs]) => ({
+            intentionsRes,
+            receivedReqs,
+            sentReqs,
+          }));
+        }
       })
-      .then(([intentionsRes, receivedReqs, sentReqs, clubData]) => {
-        // Set club name
-        const fetchedClubName = clubData.club.name;
-        setClubName(fetchedClubName);
-
-        // Use only real API intentions
-        const intentions = getIntentionsForClub(intentionsRes.intentions);
-        console.log("People Browse - Intentions loaded:", intentions.length);
-        console.log(
-          "People Browse - Sample intention:",
-          intentions[0]
-            ? {
-                id: intentions[0].id,
-                userName: intentions[0].user.username,
-                avatarUrl: intentions[0].user.avatarUrl,
-              }
-            : "No intentions",
-        );
-        setIntentions(intentions);
+      .then(({ intentionsRes, receivedReqs, sentReqs }) => {
+        setIntentions(getIntentionsForClub(intentionsRes.intentions));
 
         // Build connection status map
         const statusMap = new Map<
@@ -145,7 +152,7 @@ export default function PeopleBrowseScreen() {
   };
 
   const handleSendRequest = (message?: string) => {
-    if (!selectedIntention) return;
+    if (!selectedIntention || !clubId) return;
 
     connectionService
       .createRequest({
@@ -157,11 +164,17 @@ export default function PeopleBrowseScreen() {
       .then(() => {
         setShowConnectSheet(false);
         setSelectedIntention(null);
-        // Reload data to update connection statuses
         loadData();
+        setToastMessage("Connection request sent!");
+        setToastType("success");
+        setToastVisible(true);
       })
       .catch((error) => {
         console.error("Error sending request:", error);
+        const errorMessage = error?.message || "Failed to send request";
+        setToastMessage(errorMessage);
+        setToastType("error");
+        setToastVisible(true);
       });
   };
 
@@ -185,7 +198,7 @@ export default function PeopleBrowseScreen() {
         connectionStatuses={connectionStatuses}
         currentUserId={currentUserId}
         clubName={clubName}
-        clubId={clubId}
+        clubId={clubId || ""}
       />
       {showConnectSheet && selectedIntention && (
         <ConnectSheet
@@ -198,6 +211,12 @@ export default function PeopleBrowseScreen() {
           onSendRequest={handleSendRequest}
         />
       )}
+      <Toast
+        visible={toastVisible}
+        message={toastMessage}
+        type={toastType}
+        onHide={() => setToastVisible(false)}
+      />
     </>
   );
 }

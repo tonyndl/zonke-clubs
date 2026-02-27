@@ -10,7 +10,6 @@ export const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    // paddingHorizontal: 16,
     position: "relative",
   },
   backButton: {
@@ -157,6 +156,7 @@ export const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
+    flexGrow: 1,
     paddingHorizontal: 16,
   },
   profilePictureSection: {
@@ -300,6 +300,7 @@ export const styles = StyleSheet.create({
     color: Colors.lightGrey,
     fontStyle: "italic",
     marginTop: 16,
+    textAlign: "center",
   },
   section: {
     marginBottom: 32,

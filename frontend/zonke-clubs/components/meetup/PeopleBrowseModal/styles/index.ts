@@ -19,11 +19,10 @@ export const styles = StyleSheet.create({
     borderBottomColor: "rgba(57, 243, 255, 0.1)",
   },
   closeButton: {
-    position: "absolute",
-    left: 10,
     width: 40,
     height: 40,
     alignItems: "center",
+    justifyContent: "center",
   },
   headerCenter: {
     flex: 1,
@@ -306,6 +305,7 @@ export const styles = StyleSheet.create({
     width: "100%",
     height: "100%",
     backgroundColor: Colors.bgCard,
+    objectFit: "cover",
   },
   avatarFallback: {
     backgroundColor: Colors.velvet,
@@ -351,14 +351,14 @@ export const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    backgroundColor: "rgba(0, 0, 0, 0.7)",
+    backgroundColor: "rgba(0, 0, 0, 0.4)",
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 12,
   },
   timeAgoText: {
     fontSize: 11,
-    color: Colors.smoke,
+    color: Colors.platinum,
     fontWeight: "600",
   },
   cardContent: {
@@ -457,7 +457,7 @@ export const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "flex-start",
     gap: 8,
-    backgroundColor: "rgba(0, 0, 0, 0.7)",
+    backgroundColor: "rgba(0, 0, 0, 0.4)",
     padding: 12,
     borderRadius: 12,
     marginBottom: 8,
@@ -470,7 +470,7 @@ export const styles = StyleSheet.create({
     lineHeight: 18,
   },
   bioSection: {
-    backgroundColor: "rgba(0, 0, 0, 0.7)",
+    backgroundColor: "rgba(0, 0, 0, 0.4)",
     padding: 12,
     borderRadius: 12,
     marginBottom: 8,

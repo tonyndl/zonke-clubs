@@ -14,6 +14,7 @@ defmodule Backend.Posts.Post do
     field :media_url, :string
     field :status, :string, default: "pending"
     field :club_approved_at, :naive_datetime
+    field :pinned_at, :naive_datetime
 
     belongs_to :user, Backend.Accounts.User
     belongs_to :club, Backend.Clubs.Club
@@ -26,7 +27,7 @@ defmodule Backend.Posts.Post do
   # Media fields can be optional now since we use assets table for multiple media
   # user_id is optional to allow admin posts (club official content without user)
   @required_fields [:club_id]
-  @optional_fields [:user_id, :caption, :status, :media_type, :media_url, :club_approved_at]
+  @optional_fields [:user_id, :caption, :status, :media_type, :media_url, :club_approved_at, :pinned_at]
   @all_fields @required_fields ++ @optional_fields
 
   def changeset(post \\ %__MODULE__{}, attrs) do

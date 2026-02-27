@@ -95,7 +95,11 @@ export function BeerStatsTab({ userId, isOwnProfile }: Props) {
   }
 
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+    <ScrollView
+      style={styles.container}
+      keyboardShouldPersistTaps="handled"
+      showsVerticalScrollIndicator={false}
+    >
       {/* Stats Overview */}
       <Animated.View
         entering={FadeInDown.delay(100).springify()}
