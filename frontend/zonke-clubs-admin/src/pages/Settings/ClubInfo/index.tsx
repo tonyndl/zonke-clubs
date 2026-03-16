@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { clubInfoSchema, parseZodErrors } from "../../../utils/validation";
 import { CardTitle } from "../../../components/Card";
 import { PrimaryButton, OutlineButton } from "../../../components/Buttons";
 import { theme } from "../../../styles/theme";
@@ -69,6 +70,10 @@ export const ClubInfo: React.FC = () => {
   >(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const clearError = (field: string) =>
+    setErrors((prev) => ({ ...prev, [field]: "" }));
 
   useEffect(() => {
     // Fetch club data on mount
@@ -134,6 +139,19 @@ export const ClubInfo: React.FC = () => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+
+    const result = clubInfoSchema.safeParse({
+      name: formData.name,
+      description: formData.description,
+      location: formData.location,
+      phone: formData.phone,
+      email: formData.email,
+    });
+    if (!result.success) {
+      setErrors(parseZodErrors(result.error));
+      return;
+    }
+    setErrors({});
     setIsSaving(true);
 
     console.log("Submitting club data:", formData);
@@ -188,6 +206,7 @@ export const ClubInfo: React.FC = () => {
       ...formData,
       [e.target.name]: e.target.value,
     });
+    clearError(e.target.name);
   };
 
   const addReservationNumber = () => {
@@ -291,8 +310,18 @@ export const ClubInfo: React.FC = () => {
               value={formData.name}
               onChange={handleChange}
               placeholder="Enter club name"
-              required
             />
+            {errors.name && (
+              <p
+                style={{
+                  color: "#ef4444",
+                  fontSize: "12px",
+                  margin: "4px 0 0",
+                }}
+              >
+                {errors.name}
+              </p>
+            )}
           </FormGroup>
 
           <FormGroup>
@@ -302,8 +331,18 @@ export const ClubInfo: React.FC = () => {
               value={formData.description}
               onChange={handleChange}
               placeholder="Describe your club..."
-              required
             />
+            {errors.description && (
+              <p
+                style={{
+                  color: "#ef4444",
+                  fontSize: "12px",
+                  margin: "4px 0 0",
+                }}
+              >
+                {errors.description}
+              </p>
+            )}
           </FormGroup>
 
           <GridRow>
@@ -319,10 +358,23 @@ export const ClubInfo: React.FC = () => {
                     ? formData.location
                     : formData.location.name
                 }
-                onChange={(location) => setFormData({ ...formData, location })}
+                onChange={(location) => {
+                  setFormData({ ...formData, location });
+                  clearError("location");
+                }}
                 placeholder="Search for your location..."
-                required
               />
+              {errors.location && (
+                <p
+                  style={{
+                    color: "#ef4444",
+                    fontSize: "12px",
+                    margin: "4px 0 0",
+                  }}
+                >
+                  {errors.location}
+                </p>
+              )}
             </FormGroup>
 
             <FormGroup>
@@ -336,8 +388,18 @@ export const ClubInfo: React.FC = () => {
                 value={formData.phone}
                 onChange={handleChange}
                 placeholder="+27 XX XXX XXXX"
-                required
               />
+              {errors.phone && (
+                <p
+                  style={{
+                    color: "#ef4444",
+                    fontSize: "12px",
+                    margin: "4px 0 0",
+                  }}
+                >
+                  {errors.phone}
+                </p>
+              )}
             </FormGroup>
           </GridRow>
 
@@ -354,6 +416,17 @@ export const ClubInfo: React.FC = () => {
                 onChange={handleChange}
                 placeholder="contact@club.com"
               />
+              {errors.email && (
+                <p
+                  style={{
+                    color: "#ef4444",
+                    fontSize: "12px",
+                    margin: "4px 0 0",
+                  }}
+                >
+                  {errors.email}
+                </p>
+              )}
             </FormGroup>
 
             {/* Table Reservation Numbers */}

@@ -7,6 +7,7 @@ defmodule Backend.Messenger.Messenger do
   alias Backend.Repo
   alias Backend.Messenger.{Thread, ThreadParticipant, Message}
   alias Backend.Accounts.User
+  alias Backend.Workers.PushNotificationWorker
 
   @doc """
   Creates a new thread with two participants.
@@ -214,6 +215,9 @@ defmodule Backend.Messenger.Messenger do
             |> Repo.insert()
             |> case do
               {:ok, message} ->
+                sent_at_display = Backend.DateTimeHelper.format_display_time(message.inserted_at)
+                inserted_at_utc = message.inserted_at |> DateTime.from_naive!("Etc/UTC") |> DateTime.to_iso8601()
+
                 # Broadcast to thread channel with formatted message data
                 BackendWeb.Endpoint.broadcast(
                   "thread:#{thread_id}",
@@ -225,7 +229,8 @@ defmodule Backend.Messenger.Messenger do
                     content: message.content,
                     is_read: message.is_read,
                     status: message.status,
-                    sent_at: message.inserted_at
+                    sent_at: sent_at_display,
+                    inserted_at: inserted_at_utc
                   }
                 )
 
@@ -243,9 +248,20 @@ defmodule Backend.Messenger.Messenger do
                         content: message.content,
                         is_read: message.is_read,
                         status: message.status,
-                        sent_at: message.inserted_at
+                        sent_at: sent_at_display,
+                        inserted_at: inserted_at_utc
                       }
                     }
+                  )
+                end)
+
+                # Enqueue push notifications for other participants
+                Enum.each(other_participants, fn participant ->
+                  PushNotificationWorker.enqueue(
+                    participant.user_id,
+                    "New message",
+                    content,
+                    %{thread_id: thread_id, type: "new_message"}
                   )
                 end)
 

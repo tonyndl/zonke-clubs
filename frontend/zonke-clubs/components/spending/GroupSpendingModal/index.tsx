@@ -17,6 +17,7 @@ import { BlurView } from "expo-blur";
 import { Colors, Gradients } from "@/constants/ui";
 import { PressableScale } from "@/components/ui/PressableScale";
 import { styles } from "./styles";
+import { groupSpendingAmountSchema, parseZodErrors } from "@/utils/validation";
 
 type Member = {
   id: string;
@@ -124,6 +125,7 @@ export function GroupSpendingModal({
     "amount",
   );
   const [totalAmount, setTotalAmount] = useState("");
+  const [amountError, setAmountError] = useState("");
   const [selectedMembers, setSelectedMembers] = useState<Member[]>([]);
   const [splitType, setSplitType] = useState<"equal" | "custom">("equal");
   const [searchQuery, setSearchQuery] = useState("");
@@ -160,6 +162,7 @@ export function GroupSpendingModal({
   const resetState = () => {
     setStep("amount");
     setTotalAmount("");
+    setAmountError("");
     setSelectedMembers([]);
     setSplitType("equal");
     setSearchQuery("");
@@ -168,10 +171,15 @@ export function GroupSpendingModal({
   };
 
   const handleAmountNext = () => {
-    if (parseFloat(totalAmount) > 0) {
-      setStep("members");
-      scaleAnim.setValue(0);
+    const result = groupSpendingAmountSchema.safeParse({ amount: totalAmount });
+    if (!result.success) {
+      const errs = parseZodErrors(result.error);
+      setAmountError(errs.amount || "Please enter a valid amount");
+      return;
     }
+    setAmountError("");
+    setStep("members");
+    scaleAnim.setValue(0);
   };
 
   const toggleMember = (member: Member) => {
@@ -353,7 +361,10 @@ export function GroupSpendingModal({
             <TextInput
               style={styles.amountInput}
               value={totalAmount}
-              onChangeText={setTotalAmount}
+              onChangeText={(text) => {
+                setTotalAmount(text);
+                setAmountError("");
+              }}
               placeholder="0.00"
               placeholderTextColor={Colors.smoke}
               keyboardType="decimal-pad"
@@ -362,6 +373,7 @@ export function GroupSpendingModal({
             />
           </LinearGradient>
         </View>
+        {!!amountError && <Text style={amountErrorStyle}>{amountError}</Text>}
 
         <View style={styles.quickAmounts}>
           {[50, 100, 200, 500].map((amount) => (
@@ -375,20 +387,9 @@ export function GroupSpendingModal({
           ))}
         </View>
 
-        <PressableScale
-          style={[
-            styles.nextButton,
-            parseFloat(totalAmount) <= 0 && styles.nextButtonDisabled,
-          ]}
-          onPress={handleAmountNext}
-          disabled={parseFloat(totalAmount) <= 0}
-        >
+        <PressableScale style={styles.nextButton} onPress={handleAmountNext}>
           <LinearGradient
-            colors={
-              parseFloat(totalAmount) > 0
-                ? Gradients.accent
-                : ["rgba(128, 128, 128, 0.3)", "rgba(128, 128, 128, 0.3)"]
-            }
+            colors={Gradients.accent}
             style={styles.nextButtonGradient}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
@@ -823,6 +824,13 @@ export function GroupSpendingModal({
       </Text>
     </Animated.View>
   );
+
+  const amountErrorStyle = {
+    color: "#ff6b6b",
+    fontSize: 12,
+    marginTop: 6,
+    marginLeft: 4,
+  } as const;
 
   return (
     <Modal

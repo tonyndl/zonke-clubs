@@ -2,6 +2,7 @@ defmodule BackendWeb.API.MessageJSON do
   alias Backend.Messenger.{Thread, Message}
   alias Backend.Accounts.User
   alias BackendWeb.Presence
+  alias Backend.DateTimeHelper
 
   @doc """
   Renders a list of threads
@@ -36,7 +37,8 @@ defmodule BackendWeb.API.MessageJSON do
       if thread.last_message_content do
         %{
           content: thread.last_message_content,
-          sent_at: format_timestamp(thread.last_message_sent_at),
+          sent_at: DateTimeHelper.format_display_time(thread.last_message_sent_at),
+          inserted_at: format_timestamp(thread.last_message_sent_at),
           sender_id: to_string_id(thread.last_message_sender_id),
           is_read: thread.last_message_is_read,
           status: thread.last_message_status || "sent"
@@ -72,7 +74,8 @@ defmodule BackendWeb.API.MessageJSON do
       content: message.content,
       is_read: message.is_read,
       status: message.status || "sent",
-      sent_at: format_timestamp(message.inserted_at)
+      sent_at: DateTimeHelper.format_display_time(message.inserted_at),
+      inserted_at: format_timestamp(message.inserted_at)
     }
   end
 

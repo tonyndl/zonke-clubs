@@ -15,20 +15,15 @@ export default function TabLayout() {
 
   // Connect to WebSocket when tabs layout mounts (after login)
   useEffect(() => {
-    console.log("Tabs layout mounted - connecting to WebSocket");
-
     websocketService
       .connect()
-      .then(() => {
-        console.log("✅ WebSocket connected successfully in tabs layout");
-      })
+      .then(() => {})
       .catch((error) => {
         console.error("❌ Failed to connect WebSocket in tabs layout:", error);
       });
 
     // Cleanup on unmount
     return () => {
-      console.log("Tabs layout unmounting - disconnecting WebSocket");
       websocketService.disconnect();
     };
   }, []);

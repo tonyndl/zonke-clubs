@@ -30,7 +30,8 @@ export interface ChatThread {
   lastMessage: {
     id: string;
     text: string;
-    sentAt: string;
+    sentAt: string; // pre-formatted display string
+    insertedAt?: string; // raw UTC ISO for time-ago calculations
     senderId: string;
     isRead: boolean;
     status: MessageStatus;
@@ -49,5 +50,6 @@ export interface Message {
   senderId: string;
   isRead: boolean;
   status: MessageStatus;
-  sentAt: string;
+  sentAt: string; // pre-formatted display string: "HH:MM" or "D Mon"
+  insertedAt?: string; // raw UTC ISO string for date grouping
 }

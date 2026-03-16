@@ -76,11 +76,9 @@ class AuthService {
     return api
       .post<User>("/register", data, false)
       .then((user) => {
-        console.log("Registration successful:", user);
         return user;
       })
       .catch((error) => {
-        console.error("Registration failed:", error);
         const message =
           error?.response?.data?.error ||
           error.message ||
@@ -97,14 +95,11 @@ class AuthService {
           throw new Error("Invalid response from server");
         }
 
-        console.log("Login successful:", response);
-
         return this.saveAuthData(response.jwt, response.user).then(
           () => response,
         );
       })
       .catch((error) => {
-        console.error("Login failed:", error);
         const message =
           error?.response?.data?.error || error.message || "Login failed";
         throw new Error(message);
@@ -113,9 +108,7 @@ class AuthService {
 
   public logout(): Promise<void> {
     return Promise.all([deleteItem(TOKEN_KEY), deleteItem(USER_KEY)])
-      .then(() => {
-        console.log("Logged out successfully");
-      })
+      .then(() => {})
       .catch((error) => {
         console.error("Logout failed:", error);
         throw error;
@@ -143,7 +136,9 @@ class AuthService {
         return this.saveUser(user).then(() => user);
       })
       .catch((error) => {
-        console.error("Get profile failed:", error);
+        if (error.message !== "Unauthorized") {
+          console.error("Get profile failed:", error);
+        }
         throw error;
       });
   }
@@ -188,7 +183,6 @@ class AuthService {
     return api
       .put<{ message: string }>("/profile/password", data, true)
       .then((response) => {
-        console.log("Password changed successfully");
         return response;
       })
       .catch((error) => {
@@ -218,9 +212,7 @@ class AuthService {
       setItem(TOKEN_KEY, jwt),
       setItem(USER_KEY, JSON.stringify(user)),
     ])
-      .then(() => {
-        console.log("Auth data saved successfully");
-      })
+      .then(() => {})
       .catch((error) => {
         console.error("Save auth data failed:", error);
         throw error;
@@ -229,9 +221,7 @@ class AuthService {
 
   private saveUser(user: User): Promise<void> {
     return setItem(USER_KEY, JSON.stringify(user))
-      .then(() => {
-        console.log("User data saved successfully");
-      })
+      .then(() => {})
       .catch((error) => {
         console.error("Save user failed:", error);
         throw error;

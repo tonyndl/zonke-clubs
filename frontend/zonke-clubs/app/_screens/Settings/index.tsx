@@ -6,14 +6,21 @@ import {
   ScrollView,
   TextInput,
   TouchableOpacity,
-  Alert,
+  Modal,
   Switch,
   ActivityIndicator,
 } from "react-native";
 import { Toast } from "@/components/ui/Toast";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import { SafeAreaView } from "react-native-safe-area-context";
-import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
+import Animated, {
+  FadeIn,
+  FadeOut,
+  ZoomIn,
+  ZoomOut,
+  FadeInDown,
+  FadeInUp,
+} from "react-native-reanimated";
 import { Ionicons } from "@expo/vector-icons";
 import { router, Stack } from "expo-router";
 import * as Haptics from "expo-haptics";
@@ -24,6 +31,7 @@ import { PressableScale } from "@/components/ui/PressableScale";
 import { TextStroke } from "../Login/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { authService } from "@/services/authService";
+import { changePasswordSchema, parseZodErrors } from "@/utils/validation";
 
 export default function SettingsScreen() {
   const { user, logout, refreshUser } = useAuth();
@@ -54,6 +62,12 @@ export default function SettingsScreen() {
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [passwordErrors, setPasswordErrors] = useState<Record<string, string>>(
+    {},
+  );
+
+  const clearPasswordError = (field: string) =>
+    setPasswordErrors((prev) => ({ ...prev, [field]: "" }));
 
   // Preferences state
   const [pushNotifications, setPushNotifications] = useState(true);
@@ -119,29 +133,18 @@ export default function SettingsScreen() {
   };
 
   const handleChangePassword = () => {
-    if (!currentPassword || !newPassword || !confirmPassword) {
-      showToast("Please fill in all password fields", "error");
+    const result = changePasswordSchema.safeParse({
+      currentPassword,
+      newPassword,
+      confirmPassword,
+    });
+
+    if (!result.success) {
+      setPasswordErrors(parseZodErrors(result.error));
       return;
     }
 
-    if (newPassword !== confirmPassword) {
-      showToast("New passwords do not match", "error");
-      return;
-    }
-
-    if (newPassword.length < 6) {
-      showToast("New password must be at least 6 characters", "error");
-      return;
-    }
-
-    if (currentPassword === newPassword) {
-      showToast(
-        "New password must be different from current password",
-        "error",
-      );
-      return;
-    }
-
+    setPasswordErrors({});
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
     authService
@@ -170,28 +173,23 @@ export default function SettingsScreen() {
       });
   };
 
+  const [logoutModalVisible, setLogoutModalVisible] = useState(false);
+
   const handleLogout = () => {
-    Alert.alert("Logout", "Are you sure you want to logout?", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Logout",
-        style: "destructive",
-        onPress: () => {
-          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-          logout()
-            .then(() => {
-              Haptics.notificationAsync(
-                Haptics.NotificationFeedbackType.Success,
-              );
-              // Auth state change will automatically show login screen
-            })
-            .catch((error) => {
-              console.error("Logout error:", error);
-              showToast("Failed to logout", "error");
-            });
-        },
-      },
-    ]);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setLogoutModalVisible(true);
+  };
+
+  const confirmLogout = () => {
+    setLogoutModalVisible(false);
+    logout()
+      .then(() => {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      })
+      .catch((error) => {
+        console.error("Logout error:", error);
+        showToast("Failed to logout", "error");
+      });
   };
 
   const handleDeleteAccount = () => {
@@ -340,7 +338,10 @@ export default function SettingsScreen() {
 
           <View style={styles.card}>
             <PressableScale
-              onPress={() => setShowPasswordSection(!showPasswordSection)}
+              onPress={() => {
+                setShowPasswordSection(!showPasswordSection);
+                setPasswordErrors({});
+              }}
               style={styles.settingRow}
             >
               <View style={styles.settingLeft}>
@@ -361,11 +362,21 @@ export default function SettingsScreen() {
               >
                 <View style={styles.inputGroup}>
                   <Text style={styles.inputLabel}>Current Password</Text>
-                  <View style={styles.passwordInputContainer}>
+                  <View
+                    style={[
+                      styles.passwordInputContainer,
+                      passwordErrors.currentPassword
+                        ? styles.inputError
+                        : undefined,
+                    ]}
+                  >
                     <TextInput
                       style={styles.passwordInput}
                       value={currentPassword}
-                      onChangeText={setCurrentPassword}
+                      onChangeText={(t) => {
+                        setCurrentPassword(t);
+                        clearPasswordError("currentPassword");
+                      }}
                       secureTextEntry={!showCurrentPassword}
                       placeholder="Enter current password"
                       placeholderTextColor={Colors.lightGrey}
@@ -383,15 +394,30 @@ export default function SettingsScreen() {
                       />
                     </TouchableOpacity>
                   </View>
+                  {passwordErrors.currentPassword ? (
+                    <Text style={styles.fieldError}>
+                      {passwordErrors.currentPassword}
+                    </Text>
+                  ) : null}
                 </View>
 
                 <View style={styles.inputGroup}>
                   <Text style={styles.inputLabel}>New Password</Text>
-                  <View style={styles.passwordInputContainer}>
+                  <View
+                    style={[
+                      styles.passwordInputContainer,
+                      passwordErrors.newPassword
+                        ? styles.inputError
+                        : undefined,
+                    ]}
+                  >
                     <TextInput
                       style={styles.passwordInput}
                       value={newPassword}
-                      onChangeText={setNewPassword}
+                      onChangeText={(t) => {
+                        setNewPassword(t);
+                        clearPasswordError("newPassword");
+                      }}
                       secureTextEntry={!showNewPassword}
                       placeholder="Enter new password"
                       placeholderTextColor={Colors.lightGrey}
@@ -407,15 +433,30 @@ export default function SettingsScreen() {
                       />
                     </TouchableOpacity>
                   </View>
+                  {passwordErrors.newPassword ? (
+                    <Text style={styles.fieldError}>
+                      {passwordErrors.newPassword}
+                    </Text>
+                  ) : null}
                 </View>
 
                 <View style={styles.inputGroup}>
                   <Text style={styles.inputLabel}>Confirm New Password</Text>
-                  <View style={styles.passwordInputContainer}>
+                  <View
+                    style={[
+                      styles.passwordInputContainer,
+                      passwordErrors.confirmPassword
+                        ? styles.inputError
+                        : undefined,
+                    ]}
+                  >
                     <TextInput
                       style={styles.passwordInput}
                       value={confirmPassword}
-                      onChangeText={setConfirmPassword}
+                      onChangeText={(t) => {
+                        setConfirmPassword(t);
+                        clearPasswordError("confirmPassword");
+                      }}
                       secureTextEntry={!showConfirmPassword}
                       placeholder="Confirm new password"
                       placeholderTextColor={Colors.lightGrey}
@@ -433,6 +474,11 @@ export default function SettingsScreen() {
                       />
                     </TouchableOpacity>
                   </View>
+                  {passwordErrors.confirmPassword ? (
+                    <Text style={styles.fieldError}>
+                      {passwordErrors.confirmPassword}
+                    </Text>
+                  ) : null}
                 </View>
 
                 <PressableScale
@@ -649,6 +695,53 @@ export default function SettingsScreen() {
         type={toastType}
         onHide={() => setToastVisible(false)}
       />
+
+      {/* Logout confirmation modal */}
+      <Modal
+        visible={logoutModalVisible}
+        transparent
+        animationType="none"
+        onRequestClose={() => setLogoutModalVisible(false)}
+      >
+        <Animated.View
+          entering={FadeIn.duration(200)}
+          exiting={FadeOut.duration(150)}
+          style={styles.modalOverlay}
+        >
+          <Animated.View
+            entering={ZoomIn.duration(250).springify()}
+            exiting={ZoomOut.duration(150)}
+            style={styles.modalCard}
+          >
+            <View style={styles.modalIconWrap}>
+              <LinearGradient
+                colors={["rgba(255,69,58,0.2)", "rgba(255,59,48,0.1)"]}
+                style={styles.modalIconGradient}
+              >
+                <Ionicons name="log-out-outline" size={28} color="#ff3b30" />
+              </LinearGradient>
+            </View>
+            <Text style={styles.modalTitle}>Logout</Text>
+            <Text style={styles.modalMessage}>
+              Are you sure you want to logout?
+            </Text>
+            <View style={styles.modalButtons}>
+              <PressableScale
+                onPress={() => setLogoutModalVisible(false)}
+                style={styles.modalCancelButton}
+              >
+                <Text style={styles.modalCancelText}>Cancel</Text>
+              </PressableScale>
+              <PressableScale
+                onPress={confirmLogout}
+                style={styles.modalLogoutButton}
+              >
+                <Text style={styles.modalLogoutText}>Logout</Text>
+              </PressableScale>
+            </View>
+          </Animated.View>
+        </Animated.View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -847,5 +940,85 @@ const styles = StyleSheet.create({
   },
   bottomSpacer: {
     height: 40,
+  },
+  inputError: {
+    borderColor: "#ff6b6b",
+  },
+  fieldError: {
+    color: "#ff6b6b",
+    fontSize: 12,
+    marginTop: 4,
+    marginLeft: 2,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.6)",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 32,
+  },
+  modalCard: {
+    width: "100%",
+    backgroundColor: Colors.bgCard,
+    borderRadius: 24,
+    padding: 28,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.08)",
+  },
+  modalIconWrap: {
+    marginBottom: 16,
+  },
+  modalIconGradient: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: "800",
+    color: Colors.platinum,
+    marginBottom: 8,
+    letterSpacing: 0.4,
+  },
+  modalMessage: {
+    fontSize: 15,
+    color: Colors.smoke,
+    textAlign: "center",
+    marginBottom: 28,
+    lineHeight: 22,
+  },
+  modalButtons: {
+    flexDirection: "row",
+    gap: 12,
+    width: "100%",
+  },
+  modalCancelButton: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 14,
+    alignItems: "center",
+    backgroundColor: Colors.bgSecondary,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.1)",
+  },
+  modalCancelText: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: Colors.platinum,
+  },
+  modalLogoutButton: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 14,
+    alignItems: "center",
+    backgroundColor: "#ff3b30",
+  },
+  modalLogoutText: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: Colors.white,
   },
 });

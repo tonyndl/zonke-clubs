@@ -170,28 +170,42 @@ export const getClubVideos = (
   return shuffled.slice(0, Math.min(count, shuffled.length));
 };
 
-// Helper to get all videos from all clubs (for discovery feed)
+// Helper to get all videos from all clubs (for discovery feed).
+// Distributes the video pool across nearby clubs so each video appears
+// once and is attributed to a different club — then shuffles the feed.
 export const getAllClubVideos = (
   clubs: Array<{ id: string; name: string; location?: { name: string } }>,
 ): Array<
   ClubVideo & { clubId: string; clubName: string; clubLocation?: string }
 > => {
-  const allVideos: Array<
-    ClubVideo & { clubId: string; clubName: string; clubLocation?: string }
-  > = [];
+  if (clubs.length === 0) return [];
 
-  clubs.forEach((club) => {
-    const videos = getClubVideos(club.id);
-    videos.forEach((video) => {
-      allVideos.push({
-        ...video,
-        clubId: club.id,
-        clubName: club.name,
-        clubLocation: club.location?.name,
-      });
-    });
+  // Shuffle the pool using Fisher-Yates so assignment is random each time
+  const pool = [...CLUB_VIDEOS.default];
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [pool[i], pool[j]] = [pool[j], pool[i]];
+  }
+
+  // Assign each video to a club round-robin so there are no duplicates
+  const result: Array<
+    ClubVideo & { clubId: string; clubName: string; clubLocation?: string }
+  > = pool.map((video, i) => {
+    const club = clubs[i % clubs.length];
+    return {
+      ...video,
+      id: `${club.id}-${video.id}`,
+      clubId: club.id,
+      clubName: club.name,
+      clubLocation: club.location?.name,
+    };
   });
 
-  // Shuffle for variety
-  return allVideos.sort(() => 0.5 - Math.random());
+  // Final shuffle so videos from the same club aren't grouped together
+  for (let i = result.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [result[i], result[j]] = [result[j], result[i]];
+  }
+
+  return result;
 };

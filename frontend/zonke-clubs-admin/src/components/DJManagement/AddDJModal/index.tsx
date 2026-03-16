@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { djSchema, parseZodErrors } from "../../../utils/validation";
 import { Modal } from "../../Modal/Modal";
 import { PrimaryButton, OutlineButton } from "../../Buttons";
 import { RiHeadphoneLine } from "react-icons/ri";
@@ -56,17 +57,27 @@ export const AddDJModal: React.FC<AddDJModalProps> = ({
   const [formData, setFormData] = useState<DJFormData>(
     initialData || emptyForm,
   );
+  const [nameError, setNameError] = useState("");
 
   React.useEffect(() => {
     setFormData(initialData || emptyForm);
+    setNameError("");
   }, [initialData, isOpen]);
 
   const handleChange = (field: keyof DJFormData, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
+    if (field === "name") setNameError("");
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    const result = djSchema.safeParse({ name: formData.name });
+    if (!result.success) {
+      const errs = parseZodErrors(result.error);
+      setNameError(errs.name || "DJ name is required");
+      return;
+    }
+    setNameError("");
     onSubmit(formData);
     onClose();
     setFormData(emptyForm);
@@ -99,8 +110,14 @@ export const AddDJModal: React.FC<AddDJModalProps> = ({
             placeholder="e.g., DJ Nova"
             value={formData.name}
             onChange={(e) => handleChange("name", e.target.value)}
-            required
           />
+          {nameError && (
+            <p
+              style={{ color: "#ef4444", fontSize: "12px", margin: "4px 0 0" }}
+            >
+              {nameError}
+            </p>
+          )}
         </FormGroup>
 
         {/* Bio */}

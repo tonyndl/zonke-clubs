@@ -12,8 +12,8 @@ import { useRouter, useLocalSearchParams } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import { TextStroke } from "../screens/Login/utils";
-import { styles } from "./styles";
+import { TextStroke } from "../_screens/Login/utils";
+import { styles } from "./_styles";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -98,10 +98,6 @@ export function LEDFullscreenView({
 
   // Remove trailing spaces and convert to uppercase for display
   const displayText = text.replace(/\s+$/, "").toUpperCase();
-  console.log(
-    "DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD",
-    displayText,
-  );
   const currentStyle = style;
   const currentFontStyle = fontStyle;
 

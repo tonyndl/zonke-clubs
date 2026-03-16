@@ -50,6 +50,11 @@ config :ex_aws,
   secret_access_key: System.get_env("AWS_SECRET_ACCESS_KEY"),
   region: "us-east-1"
 
+config :backend, Oban,
+  engine: Oban.Engines.Basic,
+  repo: Backend.Repo,
+  queues: [push_notifications: 10]
+
 # Import environment specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.
 import_config "#{config_env()}.exs"

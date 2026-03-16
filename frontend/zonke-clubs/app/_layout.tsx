@@ -7,7 +7,7 @@ import * as NavigationBar from "expo-navigation-bar";
 
 import { AuthProvider, useAuth } from "../contexts/AuthContext";
 import { UserRoleProvider } from "../contexts/UserRoleContext";
-import { AuthScreen } from "./screens/Login";
+import { AuthScreen } from "./_screens/Login";
 
 function RootNavigator() {
   const { isAuthenticated, isLoading, user } = useAuth();

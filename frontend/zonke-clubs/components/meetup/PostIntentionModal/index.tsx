@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { View, Text, TextInput, ScrollView } from "react-native";
+import { View, Text, TextInput, ScrollView, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Colors } from "@/constants/ui";
 import { PressableScale } from "@/components/ui/PressableScale";
@@ -7,6 +7,7 @@ import { Modal } from "@/components/modal";
 import { CalendarModal } from "@/components/ui/CalendarModal";
 import { ActivityType, ACTIVITY_CONFIG, MeetupIntention } from "@/types/meetup";
 import { styles } from "./styles";
+import { intentionSchema, parseZodErrors } from "@/utils/validation";
 
 interface Props {
   visible: boolean;
@@ -99,12 +100,21 @@ export function PostIntentionModal({
     existingIntention?.message || "",
   );
   const [showCalendar, setShowCalendar] = useState(false);
+  const [activityError, setActivityError] = useState("");
 
   const dateOptions = generateDateOptions();
 
   const handleSubmit = () => {
-    if (!selectedActivity) return;
-    onSubmit(selectedActivity, selectedDate, message || undefined);
+    const result = intentionSchema.safeParse({
+      activityType: selectedActivity ?? "",
+    });
+    if (!result.success) {
+      const errs = parseZodErrors(result.error);
+      setActivityError(errs.activityType || "Please select an activity");
+      return;
+    }
+    setActivityError("");
+    onSubmit(selectedActivity!, selectedDate, message || undefined);
     handleClose();
   };
 
@@ -125,6 +135,7 @@ export function PostIntentionModal({
     setSelectedActivity(existingIntention?.activityType || null);
     setSelectedDate(existingIntention?.plannedDate || getDateString(0));
     setMessage(existingIntention?.message || "");
+    setActivityError("");
   };
 
   if (!visible) return null;
@@ -152,7 +163,10 @@ export function PostIntentionModal({
                 styles.activityCard,
                 isSelected && styles.activityCardSelected,
               ]}
-              onPress={() => setSelectedActivity(activity)}
+              onPress={() => {
+                setSelectedActivity(activity);
+                setActivityError("");
+              }}
             >
               <Text style={styles.activityEmoji}>{config.emoji}</Text>
               <Text
@@ -172,6 +186,9 @@ export function PostIntentionModal({
           );
         })}
       </View>
+      {!!activityError && (
+        <Text style={validationStyles.error}>{activityError}</Text>
+      )}
 
       {/* Date Selection — hidden when a fixed event date is provided */}
       {!fixedDate && (
@@ -264,14 +281,7 @@ export function PostIntentionModal({
           </PressableScale>
         )}
 
-        <PressableScale
-          style={[
-            styles.submitButton,
-            !selectedActivity && styles.submitButtonDisabled,
-          ]}
-          onPress={handleSubmit}
-          disabled={!selectedActivity}
-        >
+        <PressableScale style={styles.submitButton} onPress={handleSubmit}>
           <Text style={styles.submitText}>
             {existingIntention ? "Update Status" : "Post Status"}
           </Text>
@@ -281,3 +291,12 @@ export function PostIntentionModal({
     </Modal>
   );
 }
+
+const validationStyles = StyleSheet.create({
+  error: {
+    color: "#ff6b6b",
+    fontSize: 12,
+    marginTop: 4,
+    marginLeft: 4,
+  },
+});

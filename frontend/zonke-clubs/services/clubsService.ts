@@ -34,8 +34,16 @@ export type Club = {
   videos?: ClubVideo[];
 };
 
+export type Paginate = {
+  page: number;
+  per_page: number;
+  max_page: number;
+  total_count: number;
+};
+
 export type ClubsResponse = {
   clubs: Club[];
+  paginate: Paginate;
 };
 
 export type ClubResponse = {
@@ -86,10 +94,17 @@ export type EventsResponse = {
 
 class ClubsService {
   /**
-   * Fetch all active clubs (with is_liked if authenticated)
+   * Fetch paginated clubs (with is_liked if authenticated)
    */
-  getClubs(authenticated: boolean = false): Promise<ClubsResponse> {
-    return api.get<ClubsResponse>("/clubs", authenticated);
+  getClubs(
+    authenticated: boolean = false,
+    page: number = 1,
+    perPage: number = 10,
+  ): Promise<ClubsResponse> {
+    return api.get<ClubsResponse>(
+      `/clubs?page=${page}&per_page=${perPage}`,
+      authenticated,
+    );
   }
 
   /**

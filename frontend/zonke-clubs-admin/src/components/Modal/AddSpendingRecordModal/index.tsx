@@ -1,4 +1,8 @@
 import React, { useState, useEffect, useCallback } from "react";
+import {
+  spendingRecordSchema,
+  parseZodErrors,
+} from "../../../utils/validation";
 import { Modal } from "../Modal";
 import { PrimaryButton, OutlineButton } from "../../Buttons";
 import { DatePicker } from "../../DatePicker/DatePicker";
@@ -106,6 +110,7 @@ export const AddSpendingRecordModal: React.FC<AddSpendingRecordModalProps> = ({
   const [splitType, setSplitType] = useState<"equal" | "custom">("equal");
   const [users, setUsers] = useState<User[]>([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   // Update isGroup when modal opens with initialGroupMode
   useEffect(() => {
@@ -307,6 +312,7 @@ export const AddSpendingRecordModal: React.FC<AddSpendingRecordModalProps> = ({
 
   const handleAmountChange = (value: string) => {
     handleChange("amount", value);
+    setErrors((prev) => ({ ...prev, amount: "" }));
     if (formData.isGroup && splitType === "equal") {
       recalculateSplits(parseFloat(value) || 0);
     }
@@ -333,6 +339,16 @@ export const AddSpendingRecordModal: React.FC<AddSpendingRecordModalProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+
+    const result = spendingRecordSchema.safeParse({
+      amount: formData.amount,
+      visitDate: formData.visitDate,
+    });
+    if (!result.success) {
+      setErrors(parseZodErrors(result.error));
+      return;
+    }
+    setErrors({});
     onSubmit(formData);
     onClose();
     // Reset form
@@ -512,7 +528,7 @@ export const AddSpendingRecordModal: React.FC<AddSpendingRecordModalProps> = ({
               <CustomerSearchContainer>
                 <Input
                   type="text"
-                  placeholder="Add another group member..."
+                  placeholder="Add group member..."
                   value={searchQuery}
                   onChange={(e) => {
                     setSearchQuery(e.target.value);
@@ -571,11 +587,17 @@ export const AddSpendingRecordModal: React.FC<AddSpendingRecordModalProps> = ({
               placeholder="0.00"
               value={formData.amount}
               onChange={(e) => handleAmountChange(e.target.value)}
-              required
               min="0"
               step="0.01"
             />
           </AmountInputContainer>
+          {errors.amount && (
+            <p
+              style={{ color: "#ef4444", fontSize: "12px", margin: "4px 0 0" }}
+            >
+              {errors.amount}
+            </p>
+          )}
           <HelpText>
             {formData.isGroup
               ? "Enter the total bill amount to split between group members"

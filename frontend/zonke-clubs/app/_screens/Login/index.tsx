@@ -7,7 +7,7 @@ import {
   KeyboardAvoidingView,
   ScrollView,
   Platform,
-  Alert,
+  Modal,
   ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -21,6 +21,11 @@ import { router } from "expo-router";
 import { Colors } from "@/constants/ui";
 import { styles } from "./styles";
 import { useAuth } from "@/contexts/AuthContext";
+import {
+  loginSchema,
+  registerSchema,
+  parseZodErrors,
+} from "@/utils/validation";
 
 const HorizontalSlantParallelogram = () => {
   const points = "54,10 110,100 110,270 54,190";
@@ -46,6 +51,7 @@ interface InputProps {
   keyboardType?: "default" | "email-address";
   showPassword?: boolean;
   onTogglePassword?: () => void;
+  style?: object;
 }
 
 const Input = ({
@@ -57,13 +63,14 @@ const Input = ({
   keyboardType = "default",
   showPassword,
   onTogglePassword,
+  style,
 }: InputProps) => {
   return (
     <LinearGradient
       colors={["rgba(57,243,255,0.6)", "rgba(200,107,255,0.6)"]}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 0 }}
-      style={styles.inputBorder}
+      style={[styles.inputBorder, style]}
     >
       <View style={styles.inputInnerContainer}>
         <TextInput
@@ -97,10 +104,21 @@ const Input = ({
   );
 };
 
+const errorTextStyle = {
+  color: "#ff6b6b",
+  fontSize: 12,
+  marginTop: 2,
+  marginBottom: 10,
+  marginLeft: 2,
+} as const;
+
+const inputWithErrorStyle = { marginBottom: 2 } as const;
+
 export const AuthScreen = () => {
   const { login: authLogin, register: authRegister } = useAuth();
   const [isLogin, setIsLogin] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   // Login fields
   const [username, setUsername] = useState("");
@@ -114,19 +132,39 @@ export const AuthScreen = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
+  const clearError = (field: string) =>
+    setErrors((prev) => ({ ...prev, [field]: "" }));
+
+  const [errorModal, setErrorModal] = useState<{
+    visible: boolean;
+    title: string;
+    message: string;
+  }>({
+    visible: false,
+    title: "",
+    message: "",
+  });
+
+  const showError = (title: string, message: string) =>
+    setErrorModal({ visible: true, title, message });
+
   const handleLogin = () => {
-    if (!username.trim() || !password.trim()) {
-      Alert.alert("Error", "Please enter both username and password");
+    const result = loginSchema.safeParse({
+      username: username.trim(),
+      password,
+    });
+    if (!result.success) {
+      setErrors(parseZodErrors(result.error));
       return;
     }
-
+    setErrors({});
     setIsLoading(true);
     authLogin({ username: username.trim(), password })
       .then(() => {
         router.replace("/(tabs)");
       })
       .catch((error) => {
-        Alert.alert("Login Failed", error.message || "Invalid credentials");
+        showError("Login Failed", error.message || "Invalid credentials");
       })
       .finally(() => {
         setIsLoading(false);
@@ -134,21 +172,17 @@ export const AuthScreen = () => {
   };
 
   const handleRegister = () => {
-    if (!username.trim() || !password.trim()) {
-      Alert.alert("Error", "Please fill in all required fields");
+    const result = registerSchema.safeParse({
+      username: username.trim(),
+      email: email.trim(),
+      password,
+      confirmPassword,
+    });
+    if (!result.success) {
+      setErrors(parseZodErrors(result.error));
       return;
     }
-
-    if (password !== confirmPassword) {
-      Alert.alert("Error", "Passwords do not match");
-      return;
-    }
-
-    if (password.length < 6) {
-      Alert.alert("Error", "Password must be at least 6 characters");
-      return;
-    }
-
+    setErrors({});
     setIsLoading(true);
     authRegister({
       username: username.trim(),
@@ -165,7 +199,7 @@ export const AuthScreen = () => {
         }
       })
       .catch((error) => {
-        Alert.alert("Registration Failed", error.message || "Please try again");
+        showError("Registration Failed", error.message || "Please try again");
       })
       .finally(() => {
         setIsLoading(false);
@@ -174,12 +208,11 @@ export const AuthScreen = () => {
 
   const toggleMode = () => {
     setIsLogin(!isLogin);
-    // Clear fields when switching
     setUsername("");
     setPassword("");
     setEmail("");
     setConfirmPassword("");
-    // Reset password visibility
+    setErrors({});
     setShowPassword(false);
     setShowConfirmPassword(false);
   };
@@ -202,41 +235,77 @@ export const AuthScreen = () => {
             </TextStroke>
           </View>
 
-          <Input
-            placeholder="Username"
-            value={username}
-            onChangeText={setUsername}
-          />
+          <View style={errors.username && styles.inputContainer}>
+            <Input
+              placeholder="Username"
+              value={username}
+              onChangeText={(t) => {
+                setUsername(t);
+                clearError("username");
+              }}
+              style={errors.username ? inputWithErrorStyle : undefined}
+            />
+            {!!errors.username && (
+              <Text style={errorTextStyle}>{errors.username}</Text>
+            )}
+          </View>
 
           {!isLogin && (
-            <Input
-              placeholder="Email (optional)"
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-            />
+            <View style={errors.email && styles.inputContainer}>
+              <Input
+                placeholder="Email (optional)"
+                value={email}
+                onChangeText={(t) => {
+                  setEmail(t);
+                  clearError("email");
+                }}
+                keyboardType="email-address"
+                style={errors.email ? inputWithErrorStyle : undefined}
+              />
+              {!!errors.email && (
+                <Text style={errorTextStyle}>{errors.email}</Text>
+              )}
+            </View>
           )}
 
-          <Input
-            placeholder="Password"
-            secureTextEntry
-            value={password}
-            onChangeText={setPassword}
-            showPassword={showPassword}
-            onTogglePassword={() => setShowPassword(!showPassword)}
-          />
+          <View style={errors.password && styles.inputContainer}>
+            <Input
+              placeholder="Password"
+              secureTextEntry
+              value={password}
+              onChangeText={(t) => {
+                setPassword(t);
+                clearError("password");
+              }}
+              showPassword={showPassword}
+              onTogglePassword={() => setShowPassword(!showPassword)}
+              style={errors.password ? inputWithErrorStyle : undefined}
+            />
+            {!!errors.password && (
+              <Text style={errorTextStyle}>{errors.password}</Text>
+            )}
+          </View>
 
           {!isLogin && (
-            <Input
-              placeholder="Confirm Password"
-              secureTextEntry
-              value={confirmPassword}
-              onChangeText={setConfirmPassword}
-              showPassword={showConfirmPassword}
-              onTogglePassword={() =>
-                setShowConfirmPassword(!showConfirmPassword)
-              }
-            />
+            <View style={errors.confirmPassword && styles.inputContainer}>
+              <Input
+                placeholder="Confirm Password"
+                secureTextEntry
+                value={confirmPassword}
+                onChangeText={(t) => {
+                  setConfirmPassword(t);
+                  clearError("confirmPassword");
+                }}
+                showPassword={showConfirmPassword}
+                onTogglePassword={() =>
+                  setShowConfirmPassword(!showConfirmPassword)
+                }
+                style={errors.confirmPassword ? inputWithErrorStyle : undefined}
+              />
+              {!!errors.confirmPassword && (
+                <Text style={errorTextStyle}>{errors.confirmPassword}</Text>
+              )}
+            </View>
           )}
 
           <View
@@ -287,6 +356,34 @@ export const AuthScreen = () => {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* Error modal */}
+      <Modal
+        visible={errorModal.visible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setErrorModal((p) => ({ ...p, visible: false }))}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <LinearGradient
+              colors={["rgba(255,107,107,0.2)", "rgba(255,59,48,0.1)"]}
+              style={styles.modalIconGradient}
+            >
+              <Ionicons name="alert-circle-outline" size={28} color="#ff6b6b" />
+            </LinearGradient>
+            <Text style={styles.modalTitle}>{errorModal.title}</Text>
+            <Text style={styles.modalMessage}>{errorModal.message}</Text>
+            <TouchableOpacity
+              style={styles.modalOkButton}
+              onPress={() => setErrorModal((p) => ({ ...p, visible: false }))}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.modalOkText}>OK</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };

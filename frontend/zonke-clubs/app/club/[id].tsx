@@ -90,7 +90,6 @@ const getDJInitial = (name: string): string => {
 export default function ClubScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const clubId = id ?? "3f1b5bd3-a899-44c1-bfda-ee83f940accb"; // The Grand Africa Café & Beach (default fallback)
-  console.log("ClubScreen - ID from params:", id, "Using clubId:", clubId);
   const scrollY = useSharedValue(0);
   const { user } = useAuth();
   const insets = useSafeAreaInsets();
@@ -238,8 +237,6 @@ export default function ClubScreen() {
   // Listen for WebSocket connection request updates
   useEffect(() => {
     const handleRequestAccepted = (payload: any) => {
-      console.log("Connection request accepted, updating UI:", payload);
-
       // Transform the request from snake_case to camelCase
       const transformedRequest = transformRequest(payload.request);
 
@@ -258,8 +255,6 @@ export default function ClubScreen() {
     };
 
     const handleNewRequest = (payload: any) => {
-      console.log("New connection request received:", payload);
-
       // Transform the request from snake_case to camelCase
       const transformedRequest = transformRequest(payload.request);
 
@@ -397,7 +392,6 @@ export default function ClubScreen() {
     clubsService
       .getClubEvents(clubId)
       .then((response) => {
-        console.log("Events loaded:", response.events.length);
         setEvents(response.events);
       })
       .catch((error) => {
@@ -439,7 +433,6 @@ export default function ClubScreen() {
     };
 
     setClubPosts([newPost, ...clubPosts]);
-    console.log("Post added to club feed!");
   };
 
   // Get opening hours from club data or fallback to deriving from schedules
@@ -710,24 +703,13 @@ export default function ClubScreen() {
       const dayNum = String(targetDate.getDate()).padStart(2, "0");
       const dateString = `${year}-${month}-${dayNum}`;
 
-      console.log(`\n${day} (${dateString}):`);
-
       // Check if there's an event on this date
       const eventOnThisDay = events.find((e) => {
-        console.log(
-          `  Comparing event date "${e.date}" with "${dateString}" - Match: ${e.date === dateString}`,
-        );
         return e.date === dateString;
       });
 
       if (eventOnThisDay) {
         // Use event's DJ lineup
-        console.log(
-          `  ✅ EVENT FOUND: "${eventOnThisDay.title}" - Using event DJ lineup with ${eventOnThisDay.dj_lineup.length} DJs`,
-        );
-        eventOnThisDay.dj_lineup.forEach((dj) => {
-          console.log(`    - ${dj.name} (ID: ${dj.id})`);
-        });
 
         scheduleMap[day] = eventOnThisDay.dj_lineup.map((dj) => {
           // Format event start time for display
@@ -752,14 +734,7 @@ export default function ClubScreen() {
         });
       } else {
         // Use regular weekly schedule
-        console.log(`  📋 No event - Using regular schedule`);
         const daySchedules = schedules.filter((s) => s.day === day);
-        console.log(`    Found ${daySchedules.length} regular schedules`);
-        daySchedules.forEach((s) => {
-          console.log(
-            `    - ${s.dj_name} (${s.start_time || "N/A"} - ${s.end_time || "N/A"})`,
-          );
-        });
 
         scheduleMap[day] = daySchedules.map((schedule) => {
           // Format time if available

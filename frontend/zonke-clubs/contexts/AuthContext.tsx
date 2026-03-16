@@ -11,6 +11,10 @@ import {
   LoginData,
   RegisterData,
 } from "../services/authService";
+import {
+  registerForPushNotifications,
+  registerTokenWithBackend,
+} from "../services/pushNotificationService";
 
 interface AuthContextType {
   user: User | null;
@@ -46,7 +50,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         setUser(currentUser);
       })
       .catch((error) => {
-        console.error("Check auth failed:", error);
+        if (error.message !== "Unauthorized") {
+          console.error("Check auth failed:", error);
+        }
         // If profile fetch fails (e.g., token invalid), try local cache as fallback
         return authService.getCurrentUser().then((cachedUser) => {
           if (cachedUser) {
@@ -66,10 +72,13 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       .login(data)
       .then((response) => {
         setUser(response.user);
-        console.log("User logged in successfully:", response.user);
+        registerForPushNotifications().then((token) => {
+          if (token) {
+            registerTokenWithBackend(token);
+          }
+        });
       })
       .catch((error) => {
-        console.error("Login error:", error);
         throw error;
       });
   };
@@ -78,15 +87,12 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     return authService
       .register(data)
       .then(() => {
-        // After registration, automatically log in
-        console.log("Registration successful, logging in...");
         return login({
           username: data.username,
           password: data.password,
-        }).then(() => ({ needsSetup: true })); // New users need profile setup
+        }).then(() => ({ needsSetup: true }));
       })
       .catch((error) => {
-        console.error("Registration error:", error);
         throw error;
       });
   };
@@ -96,7 +102,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       .logout()
       .then(() => {
         setUser(null);
-        console.log("User logged out successfully");
       })
       .catch((error) => {
         console.error("Logout error:", error);
@@ -109,7 +114,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       .getProfile()
       .then((updatedUser) => {
         setUser(updatedUser);
-        console.log("User profile refreshed:", updatedUser);
       })
       .catch((error) => {
         console.error("Refresh user error:", error);

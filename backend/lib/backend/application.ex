@@ -13,8 +13,7 @@ defmodule Backend.Application do
       {DNSCluster, query: Application.get_env(:backend, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: Backend.PubSub},
       BackendWeb.Presence,
-      # Start a worker by calling: Backend.Worker.start_link(arg)
-      # {Backend.Worker, arg},
+      {Oban, Application.fetch_env!(:backend, Oban)},
       # Start to serve requests, typically the last entry
       BackendWeb.Endpoint
     ]

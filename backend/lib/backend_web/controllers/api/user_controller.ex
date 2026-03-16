@@ -74,4 +74,5 @@ defmodule BackendWeb.API.UserController do
       |> render(:password_changed, message: "Password changed successfully")
     end
   end
+
 end

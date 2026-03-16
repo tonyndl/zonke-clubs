@@ -393,7 +393,6 @@ export function AddPostModal({
         });
       })
       .then((post) => {
-        console.log("Post created:", post);
         setIsPosting(false);
         onClose();
         // Notify parent to refresh posts list
