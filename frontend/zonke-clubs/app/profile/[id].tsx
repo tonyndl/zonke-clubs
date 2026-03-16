@@ -13,7 +13,7 @@ import { StyleSheet } from "react-native";
 import { userService } from "@/services/userService";
 import { connectionService } from "@/services/connectionService";
 import { User } from "@/services/authService";
-import { TextStroke } from "../screens/Login/utils";
+import { TextStroke } from "../_screens/Login/utils";
 
 const VIBE_OPTIONS = [
   { emoji: "💃", name: "Dancing" },

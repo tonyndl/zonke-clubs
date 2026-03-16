@@ -25,11 +25,10 @@ export function useConnectionBadges() {
     // Load unread messages count
     getThreads()
       .then((response) => {
-        // Sum up unread counts from all threads
-        const totalUnread = response.threads.reduce(
-          (sum, thread) => sum + (thread.unreadCount || 0),
-          0,
-        );
+        // Count threads (people) with at least one unread message
+        const totalUnread = response.threads.filter(
+          (thread) => (thread.unreadCount || 0) > 0,
+        ).length;
         setUnreadCount(totalUnread);
       })
       .catch((error) => {
@@ -43,23 +42,27 @@ export function useConnectionBadges() {
 
     // Listen for WebSocket events for real-time updates
     const handleNewRequest = () => {
-      console.log("Badge: New connection request received");
       loadCounts(); // Reload counts when new request arrives
     };
 
     const handleRequestAccepted = () => {
-      console.log("Badge: Connection request accepted");
       loadCounts(); // Reload counts when request is accepted
     };
 
     const handleRequestDeclined = () => {
-      console.log("Badge: Connection request declined");
       loadCounts(); // Reload counts when request is declined
     };
 
     const handleNewMessage = () => {
-      console.log("Badge: New message received");
       loadCounts(); // Reload counts when new message arrives
+    };
+
+    const handleMessagesRead = () => {
+      loadCounts();
+    };
+
+    const handleSelfRead = () => {
+      loadCounts();
     };
 
     // Subscribe to WebSocket events
@@ -67,6 +70,8 @@ export function useConnectionBadges() {
     websocketService.on("connection_request_accepted", handleRequestAccepted);
     websocketService.on("connection_request_declined", handleRequestDeclined);
     websocketService.on("new_message_in_thread", handleNewMessage);
+    websocketService.on("messages_marked_as_read", handleMessagesRead);
+    websocketService.on("self_read_thread", handleSelfRead);
 
     // Cleanup: Unsubscribe from WebSocket events
     return () => {
@@ -80,6 +85,8 @@ export function useConnectionBadges() {
         handleRequestDeclined,
       );
       websocketService.off("new_message_in_thread", handleNewMessage);
+      websocketService.off("messages_marked_as_read", handleMessagesRead);
+      websocketService.off("self_read_thread", handleSelfRead);
     };
   }, []);
 

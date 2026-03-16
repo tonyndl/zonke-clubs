@@ -76,7 +76,7 @@ export default function ChatScreen() {
         return getThread(id)
           .then((threadData) => {
             setThreadId(threadData.thread.id);
-            setMessages(threadData.thread.messages);
+            setMessages([...threadData.thread.messages].reverse());
 
             // Find the other participant (not the current user)
             const otherParticipant = threadData.thread.participants.find(
@@ -94,12 +94,8 @@ export default function ChatScreen() {
                   // real-time event will set disconnectedByMe correctly if needed
                 }
               })
-              .catch((error) => {
+              .catch(() => {
                 // If no connection request exists, that's fine (direct messages)
-                console.log(
-                  "No connection request found for thread:",
-                  error.message,
-                );
               });
 
             // Mark messages as read now that we have the thread
@@ -107,17 +103,11 @@ export default function ChatScreen() {
           })
           .catch((error) => {
             // If thread not found (404), try to get or create thread with this user ID
-            console.log("Failed to load thread, error:", error.message);
             if (error.message && error.message.includes("404")) {
-              console.log(
-                "Thread not found, creating new thread with user:",
-                id,
-              );
               return getOrCreateThread(id)
                 .then((threadData) => {
-                  console.log("Thread created/found:", threadData.thread.id);
                   setThreadId(threadData.thread.id);
-                  setMessages(threadData.thread.messages);
+                  setMessages([...threadData.thread.messages].reverse());
 
                   // Find the other participant (not the current user)
                   const otherParticipant = threadData.thread.participants.find(
@@ -133,12 +123,7 @@ export default function ChatScreen() {
                         setIsDisconnected(true);
                       }
                     })
-                    .catch((error) => {
-                      console.log(
-                        "No connection request found for thread:",
-                        error.message,
-                      );
-                    });
+                    .catch(() => {});
 
                   // Update the URL to use the thread ID instead of user ID
                   router.replace(`/chat/${threadData.thread.id}`);
@@ -172,21 +157,16 @@ export default function ChatScreen() {
   useEffect(() => {
     if (!threadId) return;
 
-    console.log("Setting up WebSocket for thread:", threadId);
-
     // Function to join thread channel
     const joinThread = () => {
       websocketService
         .joinThreadChannel(threadId)
-        .then(() => {
-          console.log("Successfully joined thread channel:", threadId);
-        })
+        .then(() => {})
         .catch((error) => {
           console.error("Failed to join thread channel:", error);
 
           // If socket not connected, wait and retry
           if (error.message === "Socket not connected") {
-            console.log("Socket not ready, retrying in 1 second...");
             setTimeout(joinThread, 1000);
           }
         });
@@ -196,15 +176,12 @@ export default function ChatScreen() {
     if (websocketService.isConnected()) {
       joinThread();
     } else {
-      console.log("Socket not connected yet, waiting...");
       // Retry after a short delay to allow connection to establish
       setTimeout(joinThread, 1000);
     }
 
     // Listen for new messages
     const handleNewMessage = (payload: any) => {
-      console.log("Received new message via WebSocket:", payload);
-
       // Transform the message to match our Message type
       const newMessage: Message = {
         id: payload.id,
@@ -214,6 +191,7 @@ export default function ChatScreen() {
         isRead: payload.is_read,
         status: payload.status || "sent",
         sentAt: payload.sent_at,
+        insertedAt: payload.inserted_at,
       };
 
       // Add the new message to state (check for duplicates)
@@ -237,20 +215,14 @@ export default function ChatScreen() {
           );
         }
 
-        // Add new message
-        return [...prevMessages, newMessage];
+        // Prepend new message (inverted list — newest at top of array)
+        return [newMessage, ...prevMessages];
       });
 
       // If the message is from someone else and we're viewing the chat, mark it as read immediately
       if (payload.sender_id !== currentUserId) {
-        console.log("Marking incoming message as read...");
         websocketService.markMessagesAsRead(threadId);
       }
-
-      // Scroll to bottom
-      setTimeout(() => {
-        flatListRef.current?.scrollToEnd({ animated: true });
-      }, 100);
     };
 
     // Listen for status updates (delivered/read)
@@ -273,7 +245,6 @@ export default function ChatScreen() {
 
     // Listen for messages marked as read events (sent to user channel)
     const handleMessagesMarkedAsRead = (payload: any) => {
-      console.log("Messages marked as read in chat:", payload);
       const { thread_id, reader_id } = payload;
 
       // Only update if it's for this thread and someone else read my messages
@@ -290,7 +261,6 @@ export default function ChatScreen() {
 
     // Listen for disconnection events
     const handleDisconnection = (payload: any) => {
-      console.log("Connection disconnected:", payload);
       if (payload.thread_id === threadId) {
         // Check who disconnected
         const wasDisconnectedByMe =
@@ -310,7 +280,6 @@ export default function ChatScreen() {
 
     // Cleanup when component unmounts or threadId changes
     return () => {
-      console.log("Cleaning up WebSocket for thread:", threadId);
       websocketService.off(`thread:${threadId}:new_message`, handleNewMessage);
       websocketService.off(
         `thread:${threadId}:message_status_updated`,
@@ -332,13 +301,10 @@ export default function ChatScreen() {
     const handlePresenceChange = (payload: any) => {
       // Only update if it's the user we're chatting with
       if (payload.userId === otherUser.id) {
-        console.log("Other user presence changed:", payload);
         setOtherUser((prev: any) => ({
           ...prev,
           isOnline: payload.isOnline,
-          lastSeenAt:
-            payload.lastSeenAt ||
-            (payload.isOnline ? new Date().toISOString() : prev.lastSeenAt),
+          lastSeenAt: payload.lastSeenAt || new Date().toISOString(),
         }));
       }
     };
@@ -356,9 +322,6 @@ export default function ChatScreen() {
       "keyboardDidShow",
       () => {
         setIsKeyboardVisible(true);
-        setTimeout(() => {
-          flatListRef.current?.scrollToEnd({ animated: true });
-        }, 100);
       },
     );
 
@@ -392,6 +355,9 @@ export default function ChatScreen() {
       setInputText("");
 
       // Optimistic update - add message immediately to local state
+      const now = new Date();
+      const hh = String(now.getHours()).padStart(2, "0");
+      const mm = String(now.getMinutes()).padStart(2, "0");
       const tempMessage: Message = {
         id: `temp-${Date.now()}`,
         threadId: threadId,
@@ -399,15 +365,11 @@ export default function ChatScreen() {
         senderId: currentUserId,
         isRead: false,
         status: "sent",
-        sentAt: new Date().toISOString(),
+        sentAt: `${hh}:${mm}`,
+        insertedAt: now.toISOString(),
       };
 
-      setMessages((prevMessages) => [...prevMessages, tempMessage]);
-
-      // Scroll to bottom immediately
-      setTimeout(() => {
-        flatListRef.current?.scrollToEnd({ animated: true });
-      }, 100);
+      setMessages((prevMessages) => [tempMessage, ...prevMessages]);
 
       sendMessage(threadId, messageText)
         .then((response) => {
@@ -515,29 +477,17 @@ export default function ChatScreen() {
     );
   };
 
-  const formatTime = (dateString: string) => {
-    // Ensure the datetime string is parsed as UTC by adding 'Z' if not present
-    const dateStringUTC = dateString.endsWith("Z")
-      ? dateString
-      : `${dateString}Z`;
-    const date = new Date(dateStringUTC);
-    return date.toLocaleTimeString("en-US", {
-      hour: "numeric",
-      minute: "2-digit",
-    });
-  };
+  // sentAt is pre-formatted by the backend ("HH:MM" or "D Mon").
+  // For optimistic messages we generate the same "HH:MM" format locally.
+  const formatTime = (sentAt: string) => sentAt;
 
-  const formatDateHeader = (dateString: string) => {
-    // Ensure the datetime string is parsed as UTC by adding 'Z' if not present
-    const dateStringUTC = dateString.endsWith("Z")
-      ? dateString
-      : `${dateString}Z`;
-    const date = new Date(dateStringUTC);
+  const formatDateHeader = (insertedAt: string) => {
+    const normalized = insertedAt.endsWith("Z") ? insertedAt : `${insertedAt}Z`;
+    const date = new Date(normalized);
     const today = new Date();
     const yesterday = new Date(today);
     yesterday.setDate(yesterday.getDate() - 1);
 
-    // Reset time to compare just dates
     const dateOnly = new Date(
       date.getFullYear(),
       date.getMonth(),
@@ -554,42 +504,53 @@ export default function ChatScreen() {
       yesterday.getDate(),
     );
 
-    if (dateOnly.getTime() === todayOnly.getTime()) {
-      return "Today";
-    } else if (dateOnly.getTime() === yesterdayOnly.getTime()) {
-      return "Yesterday";
-    } else {
-      return date.toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-        year: "numeric",
-      });
-    }
+    if (dateOnly.getTime() === todayOnly.getTime()) return "Today";
+    if (dateOnly.getTime() === yesterdayOnly.getTime()) return "Yesterday";
+    return date.toLocaleDateString([], {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
   };
 
   const getMessagesWithDateHeaders = () => {
-    const messagesWithHeaders: Array<
-      Message | { type: "date"; date: string; id: string }
-    > = [];
-    let lastDate: string | null = null;
+    // Messages are in descending order (newest first). For an inverted FlatList
+    // the date header for each day group must appear AFTER all messages of that
+    // day in the array so it renders visually ABOVE them.
+    const result: Array<Message | { type: "date"; date: string; id: string }> =
+      [];
+    let currentDate: string | null = null;
+    let currentDateRaw: string | null = null;
 
     messages.forEach((message) => {
-      const messageDate = new Date(message.sentAt).toDateString();
+      const rawTs = message.insertedAt || message.sentAt;
+      const normalized = rawTs.endsWith("Z") ? rawTs : `${rawTs}Z`;
+      const messageDate = new Date(normalized).toDateString();
 
-      // Add date header if date changed
-      if (messageDate !== lastDate) {
-        messagesWithHeaders.push({
-          type: "date",
-          date: message.sentAt,
-          id: `date-${messageDate}`,
-        });
-        lastDate = messageDate;
+      if (messageDate !== currentDate) {
+        if (currentDate !== null) {
+          result.push({
+            type: "date",
+            date: currentDateRaw!,
+            id: `date-${currentDate}`,
+          });
+        }
+        currentDate = messageDate;
+        currentDateRaw = rawTs;
       }
 
-      messagesWithHeaders.push(message);
+      result.push(message);
     });
 
-    return messagesWithHeaders;
+    if (currentDate !== null) {
+      result.push({
+        type: "date",
+        date: currentDateRaw!,
+        id: `date-${currentDate}`,
+      });
+    }
+
+    return result;
   };
 
   const formatLastSeen = (lastSeenAt: string | null | undefined) => {
@@ -795,7 +756,7 @@ export default function ChatScreen() {
                 <Text style={styles.menuItemText}>Clear Chat</Text>
               </PressableScale>
 
-              <View style={styles.menuDivider} />
+              {/* <View style={styles.menuDivider} />
 
               <PressableScale
                 style={styles.menuItem}
@@ -809,7 +770,7 @@ export default function ChatScreen() {
                 <Text style={[styles.menuItemText, { color: "#EF4444" }]}>
                   Disconnect
                 </Text>
-              </PressableScale>
+              </PressableScale> */}
             </View>
           </PressableScale>
         </Modal>
@@ -817,7 +778,7 @@ export default function ChatScreen() {
         {/* Messages and Input Container with Keyboard Avoiding */}
         <KeyboardAvoidingView
           style={{ flex: 1 }}
-          behavior={Platform.OS === "ios" ? "padding" : undefined}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
           keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
         >
           {/* Messages */}
@@ -829,9 +790,7 @@ export default function ChatScreen() {
             keyExtractor={(item) => item.id}
             contentContainerStyle={styles.messagesList}
             showsVerticalScrollIndicator={false}
-            onContentSizeChange={() =>
-              flatListRef.current?.scrollToEnd({ animated: false })
-            }
+            inverted={true}
           />
 
           {/* Input */}
@@ -1230,6 +1189,32 @@ const styles = StyleSheet.create({
     color: Colors.smoke,
     fontWeight: "600",
     textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  unreadDividerContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginVertical: 12,
+    paddingHorizontal: 8,
+  },
+  unreadDividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: "rgba(57, 243, 255, 0.15)",
+  },
+  unreadDividerBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    backgroundColor: Colors.bgCard,
+    borderRadius: 12,
+    marginHorizontal: 8,
+    borderWidth: 1,
+    borderColor: "rgba(57, 243, 255, 0.15)",
+  },
+  unreadDividerText: {
+    fontSize: 11,
+    color: Colors.smoke,
+    fontWeight: "600",
     letterSpacing: 0.5,
   },
 });

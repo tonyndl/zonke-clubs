@@ -171,10 +171,6 @@ export default function ProfileSetupScreen() {
     // Upload avatar to S3 first if it's a local file
     const uploadAvatarIfNeeded = () => {
       if (avatarUri && avatarUri.startsWith("file://")) {
-        console.log(
-          "📸 [ProfileSetup] Uploading avatar to S3...",
-          avatarUri.substring(0, 50),
-        );
         const extension = avatarUri.toLowerCase().endsWith(".heic")
           ? "jpg"
           : "jpg";
@@ -185,10 +181,6 @@ export default function ProfileSetupScreen() {
             name: `avatar_${Date.now()}.${extension}`,
           })
           .then((asset) => {
-            console.log(
-              "✅ [ProfileSetup] Avatar uploaded successfully:",
-              asset.url,
-            );
             return asset.url;
           })
           .catch((error) => {
@@ -198,7 +190,6 @@ export default function ProfileSetupScreen() {
             );
           });
       } else {
-        console.log("ℹ️ [ProfileSetup] No avatar selected");
         return Promise.resolve(avatarUri);
       }
     };

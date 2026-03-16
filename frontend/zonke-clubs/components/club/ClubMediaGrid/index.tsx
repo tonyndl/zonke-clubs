@@ -7,7 +7,6 @@ import {
   useWindowDimensions,
 } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
-import { Video, ResizeMode } from "expo-av";
 import { Ionicons } from "@expo/vector-icons";
 import { Colors } from "@/constants/ui";
 import { PressableScale } from "@/components/ui/PressableScale";
@@ -46,8 +45,6 @@ export function ClubMediaGrid({
   // Get screen width and calculate number of columns
   const { width } = useWindowDimensions();
   const numColumns = getNumColumns(width);
-
-  console.log("ClubMediaGrid - Received posts:", posts.length);
 
   // Extract all media from posts and map them to their post indices
   // Also attach post metadata (like count, isLiked) to each media item
@@ -305,14 +302,7 @@ function MediaGridItem({
         ]}
       >
         {isVideo ? (
-          <Video
-            source={{ uri: media.url }}
-            style={styles.gridImage}
-            resizeMode={ResizeMode.COVER}
-            shouldPlay={false}
-            isMuted={true}
-            usePoster={true}
-          />
+          <View style={[styles.gridImage, { backgroundColor: "#111" }]} />
         ) : (
           <Image
             source={{ uri: media.url }}

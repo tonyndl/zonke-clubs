@@ -1,6 +1,11 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { apiService } from "../../services/api";
+import {
+  adminLoginSchema,
+  adminSignupSchema,
+  parseZodErrors,
+} from "../../utils/validation";
 import { FormGroup, Label } from "../../components/Input";
 // AuthInput is a standalone styled.input defined in ./styles — no global Input needed
 import { Button } from "../../components/Button";
@@ -69,6 +74,7 @@ export const Auth: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   // Login form state
   const [loginEmail, setLoginEmail] = useState("");
@@ -85,10 +91,14 @@ export const Auth: React.FC = () => {
   const [showSignupPassword, setShowSignupPassword] = useState(false);
   const [showSignupConfirm, setShowSignupConfirm] = useState(false);
 
+  const clearError = (field: string) =>
+    setErrors((prev) => ({ ...prev, [field]: "" }));
+
   const switchTab = (tab: TabType) => {
     setActiveTab(tab);
     setError("");
     setSuccessMessage("");
+    setErrors({});
   };
 
   const handleLogin = (e: React.FormEvent) => {
@@ -96,11 +106,15 @@ export const Auth: React.FC = () => {
     setError("");
     setSuccessMessage("");
 
-    if (!loginEmail || !loginPassword) {
-      setError("Please fill in all fields");
+    const result = adminLoginSchema.safeParse({
+      email: loginEmail,
+      password: loginPassword,
+    });
+    if (!result.success) {
+      setErrors(parseZodErrors(result.error));
       return;
     }
-
+    setErrors({});
     setIsLoading(true);
     apiService
       .login(loginEmail, loginPassword)
@@ -120,26 +134,17 @@ export const Auth: React.FC = () => {
     setError("");
     setSuccessMessage("");
 
-    if (
-      !signupClubName ||
-      !signupEmail ||
-      !signupPassword ||
-      !signupConfirmPassword
-    ) {
-      setError("Please fill in all fields");
+    const result = adminSignupSchema.safeParse({
+      clubName: signupClubName,
+      email: signupEmail,
+      password: signupPassword,
+      confirmPassword: signupConfirmPassword,
+    });
+    if (!result.success) {
+      setErrors(parseZodErrors(result.error));
       return;
     }
-
-    if (signupPassword !== signupConfirmPassword) {
-      setError("Passwords do not match");
-      return;
-    }
-
-    if (signupPassword.length < 8) {
-      setError("Password must be at least 8 characters long");
-      return;
-    }
-
+    setErrors({});
     setIsLoading(true);
     apiService
       .signup(signupClubName, signupEmail, signupPassword)
@@ -220,9 +225,22 @@ export const Auth: React.FC = () => {
                   type="email"
                   placeholder="Enter your email"
                   value={loginEmail}
-                  onChange={(e) => setLoginEmail(e.target.value)}
-                  required
+                  onChange={(e) => {
+                    setLoginEmail(e.target.value);
+                    clearError("email");
+                  }}
                 />
+                {errors.email && (
+                  <p
+                    style={{
+                      color: "#ef4444",
+                      fontSize: "12px",
+                      margin: "4px 0 0",
+                    }}
+                  >
+                    {errors.email}
+                  </p>
+                )}
               </FormGroup>
               <FormGroup>
                 <Label htmlFor="login-password">Password</Label>
@@ -232,8 +250,10 @@ export const Auth: React.FC = () => {
                     type={showLoginPassword ? "text" : "password"}
                     placeholder="Enter your password"
                     value={loginPassword}
-                    onChange={(e) => setLoginPassword(e.target.value)}
-                    required
+                    onChange={(e) => {
+                      setLoginPassword(e.target.value);
+                      clearError("password");
+                    }}
                   />
                   <EyeButton
                     type="button"
@@ -243,6 +263,17 @@ export const Auth: React.FC = () => {
                     <EyeIcon open={showLoginPassword} />
                   </EyeButton>
                 </PasswordWrapper>
+                {errors.password && (
+                  <p
+                    style={{
+                      color: "#ef4444",
+                      fontSize: "12px",
+                      margin: "4px 0 0",
+                    }}
+                  >
+                    {errors.password}
+                  </p>
+                )}
               </FormGroup>
               <Button
                 type="submit"
@@ -262,9 +293,22 @@ export const Auth: React.FC = () => {
                   type="text"
                   placeholder="Enter your club name"
                   value={signupClubName}
-                  onChange={(e) => setSignupClubName(e.target.value)}
-                  required
+                  onChange={(e) => {
+                    setSignupClubName(e.target.value);
+                    clearError("clubName");
+                  }}
                 />
+                {errors.clubName && (
+                  <p
+                    style={{
+                      color: "#ef4444",
+                      fontSize: "12px",
+                      margin: "4px 0 0",
+                    }}
+                  >
+                    {errors.clubName}
+                  </p>
+                )}
               </FormGroup>
               <FormGroup>
                 <Label htmlFor="signup-email">Email</Label>
@@ -273,9 +317,22 @@ export const Auth: React.FC = () => {
                   type="email"
                   placeholder="Enter your email"
                   value={signupEmail}
-                  onChange={(e) => setSignupEmail(e.target.value)}
-                  required
+                  onChange={(e) => {
+                    setSignupEmail(e.target.value);
+                    clearError("email");
+                  }}
                 />
+                {errors.email && (
+                  <p
+                    style={{
+                      color: "#ef4444",
+                      fontSize: "12px",
+                      margin: "4px 0 0",
+                    }}
+                  >
+                    {errors.email}
+                  </p>
+                )}
               </FormGroup>
               <FormGroup>
                 <Label htmlFor="signup-password">Password</Label>
@@ -285,8 +342,10 @@ export const Auth: React.FC = () => {
                     type={showSignupPassword ? "text" : "password"}
                     placeholder="Create a password (min 8 characters)"
                     value={signupPassword}
-                    onChange={(e) => setSignupPassword(e.target.value)}
-                    required
+                    onChange={(e) => {
+                      setSignupPassword(e.target.value);
+                      clearError("password");
+                    }}
                   />
                   <EyeButton
                     type="button"
@@ -296,6 +355,17 @@ export const Auth: React.FC = () => {
                     <EyeIcon open={showSignupPassword} />
                   </EyeButton>
                 </PasswordWrapper>
+                {errors.password && (
+                  <p
+                    style={{
+                      color: "#ef4444",
+                      fontSize: "12px",
+                      margin: "4px 0 0",
+                    }}
+                  >
+                    {errors.password}
+                  </p>
+                )}
               </FormGroup>
               <FormGroup>
                 <Label htmlFor="signup-confirm-password">
@@ -307,8 +377,10 @@ export const Auth: React.FC = () => {
                     type={showSignupConfirm ? "text" : "password"}
                     placeholder="Confirm your password"
                     value={signupConfirmPassword}
-                    onChange={(e) => setSignupConfirmPassword(e.target.value)}
-                    required
+                    onChange={(e) => {
+                      setSignupConfirmPassword(e.target.value);
+                      clearError("confirmPassword");
+                    }}
                   />
                   <EyeButton
                     type="button"
@@ -318,6 +390,17 @@ export const Auth: React.FC = () => {
                     <EyeIcon open={showSignupConfirm} />
                   </EyeButton>
                 </PasswordWrapper>
+                {errors.confirmPassword && (
+                  <p
+                    style={{
+                      color: "#ef4444",
+                      fontSize: "12px",
+                      margin: "4px 0 0",
+                    }}
+                  >
+                    {errors.confirmPassword}
+                  </p>
+                )}
               </FormGroup>
               <Button
                 type="submit"

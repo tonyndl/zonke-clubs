@@ -1,7 +1,6 @@
 import React, { useRef, useState, useCallback, useEffect, memo } from "react";
 import { View, Text, FlatList, ViewToken, Pressable } from "react-native";
 import { useVideoPlayer, VideoView } from "expo-video";
-import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useIsFocused } from "@react-navigation/native";
@@ -134,15 +133,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = memo(
           nativeControls={false}
         />
 
-        {/* Gradient overlay for better text readability */}
-        {showControls && (
-          <LinearGradient
-            colors={["transparent", "transparent", "rgba(10, 10, 15, 0.85)"]}
-            style={styles.gradient}
-            pointerEvents="none"
-          />
-        )}
-
         {/* Center Play/Pause Icon */}
         {showControls && !isPlaying && (
           <Animated.View
@@ -204,7 +194,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = memo(
                   <Ionicons
                     name="time-outline"
                     size={14}
-                    color={Colors.smoke}
+                    color={Colors.platinum}
                   />
                   <Text style={styles.statText}>
                     {formatTimeAgo(item.uploaded_at)}

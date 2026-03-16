@@ -39,16 +39,8 @@ export const styles = StyleSheet.create({
     width: 90,
     height: 90,
     borderRadius: 45,
-    backgroundColor: "rgba(20, 25, 35, 0.85)",
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 3,
-    borderColor: Colors.gold,
-    shadowColor: Colors.gold,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.6,
-    shadowRadius: 20,
-    elevation: 15,
   },
   tapArea: {
     position: "absolute",
@@ -102,7 +94,7 @@ export const styles = StyleSheet.create({
     maxWidth: 200,
   },
   locationText: {
-    color: Colors.smoke,
+    color: Colors.platinum,
     fontSize: 14,
   },
   statsRow: {
@@ -117,7 +109,7 @@ export const styles = StyleSheet.create({
     gap: 4,
   },
   statText: {
-    color: Colors.smoke,
+    color: Colors.platinum,
     fontSize: 12,
   },
   emptyContainer: {

@@ -6,15 +6,19 @@ defmodule Backend.Clubs do
   alias Backend.Repo
   alias Backend.Clubs.Club
   alias Backend.Clubs.ClubLike
+  alias Backend.PaginateHelper
 
   @doc """
-  Lists all clubs.
+  Lists clubs with pagination. Returns {clubs, paginate_metadata}.
   """
-  def list_clubs do
-    Club
-    |> where([c], c.active == true)
-    |> order_by([c], asc: c.name)
-    |> Repo.all()
+  def list_clubs(params \\ %{}) do
+    page =
+      Club
+      |> where([c], c.active == true)
+      |> order_by([c], asc: c.name)
+      |> Repo.paginate(PaginateHelper.prep_params(params))
+
+    {page.entries, PaginateHelper.prep_paginate(page)}
   end
 
   @doc """
@@ -179,13 +183,14 @@ defmodule Backend.Clubs do
   def get_user_favorite_clubs(nil), do: []
 
   @doc """
-  Lists all clubs with optional session to include is_liked flag.
-  When session is provided, each club will have a virtual :is_liked field.
+  Lists clubs with pagination and optional is_liked flag.
+  Returns {clubs, paginate_metadata}.
   """
-  def list_clubs_with_likes(session) when not is_nil(session) do
-    clubs = list_clubs()
+  def list_clubs_with_likes(session, params \\ %{})
 
-    # Get all liked club IDs for the user in one query
+  def list_clubs_with_likes(session, params) when not is_nil(session) do
+    {clubs, paginate} = list_clubs(params)
+
     liked_club_ids =
       ClubLike
       |> where([cl], cl.user_id == ^session.id)
@@ -193,11 +198,13 @@ defmodule Backend.Clubs do
       |> Repo.all()
       |> MapSet.new()
 
-    # Map over clubs and add is_liked virtual field
-    Enum.map(clubs, fn club ->
-      Map.put(club, :is_liked, MapSet.member?(liked_club_ids, club.id))
-    end)
+    clubs_with_likes =
+      Enum.map(clubs, fn club ->
+        Map.put(club, :is_liked, MapSet.member?(liked_club_ids, club.id))
+      end)
+
+    {clubs_with_likes, paginate}
   end
 
-  def list_clubs_with_likes(nil), do: list_clubs()
+  def list_clubs_with_likes(nil, params), do: list_clubs(params)
 end

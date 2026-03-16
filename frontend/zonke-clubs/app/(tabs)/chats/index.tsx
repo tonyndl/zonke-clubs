@@ -9,9 +9,9 @@ import { Colors } from "@/constants/ui";
 import { PressableScale } from "@/components/ui/PressableScale";
 import { ChatThread } from "@/types/connection";
 import { getThreads } from "@/services/messageService";
-import { TextStroke } from "../../screens/Login/utils";
+import { TextStroke } from "../../_screens/Login/utils";
 import { websocketService } from "@/services/websocketService";
-import { styles } from "./styles";
+import { styles } from "./_styles";
 
 export default function ChatsScreen() {
   const [threads, setThreads] = useState<ChatThread[]>([]);
@@ -50,8 +50,6 @@ export default function ChatsScreen() {
   // Listen for new messages in threads (real-time updates)
   useEffect(() => {
     const handleNewMessageInThread = (payload: any) => {
-      console.log("New message notification received:", payload);
-
       const { thread_id, message } = payload;
 
       // Update the thread with new last message
@@ -71,12 +69,13 @@ export default function ChatsScreen() {
             id: message.id,
             text: message.content,
             sentAt: message.sent_at,
+            insertedAt: message.inserted_at,
             senderId: message.sender_id,
             isRead: false,
             status: message.status || "sent",
           },
           unreadCount: thread.unreadCount + 1,
-          updatedAt: message.sent_at,
+          updatedAt: message.inserted_at || message.sent_at,
         };
 
         // Move thread to top of list
@@ -96,8 +95,6 @@ export default function ChatsScreen() {
     };
 
     const handleMessagesMarkedAsRead = (payload: any) => {
-      console.log("Messages marked as read:", payload);
-
       const { thread_id } = payload;
 
       // Update the thread to mark last message as read
@@ -119,8 +116,6 @@ export default function ChatsScreen() {
     };
 
     const handleConnectionDisconnected = (payload: any) => {
-      console.log("Connection disconnected event received:", payload);
-
       const { thread_id } = payload;
 
       // Update the thread to mark as disconnected
@@ -227,22 +222,6 @@ export default function ChatsScreen() {
     router.push(`/chat/${thread.id}`);
   };
 
-  const formatTimeAgo = (dateString: string): string => {
-    // Ensure the datetime string is parsed as UTC by adding 'Z' if not present
-    const dateStringUTC = dateString.endsWith("Z")
-      ? dateString
-      : `${dateString}Z`;
-    const date = new Date(dateStringUTC);
-    const now = new Date();
-    const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
-
-    if (diffInSeconds < 60) return "now";
-    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m`;
-    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h`;
-    if (diffInSeconds < 604800) return `${Math.floor(diffInSeconds / 86400)}d`;
-    return `${Math.floor(diffInSeconds / 604800)}w`;
-  };
-
   const renderThread = (thread: ChatThread, index: number) => {
     const { participant, lastMessage, unreadCount, connectionStatus } = thread;
     const displayName = participant.username;
@@ -307,9 +286,7 @@ export default function ChatsScreen() {
                 >
                   {displayName}
                 </Text>
-                <Text style={styles.timeText}>
-                  {formatTimeAgo(lastMessage.sentAt)}
-                </Text>
+                <Text style={styles.timeText}>{lastMessage.sentAt}</Text>
               </View>
 
               {isDisconnected ? (

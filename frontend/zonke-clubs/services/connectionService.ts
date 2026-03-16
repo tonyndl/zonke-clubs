@@ -73,9 +73,7 @@ class ConnectionService {
   ): Promise<SingleConnectionRequestResponse> {
     return api
       .post<any>("/connection-requests", params, true)
-      .then((response) => ({
-        request: transformRequest(response.request),
-      }));
+      .then((response) => ({ request: transformRequest(response.request) }));
   }
 
   /**

@@ -72,6 +72,11 @@ defmodule BackendWeb.Router do
     put "/assets/:id", AssetController, :update
     delete "/assets/:id", AssetController, :delete
 
+    # Push tokens
+    get "/push_tokens", PushTokenController, :index
+    post "/push_tokens", PushTokenController, :create
+    delete "/push_tokens", PushTokenController, :delete
+
     # Posts (club feed)
     post "/posts", PostController, :create
     get "/posts/:id", PostController, :show

@@ -1,4 +1,10 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, {
+  useState,
+  useEffect,
+  useRef,
+  useMemo,
+  useCallback,
+} from "react";
 import {
   StyleSheet,
   View,
@@ -25,6 +31,8 @@ import Animated, {
   FadeOutRight,
 } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
+import * as Location from "expo-location";
+import { getDistance } from "geolib";
 
 import { Ionicons } from "@expo/vector-icons";
 import { Colors } from "@/constants/ui";
@@ -65,6 +73,7 @@ type Club = {
     longitude: number;
   };
   image: string;
+  distance?: number;
 };
 
 type DiscoverEvent = ClubEvent & {
@@ -86,6 +95,11 @@ const getPlaceholderImage = (index: number) => {
     "https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?auto=format&fit=crop&w=800&q=60",
   ];
   return images[index % images.length];
+};
+
+const formatDistance = (metres: number): string => {
+  if (metres < 1000) return `${metres} m`;
+  return `${(metres / 1000).toFixed(1)} km`;
 };
 
 const formatEventDate = (dateStr: string): string => {
@@ -541,6 +555,9 @@ export const HomeScreen = () => {
   const [clubs, setClubs] = useState<Club[]>([]);
   const [events, setEvents] = useState<DiscoverEvent[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [maxPage, setMaxPage] = useState(1);
   const [eventsLoading, setEventsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -548,6 +565,7 @@ export const HomeScreen = () => {
   const [liked, setLiked] = useState<Record<string, boolean>>({});
   const [searchFocused, setSearchFocused] = useState(false);
   const searchInputRef = useRef<TextInput>(null);
+  const videoSearchInputRef = useRef<TextInput>(null);
   const [viewMode, setViewMode] = useState<ViewMode>("clubs");
   const [clubViewMode, setClubViewMode] = useState<ClubViewMode>(
     (params.clubViewMode as ClubViewMode) || "cards",
@@ -556,6 +574,29 @@ export const HomeScreen = () => {
   const [videoSearchQuery, setVideoSearchQuery] = useState("");
   const [videoSearchFocused, setVideoSearchFocused] = useState(false);
   const [fullscreenIndex, setFullscreenIndex] = useState<number | null>(null);
+  const [userCoords, setUserCoords] = useState<{
+    latitude: number;
+    longitude: number;
+  } | null>(null);
+
+  useEffect(() => {
+    Location.requestForegroundPermissionsAsync()
+      .then(({ status }) => {
+        if (status !== "granted") return null;
+        return Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Balanced,
+        });
+      })
+      .then((pos) => {
+        if (pos) {
+          setUserCoords({
+            latitude: pos.coords.latitude,
+            longitude: pos.coords.longitude,
+          });
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     loadClubs();
@@ -571,9 +612,10 @@ export const HomeScreen = () => {
     setLoading(true);
     setEventsLoading(true);
     setError(null);
+    setCurrentPage(1);
 
     clubsService
-      .getClubs(!!user)
+      .getClubs(!!user, 1)
       .then((response) => {
         const formattedClubs = response.clubs.map(
           (club: ApiClub, index: number) => ({
@@ -584,6 +626,7 @@ export const HomeScreen = () => {
           }),
         );
         setClubs(formattedClubs);
+        setMaxPage(response.paginate.max_page);
 
         if (user) {
           const likedState: Record<string, boolean> = {};
@@ -644,6 +687,39 @@ export const HomeScreen = () => {
       .finally(() => {
         setLoading(false);
       });
+  };
+
+  const loadMoreClubs = () => {
+    if (loadingMore || currentPage >= maxPage) return;
+
+    const nextPage = currentPage + 1;
+    setLoadingMore(true);
+
+    clubsService
+      .getClubs(!!user, nextPage)
+      .then((response) => {
+        const newClubs = response.clubs.map((club: ApiClub, index: number) => ({
+          id: club.id,
+          name: club.name,
+          location: club.location,
+          image: getPlaceholderImage(clubs.length + index),
+        }));
+        setClubs((prev) => [...prev, ...newClubs]);
+        setCurrentPage(nextPage);
+        setMaxPage(response.paginate.max_page);
+
+        if (user) {
+          const likedState: Record<string, boolean> = {};
+          response.clubs.forEach((club: ApiClub) => {
+            if (club.is_liked !== undefined) {
+              likedState[club.id] = club.is_liked;
+            }
+          });
+          setLiked((prev) => ({ ...prev, ...likedState }));
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoadingMore(false));
   };
 
   const toggleLike = (clubId: string) => {
@@ -748,59 +824,91 @@ export const HomeScreen = () => {
   };
 
   // ── Club card renderer ──────────────────────────────────────────────────
-  const renderClub = ({ item, index }: { item: Club; index: number }) => {
-    const intentions = getIntentionsForClub([]);
-
-    return (
-      <Animated.View entering={FadeInDown.delay(index * 100).springify()}>
-        <PressableScale onPress={() => openClub(item)} style={styles.card}>
-          <ImageBackground
-            source={{ uri: item.image }}
-            style={styles.cardImage}
-            imageStyle={styles.cardImageStyle}
-          >
-            <View style={styles.goldAccent} />
-
-            <PressableScale
-              style={styles.likeButton}
-              onPress={() => toggleLike(item.id)}
+  const renderClub = useCallback(
+    ({ item, index }: { item: Club; index: number }) => {
+      const intentions = getIntentionsForClub([]);
+      return (
+        <View>
+          <PressableScale onPress={() => openClub(item)} style={styles.card}>
+            <ImageBackground
+              source={{ uri: item.image }}
+              style={styles.cardImage}
+              imageStyle={styles.cardImageStyle}
             >
-              <Ionicons
-                name={liked[item.id] ? "heart" : "heart-outline"}
-                size={24}
-                color={liked[item.id] ? Colors.gold : Colors.platinum}
-              />
-            </PressableScale>
+              <View style={styles.goldAccent} />
 
-            <View style={styles.cardContent}>
-              <Text style={styles.clubName}>{item.name}</Text>
+              <PressableScale
+                style={styles.likeButton}
+                onPress={() => toggleLike(item.id)}
+              >
+                <Ionicons
+                  name={liked[item.id] ? "heart" : "heart-outline"}
+                  size={24}
+                  color={liked[item.id] ? Colors.gold : Colors.platinum}
+                />
+              </PressableScale>
 
-              <View style={styles.locationRow}>
-                <Ionicons name="location-sharp" size={14} color={Colors.gold} />
-                <Text
-                  style={styles.locationText}
-                  numberOfLines={1}
-                  ellipsizeMode="tail"
-                >
-                  {item.location.name}
-                </Text>
+              <View style={styles.cardContent}>
+                <Text style={styles.clubName}>{item.name}</Text>
+
+                <View style={styles.locationRow}>
+                  <Ionicons
+                    name="location-sharp"
+                    size={14}
+                    color={Colors.gold}
+                  />
+                  <Text
+                    style={styles.locationText}
+                    numberOfLines={1}
+                    ellipsizeMode="tail"
+                  >
+                    {item.location.name}
+                  </Text>
+                  {item.distance != null && (
+                    <View style={styles.distancePill}>
+                      <Ionicons name="navigate" size={10} color={Colors.gold} />
+                      <Text style={styles.distancePillText}>
+                        {formatDistance(item.distance)}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+
+                <InterestedPeopleRow
+                  intentions={intentions}
+                  onPress={() =>
+                    router.push(`/people-browse?clubId=${item.id}` as any)
+                  }
+                />
               </View>
+            </ImageBackground>
+          </PressableScale>
+        </View>
+      );
+    },
+    [liked, userCoords],
+  );
 
-              <InterestedPeopleRow
-                intentions={intentions}
-                onPress={() =>
-                  router.push(`/people-browse?clubId=${item.id}` as any)
-                }
-              />
-            </View>
-          </ImageBackground>
-        </PressableScale>
-      </Animated.View>
-    );
-  };
-
-  const filteredClubs = clubs.filter((c) =>
-    c.name.toLowerCase().includes(searchQuery.toLowerCase()),
+  const filteredClubs = useMemo(
+    () =>
+      clubs
+        .filter((c) => c.name.toLowerCase().includes(searchQuery.toLowerCase()))
+        .map((c) => ({
+          ...c,
+          distance:
+            userCoords && c.location.latitude && c.location.longitude
+              ? getDistance(userCoords, {
+                  latitude: c.location.latitude,
+                  longitude: c.location.longitude,
+                })
+              : undefined,
+        }))
+        .sort((a, b) => {
+          if (a.distance == null) return 1;
+          if (b.distance == null) return -1;
+          return a.distance - b.distance;
+        }),
+    [clubs, searchQuery, userCoords],
   );
 
   const filteredVideos = videoFeed.filter(
@@ -823,6 +931,11 @@ export const HomeScreen = () => {
           <PressableScale
             style={styles.searchIconBtn}
             onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              if (clubViewMode === "videos") {
+                setTimeout(() => videoSearchInputRef.current?.focus(), 100);
+                return;
+              }
               const next = !showSearch;
               setShowSearch(next);
               if (!next) {
@@ -831,11 +944,14 @@ export const HomeScreen = () => {
               } else {
                 setTimeout(() => searchInputRef.current?.focus(), 100);
               }
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
             }}
           >
             <Ionicons
-              name={showSearch ? "close" : "search-outline"}
+              name={
+                showSearch && clubViewMode === "cards"
+                  ? "close"
+                  : "search-outline"
+              }
               size={20}
               color={showSearch ? Colors.gold : Colors.smoke}
             />
@@ -889,6 +1005,7 @@ export const HomeScreen = () => {
             color={videoSearchFocused ? Colors.gold : Colors.white}
           />
           <TextInput
+            ref={videoSearchInputRef}
             placeholder="Search videos by club..."
             placeholderTextColor={Colors.lightGrey}
             value={videoSearchQuery}
@@ -996,8 +1113,20 @@ export const HomeScreen = () => {
             data={filteredClubs}
             keyExtractor={(item) => item.id}
             renderItem={renderClub}
+            extraData={liked}
             contentContainerStyle={styles.listContent}
             showsVerticalScrollIndicator={false}
+            onEndReached={searchQuery ? undefined : loadMoreClubs}
+            onEndReachedThreshold={0.4}
+            ListFooterComponent={
+              loadingMore ? (
+                <ActivityIndicator
+                  size="small"
+                  color={Colors.gold}
+                  style={{ marginVertical: 16 }}
+                />
+              ) : null
+            }
             ListHeaderComponent={
               <>
                 {/* ── Events Carousel ── */}
@@ -1419,10 +1548,8 @@ const styles = StyleSheet.create({
 
   // ── Search bar ───────────────────────────────────────────────────────────
   searchRow: {
-    height: 52,
     backgroundColor: Colors.bgCard,
     borderRadius: 14,
-    marginBottom: 16,
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 16,
@@ -1438,8 +1565,7 @@ const styles = StyleSheet.create({
   },
   searchInput: {
     flex: 1,
-    height: 52,
-    color: Colors.platinum,
+    color: Colors.white,
     paddingHorizontal: 12,
     fontSize: 15,
   },
@@ -1505,9 +1631,25 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
   locationText: {
-    flex: 1,
+    flexShrink: 1,
     color: Colors.white,
     fontSize: 13,
+  },
+  distancePill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 20,
+    backgroundColor: "rgba(212,175,55,0.12)",
+    borderWidth: 1,
+    borderColor: "rgba(212,175,55,0.3)",
+  },
+  distancePillText: {
+    color: Colors.gold,
+    fontSize: 11,
+    fontWeight: "600",
   },
 
   // ── Loading / Error ──────────────────────────────────────────────────────

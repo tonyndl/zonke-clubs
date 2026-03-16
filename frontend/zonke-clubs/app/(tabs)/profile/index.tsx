@@ -19,7 +19,7 @@ import Animated, {
 import { Ionicons } from "@expo/vector-icons";
 import { Colors } from "@/constants/ui";
 import { PressableScale } from "@/components/ui/PressableScale";
-import { TextStroke } from "../../screens/Login/utils";
+import { TextStroke } from "../../_screens/Login/utils";
 import { LinearGradient } from "expo-linear-gradient";
 import {
   router,
@@ -57,7 +57,7 @@ import {
   formatPlannedDate,
 } from "@/types/meetup";
 import { PostIntentionModal } from "@/components/meetup/PostIntentionModal";
-import { styles } from "./styles";
+import { styles } from "./_styles";
 
 const intentionStyles = StyleSheet.create({
   card: {
@@ -437,10 +437,6 @@ export default function ProfileScreen() {
   // Update avatar when user data is refreshed from server
   useEffect(() => {
     if (authUser?.avatar_url !== avatarUri && !hasChanges()) {
-      console.log(
-        "[Profile] Updating avatar from server:",
-        authUser?.avatar_url,
-      );
       setAvatarUri(authUser?.avatar_url || null);
       setOriginalAvatar(authUser?.avatar_url || null);
     }
@@ -725,11 +721,8 @@ export default function ProfileScreen() {
   useFocusEffect(
     React.useCallback(() => {
       if (isOwnProfile) {
-        console.log("[Profile] Screen focused, refreshing user profile...");
         refreshUser()
-          .then(() => {
-            console.log("[Profile] User profile refreshed from server");
-          })
+          .then(() => {})
           .catch((error) => {
             console.error("[Profile] Error refreshing user profile:", error);
           });
@@ -741,16 +734,11 @@ export default function ProfileScreen() {
   useFocusEffect(
     React.useCallback(() => {
       if (isOwnProfile && authUser) {
-        console.log("[Profile] Screen focused, reloading favorites...");
         clubsService
           .getFavoriteClubs()
           .then((favoritesResponse) => {
             const favoriteIds = favoritesResponse.clubs.map(
               (club: ApiClub) => club.id,
-            );
-            console.log(
-              "[Profile] Favorites reloaded on focus:",
-              favoriteIds.length,
             );
             // Update both current and original state to prevent "unsaved changes" prompt
             setSelectedClubs(favoriteIds);
@@ -784,11 +772,6 @@ export default function ProfileScreen() {
   useFocusEffect(
     React.useCallback(() => {
       if (!isOwnProfile && viewingUserId) {
-        console.log(
-          "[Profile] Checking connection status for user:",
-          viewingUserId,
-        );
-
         // Check both sent and received requests
         Promise.all([
           connectionService.getSentRequests(),
@@ -808,26 +791,18 @@ export default function ProfileScreen() {
             const request = sentRequest || receivedRequest;
 
             if (request) {
-              console.log("[Profile] Found existing request:", request);
-
               // Check if the request is accepted
               if (request.status === "accepted" && request.threadId) {
-                console.log(
-                  "[Profile] Connection accepted, thread ID:",
-                  request.threadId,
-                );
                 setConnectionAccepted(true);
                 setChatThreadId(request.threadId);
                 setRequestSent(false); // Don't show "Requested" when accepted
               } else {
                 // Request is pending
-                console.log("[Profile] Connection pending");
                 setRequestSent(true);
                 setConnectionAccepted(false);
                 setChatThreadId(undefined);
               }
             } else {
-              console.log("[Profile] No existing request found");
               setRequestSent(false);
               setConnectionAccepted(false);
               setChatThreadId(undefined);
@@ -850,7 +825,6 @@ export default function ProfileScreen() {
     clubsService
       .getClubs(false)
       .then((response) => {
-        console.log("[Profile] Loaded all clubs:", response.clubs.length);
         const formattedClubs = response.clubs.map(
           (club: ApiClub, index: number) => ({
             id: club.id,
@@ -867,14 +841,12 @@ export default function ProfileScreen() {
 
     // Load favorites separately if authenticated
     if (isOwnProfile && authUser) {
-      console.log("[Profile] Loading favorites for user:", authUser.id);
       clubsService
         .getFavoriteClubs()
         .then((favoritesResponse) => {
           const favoriteIds = favoritesResponse.clubs.map(
             (club: ApiClub) => club.id,
           );
-          console.log("[Profile] Loaded favorite clubs:", favoriteIds);
           setSelectedClubs(favoriteIds);
           setOriginalClubs(favoriteIds);
         })
@@ -888,12 +860,6 @@ export default function ProfileScreen() {
           setLoadingClubs(false);
         });
     } else {
-      console.log(
-        "[Profile] Not loading favorites - isOwnProfile:",
-        isOwnProfile,
-        "authUser:",
-        !!authUser,
-      );
       setLoadingClubs(false);
     }
   };
@@ -1082,7 +1048,6 @@ export default function ProfileScreen() {
         avatarUri.startsWith("file://")
       ) {
         // Local file - upload to S3
-        console.log("📸 Uploading avatar to S3...", avatarUri.substring(0, 50));
         const extension = avatarUri.toLowerCase().endsWith(".heic")
           ? "jpg"
           : "jpg";
@@ -1093,7 +1058,6 @@ export default function ProfileScreen() {
             name: `avatar_${Date.now()}.${extension}`,
           })
           .then((asset) => {
-            console.log("✅ Avatar uploaded successfully:", asset.url);
             return asset.url;
           })
           .catch((error) => {
@@ -1104,10 +1068,6 @@ export default function ProfileScreen() {
           });
       } else {
         // Either no change, removal (null), or already an S3 URL
-        console.log(
-          "ℹ️ Avatar not changed or already uploaded:",
-          avatarUri?.substring(0, 50),
-        );
         return Promise.resolve(avatarUri);
       }
     };
@@ -1293,7 +1253,7 @@ export default function ProfileScreen() {
           </TextStroke>
           {isOwnProfile && (
             <PressableScale
-              onPress={() => router.push("/screens/Settings" as any)}
+              onPress={() => router.push("/settings")}
               style={styles.settingsButton}
             >
               <Ionicons name="settings-outline" size={24} color={Colors.gold} />

@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { apiService } from "../../services/api";
+import { setupStep1Schema, parseZodErrors } from "../../utils/validation";
 import { Input, FormGroup, Label, TextArea } from "../../components/Input";
 import { Button } from "../../components/Button";
 import { LocationAutocomplete } from "../../components/LocationAutocomplete";
@@ -56,6 +57,7 @@ export const Setup: React.FC = () => {
   const toast = useToast();
   const [currentStep, setCurrentStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
+  const [step1Errors, setStep1Errors] = useState<Record<string, string>>({});
 
   const [setupData, setSetupData] = useState<SetupData>({
     phone: "",
@@ -124,12 +126,16 @@ export const Setup: React.FC = () => {
   };
 
   const handleNext = () => {
-    // Validation for each step
     if (currentStep === 1) {
-      if (!setupData.location || !setupData.description) {
-        toast.error("Please fill in all required fields");
+      const result = setupStep1Schema.safeParse({
+        location: setupData.location,
+        description: setupData.description,
+      });
+      if (!result.success) {
+        setStep1Errors(parseZodErrors(result.error));
         return;
       }
+      setStep1Errors({});
     }
 
     if (currentStep < TOTAL_STEPS) {
@@ -218,10 +224,23 @@ export const Setup: React.FC = () => {
                       ? setupData.location
                       : setupData.location.name
                   }
-                  onChange={(location) => updateField("location", location)}
+                  onChange={(location) => {
+                    updateField("location", location);
+                    setStep1Errors((p) => ({ ...p, location: "" }));
+                  }}
                   placeholder="Search for your location..."
-                  required
                 />
+                {step1Errors.location && (
+                  <p
+                    style={{
+                      color: "#ef4444",
+                      fontSize: "12px",
+                      margin: "4px 0 0",
+                    }}
+                  >
+                    {step1Errors.location}
+                  </p>
+                )}
               </FormGroup>
 
               <FormGroup>
@@ -432,9 +451,22 @@ export const Setup: React.FC = () => {
                   id="description"
                   placeholder="Tell people about your club, the vibe, music, etc."
                   value={setupData.description}
-                  onChange={(e) => updateField("description", e.target.value)}
-                  required
+                  onChange={(e) => {
+                    updateField("description", e.target.value);
+                    setStep1Errors((p) => ({ ...p, description: "" }));
+                  }}
                 />
+                {step1Errors.description && (
+                  <p
+                    style={{
+                      color: "#ef4444",
+                      fontSize: "12px",
+                      margin: "4px 0 0",
+                    }}
+                  >
+                    {step1Errors.description}
+                  </p>
+                )}
               </FormGroup>
             </>
           )}

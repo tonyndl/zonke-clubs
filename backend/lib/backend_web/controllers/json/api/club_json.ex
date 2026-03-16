@@ -3,7 +3,11 @@ defmodule BackendWeb.API.ClubJSON do
   JSON views for Club resources.
   """
 
-  def index(%{clubs: clubs}) do
+  def index(%{clubs: clubs, paginate: paginate}) do
+    %{clubs: Enum.map(clubs, &data/1), paginate: paginate}
+  end
+
+  def favorites(%{clubs: clubs}) do
     %{clubs: Enum.map(clubs, &data/1)}
   end
 

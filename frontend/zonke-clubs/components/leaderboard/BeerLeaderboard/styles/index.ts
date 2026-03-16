@@ -46,6 +46,34 @@ export const styles = StyleSheet.create({
     backgroundColor: Colors.bgSecondary,
     borderRadius: 1,
   },
+  periodContainer: {
+    flexDirection: "row",
+    backgroundColor: Colors.bgSecondary,
+    borderRadius: 12,
+    padding: 4,
+    marginBottom: 16,
+    marginTop: 0,
+  },
+  periodTab: {
+    flex: 1,
+    paddingVertical: 9,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 10,
+  },
+  periodTabActive: {
+    backgroundColor: Colors.primaryBlue,
+  },
+  periodLabel: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: Colors.smoke,
+    letterSpacing: 0.2,
+  },
+  periodLabelActive: {
+    color: Colors.bg,
+    fontWeight: "800",
+  },
   filterContainer: {
     paddingVertical: 16,
     gap: 10,

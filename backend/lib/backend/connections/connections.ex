@@ -7,6 +7,7 @@ defmodule Backend.Connections do
   alias Backend.Repo
   alias Backend.Connections.ConnectionRequest
   alias Backend.Messenger.Messenger
+  alias Backend.Workers.PushNotificationWorker
 
   @doc """
   Get all connection requests received by a user (where they are the receiver).
@@ -107,6 +108,15 @@ defmodule Backend.Connections do
               %{request: BackendWeb.API.ConnectionRequestJSON.show(%{request: request}).request}
             )
 
+            # Notify receiver via push
+            sender_name = request.sender.name || "Someone"
+            PushNotificationWorker.enqueue(
+              request.receiver_id,
+              "New connection request",
+              "#{sender_name} wants to connect with you",
+              %{type: "connection_request", request_id: request.id}
+            )
+
             {:ok, request}
 
           error ->
@@ -138,6 +148,15 @@ defmodule Backend.Connections do
         "user:#{updated_request.sender_id}",
         "connection_request_accepted",
         %{request: BackendWeb.API.ConnectionRequestJSON.show(%{request: updated_request}).request}
+      )
+
+      # Notify sender via push
+      receiver_name = updated_request.receiver.name || "Someone"
+      PushNotificationWorker.enqueue(
+        updated_request.sender_id,
+        "Connection accepted",
+        "#{receiver_name} accepted your connection request",
+        %{type: "connection_accepted", request_id: updated_request.id}
       )
 
       {:ok, updated_request}
@@ -308,6 +327,15 @@ defmodule Backend.Connections do
           "user:#{receiver_id}",
           "new_connection_request",
           %{request: BackendWeb.API.ConnectionRequestJSON.show(%{request: updated_request}).request}
+        )
+
+        # Notify receiver via push
+        reconnect_sender_name = updated_request.sender.name || "Someone"
+        PushNotificationWorker.enqueue(
+          receiver_id,
+          "New connection request",
+          "#{reconnect_sender_name} wants to reconnect with you",
+          %{type: "connection_request", request_id: updated_request.id}
         )
 
         {:ok, updated_request}

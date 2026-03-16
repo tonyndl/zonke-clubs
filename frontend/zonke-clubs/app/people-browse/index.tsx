@@ -15,7 +15,7 @@ import { Colors } from "@/constants/ui";
 import { Toast } from "@/components/ui/Toast";
 import { websocketService } from "@/services/websocketService";
 import { clubsService } from "@/services/clubsService";
-import { styles } from "./styles";
+import { styles } from "./_styles";
 
 export default function PeopleBrowseScreen() {
   const params = useLocalSearchParams<{ clubId?: string }>();
@@ -117,8 +117,6 @@ export default function PeopleBrowseScreen() {
   // Listen for connection request accepted events via WebSocket
   useEffect(() => {
     const handleRequestAccepted = (payload: any) => {
-      console.log("Connection request accepted, updating UI:", payload);
-
       // Transform the request from snake_case to camelCase
       const transformedRequest = transformRequest(payload.request);
 

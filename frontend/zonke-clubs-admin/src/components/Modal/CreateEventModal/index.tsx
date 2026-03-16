@@ -1,4 +1,5 @@
 import React, { useState, useRef } from "react";
+import { eventSchema, parseZodErrors } from "../../../utils/validation";
 import { Modal } from "../Modal";
 import { PrimaryButton, OutlineButton } from "../../Buttons";
 import { DatePicker } from "../../DatePicker";
@@ -109,6 +110,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
   const [uploadingImage, setUploadingImage] = useState(false);
   const [imageUploadProgress, setImageUploadProgress] = useState(0);
   const [formData, setFormData] = useState<EventFormData>(getInitialFormData());
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [originalData, setOriginalData] =
     useState<EventFormData>(getInitialFormData());
 
@@ -155,6 +157,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
 
   const handleChange = (field: keyof EventFormData, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
+    setErrors((prev) => ({ ...prev, [field]: "" }));
   };
 
   const toggleDJ = (djId: string) => {
@@ -205,6 +208,21 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+
+    const result = eventSchema.safeParse({
+      title: formData.title,
+      description: formData.description,
+      date: formData.date,
+      start_time: formData.start_time,
+      end_time: formData.end_time,
+      general_entry_price: formData.general_entry_price,
+      vip_entry_price: formData.vip_entry_price,
+    });
+    if (!result.success) {
+      setErrors(parseZodErrors(result.error));
+      return;
+    }
+    setErrors({});
     onSubmit(formData);
     onClose();
     // Reset form
@@ -254,8 +272,14 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
             placeholder="e.g., Friday Night Fever"
             value={formData.title}
             onChange={(e) => handleChange("title", e.target.value)}
-            required
           />
+          {errors.title && (
+            <p
+              style={{ color: "#ef4444", fontSize: "12px", margin: "4px 0 0" }}
+            >
+              {errors.title}
+            </p>
+          )}
         </FormGroup>
 
         <FormGroup>
@@ -264,8 +288,14 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
             placeholder="Describe what makes this event special..."
             value={formData.description}
             onChange={(e) => handleChange("description", e.target.value)}
-            required
           />
+          {errors.description && (
+            <p
+              style={{ color: "#ef4444", fontSize: "12px", margin: "4px 0 0" }}
+            >
+              {errors.description}
+            </p>
+          )}
         </FormGroup>
 
         <FormGroup>
@@ -278,6 +308,13 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
             onChange={(date) => handleChange("date", date)}
             minDate={new Date().toISOString().split("T")[0]}
           />
+          {errors.date && (
+            <p
+              style={{ color: "#ef4444", fontSize: "12px", margin: "4px 0 0" }}
+            >
+              {errors.date}
+            </p>
+          )}
         </FormGroup>
 
         <FormRow>
@@ -290,10 +327,20 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
               onChange={(e) =>
                 handleChange("general_entry_price", e.target.value)
               }
-              required
               min="0"
               step="0.01"
             />
+            {errors.general_entry_price && (
+              <p
+                style={{
+                  color: "#ef4444",
+                  fontSize: "12px",
+                  margin: "4px 0 0",
+                }}
+              >
+                {errors.general_entry_price}
+              </p>
+            )}
           </FormGroup>
 
           <FormGroup>
@@ -303,9 +350,19 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
               placeholder="300"
               value={formData.vip_entry_price}
               onChange={(e) => handleChange("vip_entry_price", e.target.value)}
-              required
               min="0"
             />
+            {errors.vip_entry_price && (
+              <p
+                style={{
+                  color: "#ef4444",
+                  fontSize: "12px",
+                  margin: "4px 0 0",
+                }}
+              >
+                {errors.vip_entry_price}
+              </p>
+            )}
           </FormGroup>
         </FormRow>
 
@@ -319,6 +376,17 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
               value={formData.start_time}
               onChange={(time) => handleChange("start_time", time)}
             />
+            {errors.start_time && (
+              <p
+                style={{
+                  color: "#ef4444",
+                  fontSize: "12px",
+                  margin: "4px 0 0",
+                }}
+              >
+                {errors.start_time}
+              </p>
+            )}
           </FormGroup>
 
           <FormGroup>
@@ -330,6 +398,17 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
               value={formData.end_time}
               onChange={(time) => handleChange("end_time", time)}
             />
+            {errors.end_time && (
+              <p
+                style={{
+                  color: "#ef4444",
+                  fontSize: "12px",
+                  margin: "4px 0 0",
+                }}
+              >
+                {errors.end_time}
+              </p>
+            )}
           </FormGroup>
         </FormRow>
 

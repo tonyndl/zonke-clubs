@@ -28,7 +28,8 @@ export const getThreads = (): Promise<{ threads: ChatThread[] }> => {
           ? {
               id: thread.last_message.id || "",
               text: thread.last_message.content || "",
-              sentAt: thread.last_message.sent_at || new Date().toISOString(),
+              sentAt: thread.last_message.sent_at || "",
+              insertedAt: thread.last_message.inserted_at || thread.updated_at,
               senderId: thread.last_message.sender_id || "",
               isRead: thread.last_message.is_read || false,
               status: thread.last_message.status || "sent",
@@ -36,10 +37,10 @@ export const getThreads = (): Promise<{ threads: ChatThread[] }> => {
           : {
               id: "",
               text: "No messages yet",
-              sentAt: thread.updated_at,
+              sentAt: "",
+              insertedAt: thread.updated_at,
               senderId: "",
               isRead: true,
-              // status: 'read' as const,
             },
         unreadCount: thread.unread_count || 0,
         connectionStatus: thread.connection_status,
@@ -76,6 +77,7 @@ export const getThread = (
           isRead: msg.is_read,
           status: msg.status || "sent",
           sentAt: msg.sent_at,
+          insertedAt: msg.inserted_at,
         })),
         participants: thread.participants.map((p: any) => ({
           id: p.id,
@@ -124,6 +126,7 @@ export const getOrCreateThread = (
             isRead: msg.is_read,
             status: msg.status || "sent",
             sentAt: msg.sent_at,
+            insertedAt: msg.inserted_at,
           })),
           participants: thread.participants.map((p: any) => ({
             id: p.id,
@@ -166,6 +169,7 @@ export const sendMessage = (
           isRead: msg.is_read,
           status: msg.status || "sent",
           sentAt: msg.sent_at,
+          insertedAt: msg.inserted_at,
         },
       };
     });

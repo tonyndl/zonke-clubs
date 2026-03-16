@@ -30,13 +30,10 @@ class WebSocketService {
       .getToken()
       .then((token) => {
         if (!token) {
-          console.log("No auth token available for WebSocket connection");
           return Promise.reject(new Error("No auth token"));
         }
 
         const wsUrl = getWebSocketUrl();
-        console.log("Connecting to WebSocket:", wsUrl);
-        console.log("With token:", token?.substring(0, 20) + "...");
 
         // Create socket connection with explicit WebSocket transport for React Native
         this.socket = new Socket(wsUrl, {
@@ -44,17 +41,16 @@ class WebSocketService {
           transport: WebSocket,
           reconnect: true,
           reconnectAfterMs: (tries) => {
-            console.log(`WebSocket reconnection attempt ${tries}`);
             return [1000, 2000, 5000, 10000][tries - 1] || 10000;
           },
         });
 
         // Add connection state listeners
-        this.socket.onOpen(() => console.log("WebSocket connected!"));
+        this.socket.onOpen(() => {});
         this.socket.onError((error) =>
           console.error("WebSocket error:", error),
         );
-        this.socket.onClose(() => console.log("WebSocket closed"));
+        this.socket.onClose(() => {});
 
         this.socket.connect();
 
@@ -69,44 +65,34 @@ class WebSocketService {
 
           // Setup channel event listeners
           this.userChannel.on("new_connection_request", (payload: any) => {
-            console.log("New connection request received:", payload);
             this.emit("new_connection_request", payload);
           });
 
           this.userChannel.on("connection_request_accepted", (payload: any) => {
-            console.log("Connection request accepted:", payload);
             this.emit("connection_request_accepted", payload);
           });
 
           this.userChannel.on("connection_request_declined", (payload: any) => {
-            console.log("Connection request declined:", payload);
             this.emit("connection_request_declined", payload);
           });
 
           this.userChannel.on("new_message_in_thread", (payload: any) => {
-            console.log("New message in thread:", payload);
             this.emit("new_message_in_thread", payload);
           });
 
           this.userChannel.on("messages_marked_as_read", (payload: any) => {
-            console.log("Messages marked as read:", payload);
             this.emit("messages_marked_as_read", payload);
           });
 
           this.userChannel.on("connection_disconnected", (payload: any) => {
-            console.log("Connection disconnected:", payload);
             this.emit("connection_disconnected", payload);
           });
 
           // Join the channel
           return new Promise((resolve, reject) => {
-            console.log("Attempting to join channel: user:" + user.id);
-
             this.userChannel
               .join()
               .receive("ok", (resp: any) => {
-                console.log("✅ Joined channel successfully!", resp);
-
                 // After joining user channel, also join presence:lobby to track all users
                 this.joinPresenceLobby();
 
@@ -161,13 +147,10 @@ class WebSocketService {
       return;
     }
 
-    console.log("Joining presence:lobby channel");
     this.presenceChannel = this.socket.channel("presence:lobby", {});
 
     // Listen for presence_diff events
     this.presenceChannel.on("presence_diff", (diff: any) => {
-      console.log("Presence diff received:", diff);
-
       // Update local presence state
       if (diff.joins) {
         Object.entries(diff.joins).forEach(([userId, meta]: [string, any]) => {
@@ -202,9 +185,7 @@ class WebSocketService {
     // Join the channel
     this.presenceChannel
       .join()
-      .receive("ok", (resp: any) => {
-        console.log("✅ Joined presence:lobby channel");
-      })
+      .receive("ok", (resp: any) => {})
       .receive("error", (resp: any) => {
         console.error("❌ Unable to join presence:lobby:", resp);
       })
@@ -226,22 +207,18 @@ class WebSocketService {
 
     // Check if already joined
     if (this.threadChannels.has(threadId)) {
-      console.log("Already joined thread:", threadId);
       return Promise.resolve();
     }
 
-    console.log("Joining thread channel:", threadId);
     const channel = this.socket.channel(`thread:${threadId}`, {});
 
     // Listen for new messages
     channel.on("new_message", (payload: any) => {
-      console.log("New message received in thread:", threadId, payload);
       this.emit(`thread:${threadId}:new_message`, payload);
     });
 
     // Listen for message status updates (delivered/read)
     channel.on("message_status_updated", (payload: any) => {
-      console.log("Message status updated in thread:", threadId, payload);
       this.emit(`thread:${threadId}:message_status_updated`, payload);
     });
 
@@ -250,7 +227,6 @@ class WebSocketService {
       channel
         .join()
         .receive("ok", (resp: any) => {
-          console.log("✅ Joined thread channel:", threadId);
           this.threadChannels.set(threadId, channel);
           resolve(resp);
         })
@@ -268,19 +244,20 @@ class WebSocketService {
   leaveThreadChannel(threadId: string) {
     const channel = this.threadChannels.get(threadId);
     if (channel) {
-      console.log("Leaving thread channel:", threadId);
       channel.leave();
       this.threadChannels.delete(threadId);
     }
   }
 
   markMessagesAsRead(threadId: string) {
+    // Emit locally immediately so badge counts update regardless of channel state
+    this.emit("self_read_thread", { thread_id: threadId });
+
     const channel = this.threadChannels.get(threadId);
     if (channel) {
-      console.log("Marking messages as read in thread:", threadId);
       channel
         .push("mark_read", {})
-        .receive("ok", () => console.log("✅ Messages marked as read"))
+        .receive("ok", () => {})
         .receive("error", (err: any) =>
           console.error("❌ Error marking as read:", err),
         );

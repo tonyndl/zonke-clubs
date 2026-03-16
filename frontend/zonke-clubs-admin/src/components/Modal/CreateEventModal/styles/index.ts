@@ -231,7 +231,6 @@ export const DJPickerGrid = styled.div`
   grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
   gap: ${theme.spacing.sm};
   max-height: 210px;
-  overflow-y: auto;
   padding: 2px;
 
   &::-webkit-scrollbar {

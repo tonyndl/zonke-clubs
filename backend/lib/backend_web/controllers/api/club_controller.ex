@@ -5,12 +5,12 @@ defmodule BackendWeb.API.ClubController do
 
   alias Backend.Clubs
 
-  def index(conn, _params, session) do
-    clubs = Clubs.list_clubs_with_likes(session)
+  def index(conn, params, session) do
+    {clubs, paginate} = Clubs.list_clubs_with_likes(session, params)
 
     conn
     |> put_status(:ok)
-    |> render(:index, clubs: clubs)
+    |> render(:index, clubs: clubs, paginate: paginate)
   end
 
   def show(conn, %{"id" => id}, _session) do
@@ -42,6 +42,6 @@ defmodule BackendWeb.API.ClubController do
 
     conn
     |> put_status(:ok)
-    |> render(:index, clubs: clubs)
+    |> render(:favorites, clubs: clubs)
   end
 end

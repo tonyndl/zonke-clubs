@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { View, Text, Image, Alert, ActivityIndicator } from "react-native";
 import * as ExpoImagePicker from "expo-image-picker";
-import { Video, ResizeMode, AVPlaybackStatus } from "expo-av";
+import { VideoView, useVideoPlayer } from "expo-video";
 import { Ionicons } from "@expo/vector-icons";
 import { Colors } from "@/constants/ui";
 import { PressableScale } from "@/components/ui/PressableScale";
@@ -35,6 +35,13 @@ export function MediaPicker({
   const [isUploading, setIsUploading] = useState(false);
   const [videoDuration, setVideoDuration] = useState<number>(0);
 
+  const videoPlayer = useVideoPlayer(
+    mediaTypeSelected === "video" && mediaUri ? { uri: mediaUri } : null,
+    (player) => {
+      player.loop = true;
+    },
+  );
+
   const requestPermission = async () => {
     const { status } =
       await ExpoImagePicker.requestMediaLibraryPermissionsAsync();
@@ -48,30 +55,20 @@ export function MediaPicker({
     return true;
   };
 
-  const validateVideoDuration = async (uri: string): Promise<boolean> => {
-    return new Promise((resolve) => {
-      const video = new Audio.Sound();
-      video
-        .loadAsync({ uri }, {}, false)
-        .then((status: any) => {
-          const duration = status.durationMillis / 1000; // Convert to seconds
-          setVideoDuration(duration);
-          video.unloadAsync();
-
-          if (duration > maxVideoDuration) {
-            Alert.alert(
-              "Video Too Long",
-              `Please select a video that is ${maxVideoDuration} seconds or shorter. Your video is ${Math.round(duration)} seconds.`,
-            );
-            resolve(false);
-          } else {
-            resolve(true);
-          }
-        })
-        .catch(() => {
-          resolve(true); // If we can't determine duration, allow upload
-        });
-    });
+  const validateVideoDuration = (
+    durationMs: number | null | undefined,
+  ): boolean => {
+    if (!durationMs) return true;
+    const duration = durationMs / 1000;
+    setVideoDuration(duration);
+    if (duration > maxVideoDuration) {
+      Alert.alert(
+        "Video Too Long",
+        `Please select a video that is ${maxVideoDuration} seconds or shorter. Your video is ${Math.round(duration)} seconds.`,
+      );
+      return false;
+    }
+    return true;
   };
 
   const pickMedia = async () => {
@@ -99,7 +96,7 @@ export function MediaPicker({
 
       // Validate video duration if it's a video
       if (type === "video") {
-        const isValid = await validateVideoDuration(asset.uri);
+        const isValid = validateVideoDuration(asset.duration);
         if (!isValid) return;
       }
 
@@ -129,7 +126,7 @@ export function MediaPicker({
       const asset = result.assets[0];
 
       // Validate duration
-      const isValid = await validateVideoDuration(asset.uri);
+      const isValid = validateVideoDuration(asset.duration);
       if (!isValid) return;
 
       setMediaUri(asset.uri);
@@ -280,12 +277,11 @@ export function MediaPicker({
       {mediaUri ? (
         <View style={styles.mediaContainer}>
           {mediaTypeSelected === "video" ? (
-            <Video
-              source={{ uri: mediaUri }}
+            <VideoView
+              player={videoPlayer}
               style={styles.video}
-              useNativeControls
-              resizeMode={ResizeMode.CONTAIN}
-              isLooping
+              nativeControls
+              contentFit="contain"
             />
           ) : (
             <Image source={{ uri: mediaUri }} style={styles.image} />

@@ -23,9 +23,9 @@ import {
 } from "@/services/connectionService";
 import { websocketService } from "@/services/websocketService";
 import { LinearGradient } from "expo-linear-gradient";
-import { TextStroke } from "../../screens/Login/utils";
+import { TextStroke } from "../../_screens/Login/utils";
 import { Toast } from "@/components/ui/Toast";
-import { styles } from "./styles";
+import { styles } from "./_styles";
 
 type TabType = "received" | "sent";
 
@@ -70,7 +70,6 @@ export default function RequestsScreen() {
 
     // Listen for new connection requests (WebSocket is connected globally in tabs layout)
     const handleNewRequest = (payload: any) => {
-      console.log("New request received:", payload);
       try {
         const transformedRequest = transformRequest(payload.request);
         setReceivedRequests((prev) => [transformedRequest, ...prev]);
@@ -84,7 +83,6 @@ export default function RequestsScreen() {
 
     // Listen for accepted requests
     const handleRequestAccepted = (payload: any) => {
-      console.log("Request accepted:", payload);
       // Update the request status in sent requests (don't remove, show Chat Now button)
       setSentRequests((prev) =>
         prev.map((req) =>
@@ -106,7 +104,6 @@ export default function RequestsScreen() {
 
     // Listen for declined requests
     const handleRequestDeclined = (payload: any) => {
-      console.log("Request declined:", payload);
       // Remove from sent requests
       setSentRequests((prev) =>
         prev.filter((req) => req.id !== payload.request.id),
@@ -402,7 +399,6 @@ export default function RequestsScreen() {
                   <PressableScale
                     style={[styles.button, styles.declineButton]}
                     onPress={() => {
-                      console.log("Decline pressed for:", request.id);
                       handleDecline(request.id);
                     }}
                     disabled={isDeclining || isAccepting}
@@ -416,7 +412,6 @@ export default function RequestsScreen() {
                   <PressableScale
                     style={[styles.button, styles.acceptButtonContainer]}
                     onPress={() => {
-                      console.log("Accept pressed for:", request.id);
                       handleAccept(request.id);
                     }}
                     disabled={isAccepting || isDeclining}

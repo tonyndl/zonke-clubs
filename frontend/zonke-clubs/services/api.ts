@@ -5,19 +5,13 @@ import { Platform } from "react-native";
 const LOCAL_IP = "192.168.1.139";
 
 const getApiUrl = () => {
-  // For iOS and Android (physical devices and emulators), use local network IP
-  if (Platform.OS === "ios" || Platform.OS === "android") {
+  if (Platform.OS === "android") {
     return `http://${LOCAL_IP}:4000/api`;
   }
-
-  // For web, use localhost
   return "http://localhost:4000/api";
 };
 
 const API_URL = getApiUrl();
-
-// Log the API URL for debugging
-console.log("API URL configured:", API_URL, "Platform:", Platform.OS);
 
 // Token getter and clear functions (set by authService to avoid circular dependency)
 let getTokenFn: (() => Promise<string | null>) | null = null;
@@ -70,19 +64,12 @@ class ApiService {
   public get<T>(endpoint: string, authenticated: boolean = false): Promise<T> {
     return this.getHeaders(authenticated)
       .then((headers) => {
-        console.log(
-          "API GET:",
-          `${this.baseUrl}${endpoint}`,
-          "Auth:",
-          authenticated,
-        );
         return fetch(`${this.baseUrl}${endpoint}`, {
           method: "GET",
           headers,
         });
       })
       .then((response) => {
-        console.log("API GET Response:", response.status, response.statusText);
         if (response.status === 401) {
           // Clear invalid token on authentication errors only
           if (clearTokenFn) {
@@ -112,7 +99,9 @@ class ApiService {
       })
       .then((data) => data as T)
       .catch((error) => {
-        console.error("API GET Error:", endpoint, error.message || error);
+        if (error.message !== "Unauthorized" && error.message !== "Forbidden") {
+          console.error("API GET Error:", endpoint, error.message || error);
+        }
         if (error.message && error.message.includes("Network request failed")) {
           throw new Error(
             "Cannot connect to server. Make sure backend is running and network is accessible.",
