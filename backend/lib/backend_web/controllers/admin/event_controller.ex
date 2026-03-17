@@ -8,12 +8,12 @@ defmodule BackendWeb.Admin.EventController do
   @doc """
   Lists all events for the current admin.
   """
-  def index(conn, _params, session) do
-    events = Events.list_events(session)
+  def index(conn, params, session) do
+    {events, paginate} = Events.list_events(session, params)
 
     conn
     |> put_status(:ok)
-    |> render(:index, events: events)
+    |> render(:index, events: events, paginate: paginate)
   end
 
   @doc """

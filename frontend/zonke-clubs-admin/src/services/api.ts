@@ -65,7 +65,7 @@ class ApiService {
     return !!this.getToken();
   }
 
-  getAdminInfo(): { name: string; email: string } | null {
+  getAdminInfo(): { id?: string; name: string; email: string } | null {
     try {
       const raw = localStorage.getItem("admin_info");
       return raw ? JSON.parse(raw) : null;
@@ -74,7 +74,11 @@ class ApiService {
     }
   }
 
-  private setAdminInfo(admin: { name: string; email: string }): void {
+  private setAdminInfo(admin: {
+    id?: string;
+    name: string;
+    email: string;
+  }): void {
     localStorage.setItem("admin_info", JSON.stringify(admin));
   }
 
@@ -89,6 +93,7 @@ class ApiService {
         this.setToken(response.data.jwt);
         if (response.data.admin) {
           this.setAdminInfo({
+            id: response.data.admin.id,
             name: response.data.admin.name,
             email: response.data.admin.email,
           });
@@ -113,6 +118,7 @@ class ApiService {
         this.setToken(response.data.jwt);
         if (response.data.admin) {
           this.setAdminInfo({
+            id: response.data.admin.id,
             name: response.data.admin.name,
             email: response.data.admin.email,
           });
@@ -221,6 +227,7 @@ class ApiService {
     perPage: number = 20,
     status?: string,
     source?: string,
+    search?: string,
   ) {
     const params: any = { page: page.toString(), per_page: perPage.toString() };
     if (status) {
@@ -228,6 +235,9 @@ class ApiService {
     }
     if (source) {
       params.source = source;
+    }
+    if (search) {
+      params.search = search;
     }
     return this.client
       .get("/admin/content-moderation", { params })

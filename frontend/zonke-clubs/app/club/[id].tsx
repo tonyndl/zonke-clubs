@@ -6,7 +6,11 @@ import {
   ImageBackground,
   ActivityIndicator,
   Linking,
+  FlatList,
+  Dimensions,
 } from "react-native";
+
+const SCREEN_WIDTH = Dimensions.get("window").width;
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
@@ -62,7 +66,7 @@ type Gig = {
   time: string;
   headliner: string;
   genre?: string;
-  price?: string;
+  djs: string[];
   cover_image?: string;
 };
 
@@ -320,7 +324,6 @@ export default function ClubScreen() {
       })
       .catch((error) => {
         console.error("Failed to load intentions:", error);
-        // On error, show empty state
         setIntentions([]);
       })
       .finally(() => {
@@ -543,12 +546,6 @@ export default function ClubScreen() {
       const displayHours = hours === 0 ? 12 : hours > 12 ? hours - 12 : hours;
       const formattedTime = `${displayHours}:${minutes.toString().padStart(2, "0")} ${period}`;
 
-      // Format price
-      const price =
-        event.general_entry_price > 0
-          ? `$${event.general_entry_price}`
-          : "Free";
-
       // Extract DJ names from lineup objects (backend now returns DJ objects with id and name)
       const djNames = event.dj_lineup.map((dj) => dj.name).filter(Boolean);
 
@@ -557,8 +554,8 @@ export default function ClubScreen() {
         date: formattedDate,
         time: formattedTime,
         headliner: event.title,
-        genre: djNames.join(", ") || undefined,
-        price,
+        genre: event.genre || undefined,
+        djs: djNames,
         cover_image: event.cover_image || undefined,
       };
     });
@@ -1050,7 +1047,18 @@ export default function ClubScreen() {
               entering={FadeInDown.delay(200).springify()}
               style={styles.sectionCard}
             >
-              <Text style={styles.subsectionTitle}>Upcoming Big Events</Text>
+              <View style={styles.eventsHeader}>
+                <Text style={[styles.subsectionTitle, { marginBottom: 0 }]}>
+                  Upcoming Big Events
+                </Text>
+                {upcomingGigs.length > 0 && (
+                  <View style={styles.eventCountBadge}>
+                    <Text style={styles.eventCountText}>
+                      {upcomingGigs.length}
+                    </Text>
+                  </View>
+                )}
+              </View>
               {upcomingGigs.length === 0 && (
                 <View style={styles.noEventsContainer}>
                   <View style={styles.noEventsIconWrap}>
@@ -1068,40 +1076,81 @@ export default function ClubScreen() {
                   </Text>
                 </View>
               )}
-              {upcomingGigs.map((gig, index) => (
-                <PressableScale
-                  key={gig.id}
-                  style={styles.gigCard}
-                  onPress={() => {
-                    if (gig.cover_image) {
-                      const asset: MediaAsset = {
-                        id: gig.id,
-                        type: "image",
-                        url: gig.cover_image,
-                      };
-                      handleMediaPress(asset, [asset]);
-                    }
-                  }}
-                >
-                  <View style={styles.gigDateBox}>
-                    <Text style={styles.gigDateDay}>
-                      {gig.date.split(",")[0]}
-                    </Text>
-                    <Text style={styles.gigDateNum}>
-                      {gig.date.split(" ")[1]}
-                    </Text>
-                  </View>
-                  <View style={styles.gigInfo}>
-                    <Text style={styles.gigHeadliner}>{gig.headliner}</Text>
-                    <Text style={styles.gigMeta}>
-                      {gig.time} • {gig.genre}
-                    </Text>
-                  </View>
-                  <View style={styles.gigPrice}>
-                    <Text style={styles.gigPriceText}>{gig.price}</Text>
-                  </View>
-                </PressableScale>
-              ))}
+              {upcomingGigs.length > 0 && (
+                <FlatList
+                  data={upcomingGigs}
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  keyExtractor={(gig) => gig.id}
+                  contentContainerStyle={styles.gigCarouselContent}
+                  snapToInterval={SCREEN_WIDTH * 0.62 + 12}
+                  decelerationRate="fast"
+                  renderItem={({ item: gig, index }) => (
+                    <PressableScale
+                      style={[
+                        styles.gigCarouselCard,
+                        index === upcomingGigs.length - 1 && { marginRight: 0 },
+                      ]}
+                      onPress={() => {
+                        if (gig.cover_image) {
+                          const asset: MediaAsset = {
+                            id: gig.id,
+                            type: "image",
+                            url: gig.cover_image,
+                          };
+                          handleMediaPress(asset, [asset]);
+                        }
+                      }}
+                    >
+                      <LinearGradient
+                        colors={["rgba(57,243,255,0.12)", "rgba(0,0,0,0)"]}
+                        style={styles.gigCarouselGradient}
+                      />
+                      <View style={styles.gigCarouselDateBadge}>
+                        <Text style={styles.gigCarouselDateDay}>
+                          {gig.date.split(",")[0]}
+                        </Text>
+                        <Text style={styles.gigCarouselDateNum}>
+                          {gig.date.split(" ")[1]}
+                        </Text>
+                      </View>
+                      <View style={styles.gigCarouselBody}>
+                        <Text
+                          style={styles.gigCarouselHeadliner}
+                          numberOfLines={2}
+                        >
+                          {gig.headliner}
+                        </Text>
+                        <Text style={styles.gigCarouselMeta}>{gig.time}</Text>
+                      </View>
+                      {gig.djs.length > 0 && (
+                        <View style={styles.gigCarouselDJsRow}>
+                          {gig.djs.slice(0, 3).map((name, i) => (
+                            <View key={i} style={styles.gigCarouselDJChip}>
+                              <View style={styles.gigCarouselDJAvatar}>
+                                <Text style={styles.gigCarouselDJInitial}>
+                                  {getDJInitial(name)}
+                                </Text>
+                              </View>
+                              <Text
+                                style={styles.gigCarouselDJName}
+                                numberOfLines={1}
+                              >
+                                {name}
+                              </Text>
+                            </View>
+                          ))}
+                          {gig.djs.length > 3 && (
+                            <Text style={styles.gigCarouselDJMore}>
+                              +{gig.djs.length - 3}
+                            </Text>
+                          )}
+                        </View>
+                      )}
+                    </PressableScale>
+                  )}
+                />
+              )}
             </Animated.View>
 
             {/* DJ Lineup */}
@@ -2000,6 +2049,122 @@ const styles = StyleSheet.create({
     color: Colors.gold,
     fontWeight: "700",
     fontSize: 14,
+  },
+  eventsHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 14,
+    gap: 10,
+  },
+  eventCountBadge: {
+    backgroundColor: "rgba(57, 243, 255, 0.15)",
+    borderRadius: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderWidth: 1,
+    borderColor: "rgba(57, 243, 255, 0.3)",
+    marginBottom: 2,
+  },
+  eventCountText: {
+    color: Colors.accent,
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  gigCarouselContent: {
+    paddingBottom: 4,
+  },
+  gigCarouselCard: {
+    width: SCREEN_WIDTH * 0.62,
+    backgroundColor: Colors.bgSecondary,
+    borderRadius: 18,
+    padding: 18,
+    marginRight: 12,
+    borderWidth: 1,
+    borderColor: "rgba(57, 243, 255, 0.2)",
+    overflow: "hidden",
+    justifyContent: "space-between",
+    minHeight: 160,
+  },
+  gigCarouselGradient: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 80,
+    borderRadius: 18,
+  },
+  gigCarouselDateBadge: {
+    flexDirection: "row",
+    alignItems: "baseline",
+    gap: 5,
+    marginBottom: 10,
+  },
+  gigCarouselDateDay: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: Colors.gold,
+    textTransform: "uppercase",
+    letterSpacing: 1,
+  },
+  gigCarouselDateNum: {
+    fontSize: 26,
+    fontWeight: "800",
+    color: Colors.platinum,
+    lineHeight: 28,
+  },
+  gigCarouselBody: {
+    flex: 1,
+  },
+  gigCarouselHeadliner: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: Colors.platinum,
+    lineHeight: 20,
+    marginBottom: 4,
+  },
+  gigCarouselMeta: {
+    fontSize: 12,
+    color: Colors.lightGrey,
+    marginBottom: 8,
+  },
+  gigCarouselDJsRow: {
+    marginTop: 12,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: "rgba(57, 243, 255, 0.15)",
+    gap: 6,
+  },
+  gigCarouselDJChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  gigCarouselDJAvatar: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: "rgba(57, 243, 255, 0.18)",
+    borderWidth: 1,
+    borderColor: "rgba(57, 243, 255, 0.35)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  gigCarouselDJInitial: {
+    fontSize: 10,
+    fontWeight: "700",
+    color: Colors.accent,
+  },
+  gigCarouselDJName: {
+    fontSize: 12,
+    color: Colors.lightGrey,
+    fontWeight: "500",
+    flex: 1,
+  },
+  gigCarouselDJMore: {
+    fontSize: 11,
+    color: Colors.smoke,
+    fontWeight: "600",
+    marginTop: 2,
   },
   hoursCardInner: {
     backgroundColor: Colors.bgSecondary,

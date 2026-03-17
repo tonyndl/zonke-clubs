@@ -29,6 +29,8 @@ import {
   RiTicket2Line,
   RiHeartLine,
   RiMusic2Line,
+  RiArrowLeftLine,
+  RiArrowRightLine,
 } from "react-icons/ri";
 import {
   EventsContainer,
@@ -52,6 +54,9 @@ import {
   EventFooter,
   EmptyState,
   EventActions,
+  PaginationContainer,
+  PageButton,
+  PageInfo,
 } from "./styles";
 
 interface DJ {
@@ -76,6 +81,8 @@ export const Events: React.FC = () => {
   const [isAddDJModalOpen, setIsAddDJModalOpen] = useState(false);
   const [shouldReopenEventModal, setShouldReopenEventModal] = useState(false);
   const [pendingDJId, setPendingDJId] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
 
   // Load events and DJs on mount, cleaning up past events first
   useEffect(() => {
@@ -95,12 +102,14 @@ export const Events: React.FC = () => {
     loadDJs();
   }, []);
 
-  const loadEvents = () => {
+  const loadEvents = (page: number = 1) => {
     setIsLoading(true);
     eventService
-      .getEvents()
+      .getEvents(page)
       .then((response) => {
         setEvents(response.events);
+        setCurrentPage(page);
+        setTotalPages(response.paginate.max_page);
       })
       .catch((error) => {
         console.error("Failed to load events:", error);
@@ -278,6 +287,14 @@ export const Events: React.FC = () => {
 
   const closeDeleteModal = () => {
     setDeletingEvent(null);
+  };
+
+  const handlePrevPage = () => {
+    if (currentPage > 1) loadEvents(currentPage - 1);
+  };
+
+  const handleNextPage = () => {
+    if (currentPage < totalPages) loadEvents(currentPage + 1);
   };
 
   const filteredEvents = events.filter((event) => {
@@ -465,6 +482,25 @@ export const Events: React.FC = () => {
             </EventCard>
           ))}
         </EventsGrid>
+      )}
+
+      {!isLoading && totalPages > 1 && (
+        <PaginationContainer>
+          <PageButton disabled={currentPage === 1} onClick={handlePrevPage}>
+            {React.createElement(RiArrowLeftLine as React.ComponentType)}
+            Prev
+          </PageButton>
+          <PageInfo>
+            Page {currentPage} of {totalPages}
+          </PageInfo>
+          <PageButton
+            disabled={currentPage === totalPages}
+            onClick={handleNextPage}
+          >
+            Next
+            {React.createElement(RiArrowRightLine as React.ComponentType)}
+          </PageButton>
+        </PaginationContainer>
       )}
 
       {!isLoading && filteredEvents.length === 0 && (

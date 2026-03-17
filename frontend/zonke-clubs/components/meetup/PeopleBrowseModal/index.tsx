@@ -1,5 +1,18 @@
-import React, { useState, useMemo } from "react";
-import { View, Text, ScrollView, Image, Pressable } from "react-native";
+import React, {
+  useState,
+  useMemo,
+  useEffect,
+  useCallback,
+  useRef,
+} from "react";
+import {
+  View,
+  Text,
+  FlatList,
+  Image,
+  Pressable,
+  ActivityIndicator,
+} from "react-native";
 import Animated, { FadeInDown, FadeIn, FadeOut } from "react-native-reanimated";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -67,6 +80,9 @@ export function PeopleBrowse({
   const [viewType, setViewType] = useState<ViewType>("grid");
   const [showActivityPicker, setShowActivityPicker] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [page, setPage] = useState(1);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const PAGE_SIZE = 10;
 
   // Generate next 7 days for the week
   const availableDates = useMemo(() => {
@@ -150,6 +166,28 @@ export function PeopleBrowse({
     return counts;
   }, [intentions, selectedActivity, availableDates]);
 
+  // Reset to page 1 whenever filters change
+  useEffect(() => {
+    setPage(1);
+  }, [selectedDate, selectedActivity, filteredIntentions.length]);
+
+  const displayedIntentions = useMemo(
+    () => filteredIntentions.slice(0, page * PAGE_SIZE),
+    [filteredIntentions, page],
+  );
+
+  const hasMore = displayedIntentions.length < filteredIntentions.length;
+
+  const loadMore = useCallback(() => {
+    if (loadingMore || !hasMore) return;
+    setLoadingMore(true);
+    // Simulate a brief async fetch delay for realistic UX
+    setTimeout(() => {
+      setPage((p) => p + 1);
+      setLoadingMore(false);
+    }, 400);
+  }, [loadingMore, hasMore]);
+
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
@@ -163,6 +201,11 @@ export function PeopleBrowse({
 
         <View style={styles.headerCenter}>
           <Text style={styles.headerTitle}>People Looking to Meet</Text>
+          {filteredIntentions.length > 0 && (
+            <Text style={styles.headerSubtitle}>
+              {displayedIntentions.length} of {filteredIntentions.length}
+            </Text>
+          )}
         </View>
 
         <View style={{ width: 40 }} />
@@ -400,49 +443,43 @@ export function PeopleBrowse({
       )}
 
       {/* People Grid/List */}
-      <ScrollView
+      <FlatList
         style={styles.scrollView}
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
-      >
-        {filteredIntentions.length > 0 ? (
-          filteredIntentions.map((intention, index) => {
-            const connectionStatus = connectionStatuses?.get(intention.user.id);
-            return (
-              <PersonExpandableCard
-                key={intention.id}
-                intention={intention}
-                index={index}
-                isExpanded={expandedCard === intention.id}
-                onToggleExpand={() =>
-                  setExpandedCard(
-                    expandedCard === intention.id ? null : intention.id,
-                  )
-                }
-                onConnect={() => onConnect(intention)}
-                onViewProfile={() => {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  // Navigate to view-only profile screen (outside tabs, so no tab bar)
-                  router.push(
-                    `/profile/${intention.user.id}?clubId=${intention.clubId}` as any,
-                  );
-                  // router.push({
-                  //   pathname: `/(tabs)/profile?userId=${intention.user.id}`,
-                  //   params: {
-                  //     id: intention.user.id,
-                  //     userData: JSON.stringify(intention.user),
-                  //   },
-                  // });
-                }}
-                viewType={viewType}
-                connectionStatus={connectionStatus?.status}
-                threadId={connectionStatus?.threadId}
-                clubName={clubName}
-              />
-            );
-          })
-        ) : (
+        data={displayedIntentions}
+        keyExtractor={(item) => item.id}
+        onEndReached={loadMore}
+        onEndReachedThreshold={0.4}
+        ItemSeparatorComponent={() => <View style={styles.cardSeparator} />}
+        renderItem={({ item: intention, index }) => {
+          const connectionStatus = connectionStatuses?.get(intention.user.id);
+          return (
+            <PersonExpandableCard
+              intention={intention}
+              index={index}
+              isExpanded={expandedCard === intention.id}
+              onToggleExpand={() =>
+                setExpandedCard(
+                  expandedCard === intention.id ? null : intention.id,
+                )
+              }
+              onConnect={() => onConnect(intention)}
+              onViewProfile={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                router.push(
+                  `/profile/${intention.user.id}?clubId=${intention.clubId}` as any,
+                );
+              }}
+              viewType={viewType}
+              connectionStatus={connectionStatus?.status}
+              threadId={connectionStatus?.threadId}
+              clubName={clubName}
+            />
+          );
+        }}
+        ListEmptyComponent={
           <Animated.View entering={FadeIn} style={styles.emptyState}>
             <Ionicons name="search-outline" size={64} color={Colors.smoke} />
             <Text style={styles.emptyTitle}>No matches found</Text>
@@ -459,11 +496,23 @@ export function PeopleBrowse({
               <Text style={styles.resetButtonText}>Reset Filters</Text>
             </PressableScale>
           </Animated.View>
-        )}
-
-        {/* End Spacer */}
-        <View style={styles.endSpacer} />
-      </ScrollView>
+        }
+        ListFooterComponent={
+          filteredIntentions.length > 0 ? (
+            <View style={styles.paginationFooter}>
+              {loadingMore ? (
+                <ActivityIndicator size="small" color={Colors.gold} />
+              ) : hasMore ? null : (
+                <Text style={styles.paginationEnd}>
+                  {filteredIntentions.length}{" "}
+                  {filteredIntentions.length === 1 ? "person" : "people"} here
+                  tonight
+                </Text>
+              )}
+            </View>
+          ) : null
+        }
+      />
     </SafeAreaView>
   );
 }

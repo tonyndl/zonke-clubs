@@ -415,4 +415,11 @@ export const styles = StyleSheet.create({
     color: "#FFF",
     marginLeft: 8,
   },
+  clubsEndText: {
+    textAlign: "center",
+    fontSize: 13,
+    color: Colors.smoke,
+    fontWeight: "500",
+    paddingVertical: 24,
+  },
 });

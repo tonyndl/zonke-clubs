@@ -216,3 +216,57 @@ export const EventActions = styled.div`
   display: flex;
   gap: ${theme.spacing.sm};
 `;
+
+export const PaginationContainer = styled.div`
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: ${theme.spacing.md};
+  margin-top: ${theme.spacing.xl};
+  padding: ${theme.spacing.lg};
+  background: linear-gradient(
+    135deg,
+    rgba(15, 25, 35, 0.4) 0%,
+    rgba(15, 25, 35, 0.2) 100%
+  );
+  border-radius: ${theme.borderRadius.xl};
+  border: 1px solid rgba(57, 243, 255, 0.1);
+`;
+
+export const PageButton = styled.button<{ disabled?: boolean }>`
+  padding: ${theme.spacing.sm} ${theme.spacing.md};
+  background: ${(props) =>
+    props.disabled ? "transparent" : "rgba(57, 243, 255, 0.1)"};
+  border: 1px solid
+    ${(props) =>
+      props.disabled ? theme.colors.border : "rgba(57, 243, 255, 0.2)"};
+  border-radius: ${theme.borderRadius.lg};
+  color: ${(props) =>
+    props.disabled ? theme.colors.textSecondary : theme.colors.primary};
+  font-size: ${theme.typography.fontSize.sm};
+  font-weight: ${theme.typography.fontWeight.semibold};
+  cursor: ${(props) => (props.disabled ? "not-allowed" : "pointer")};
+  transition: all ${theme.transitions.normal};
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing.xs};
+  opacity: ${(props) => (props.disabled ? 0.5 : 1)};
+
+  &:hover {
+    background: ${(props) =>
+      props.disabled ? "transparent" : "rgba(57, 243, 255, 0.2)"};
+    border-color: ${(props) =>
+      props.disabled ? theme.colors.border : "rgba(57, 243, 255, 0.4)"};
+  }
+
+  svg {
+    width: 16px;
+    height: 16px;
+  }
+`;
+
+export const PageInfo = styled.div`
+  font-size: ${theme.typography.fontSize.sm};
+  color: ${theme.colors.textPrimary};
+  font-weight: ${theme.typography.fontWeight.medium};
+`;
