@@ -282,7 +282,18 @@ export const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: 16,
-    gap: 16,
+  },
+  cardSeparator: {
+    height: 16,
+  },
+  paginationFooter: {
+    alignItems: "center",
+    paddingVertical: 24,
+  },
+  paginationEnd: {
+    fontSize: 13,
+    color: Colors.smoke,
+    fontWeight: "500",
   },
   card: {
     width: CARD_WIDTH,

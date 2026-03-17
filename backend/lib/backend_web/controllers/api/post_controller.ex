@@ -18,6 +18,18 @@ defmodule BackendWeb.API.PostController do
     caption = Map.get(params, "caption", "")
 
     with {:ok, post} <- create_post_with_assets(session, club_id, asset_ids, caption) do
+      # Notify the club admin in real-time
+      case Backend.Clubs.get_club(club_id) do
+        {:ok, club} ->
+          BackendWeb.Endpoint.broadcast("user:#{club.admin_id}", "post_submitted", %{
+            post_id: post.id,
+            club_id: club_id
+          })
+
+        _ ->
+          :ok
+      end
+
       conn
       |> put_status(:created)
       |> render(:show, post: post)

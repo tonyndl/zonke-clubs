@@ -1,10 +1,22 @@
 import { apiService } from "./api";
 import { Event } from "../types";
 
+export type EventsPaginate = {
+  page: number;
+  per_page: number;
+  max_page: number;
+  total_count: number;
+};
+
 export const eventService = {
-  // Get all events for the current admin
-  getEvents: async (): Promise<{ events: Event[] }> => {
-    return apiService.get<{ events: Event[] }>("/admin/events");
+  // Get paginated events for the current admin
+  getEvents: async (
+    page: number = 1,
+    perPage: number = 10,
+  ): Promise<{ events: Event[]; paginate: EventsPaginate }> => {
+    return apiService.get<{ events: Event[]; paginate: EventsPaginate }>(
+      `/admin/events?page=${page}&per_page=${perPage}`,
+    );
   },
 
   // Get single event

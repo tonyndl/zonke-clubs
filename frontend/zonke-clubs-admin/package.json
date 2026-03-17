@@ -17,6 +17,7 @@
     "@types/react-dom": "^19.2.3",
     "axios": "^1.13.2",
     "downshift": "^9.2.0",
+    "phoenix": "^1.8.5",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
     "react-icons": "^5.5.0",
@@ -51,6 +52,7 @@
     ]
   },
   "devDependencies": {
+    "@types/phoenix": "^1.6.7",
     "@types/styled-components": "^5.1.36",
     "typescript": "^5.9.3"
   }

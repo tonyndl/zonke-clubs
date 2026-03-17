@@ -16,7 +16,8 @@ defmodule BackendWeb.Admin.ContentModerationController do
       status = Map.get(params, "status", "pending")
 
       source = Map.get(params, "source", "users")
-      opts = [page: page, per_page: per_page, status: status, user_tagged_only: source == "users"]
+      search = Map.get(params, "search")
+      opts = [page: page, per_page: per_page, status: status, user_tagged_only: source == "users", search: search]
       result = Posts.list_posts(club.id, opts)
 
       conn
@@ -62,6 +63,11 @@ defmodule BackendWeb.Admin.ContentModerationController do
          {:ok, post} <- Posts.get_post(id),
          :ok <- verify_club_ownership(post, club),
          {:ok, updated_post} <- Posts.approve_post(id) do
+      BackendWeb.Endpoint.broadcast("user:#{session.id}", "post_moderated", %{
+        post_id: id,
+        status: "approved"
+      })
+
       conn
       |> put_status(:ok)
       |> render(:show, post: updated_post)
@@ -76,6 +82,11 @@ defmodule BackendWeb.Admin.ContentModerationController do
          {:ok, post} <- Posts.get_post(id),
          :ok <- verify_club_ownership(post, club),
          {:ok, updated_post} <- Posts.reject_post(id) do
+      BackendWeb.Endpoint.broadcast("user:#{session.id}", "post_moderated", %{
+        post_id: id,
+        status: "rejected"
+      })
+
       conn
       |> put_status(:ok)
       |> render(:show, post: updated_post)

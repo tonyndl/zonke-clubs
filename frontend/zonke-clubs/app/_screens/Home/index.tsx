@@ -60,7 +60,7 @@ import { getAllClubVideos } from "@/data/clubVideos";
 import { Toast } from "@/components/ui/Toast";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
-const EVENT_CARD_WIDTH = SCREEN_WIDTH * 0.72;
+const EVENT_CARD_WIDTH = SCREEN_WIDTH * (SCREEN_WIDTH < 600 ? 0.65 : 0.5);
 const EVENT_CARD_HEIGHT = 200;
 const IG_IMAGE_HEIGHT = SCREEN_HEIGHT * 0.62;
 
@@ -558,6 +558,8 @@ export const HomeScreen = () => {
   const [loadingMore, setLoadingMore] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [maxPage, setMaxPage] = useState(1);
+  const [clubsPage, setClubsPage] = useState(1);
+  const CLUBS_PAGE_SIZE = 6;
   const [eventsLoading, setEventsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -613,6 +615,7 @@ export const HomeScreen = () => {
     setEventsLoading(true);
     setError(null);
     setCurrentPage(1);
+    setClubsPage(1);
 
     clubsService
       .getClubs(!!user, 1)
@@ -911,6 +914,34 @@ export const HomeScreen = () => {
     [clubs, searchQuery, userCoords],
   );
 
+  // Reset local page when search changes
+  useEffect(() => {
+    setClubsPage(1);
+  }, [searchQuery]);
+
+  const displayedClubs = useMemo(
+    () => filteredClubs.slice(0, clubsPage * CLUBS_PAGE_SIZE),
+    [filteredClubs, clubsPage],
+  );
+
+  const hasMoreClubs =
+    displayedClubs.length < filteredClubs.length || currentPage < maxPage;
+
+  const handleClubsEndReached = useCallback(() => {
+    if (loadingMore || searchQuery) return;
+
+    if (displayedClubs.length < filteredClubs.length) {
+      setLoadingMore(true);
+      setTimeout(() => {
+        setClubsPage((p) => p + 1);
+        setLoadingMore(false);
+      }, 400);
+      return;
+    }
+
+    loadMoreClubs();
+  }, [loadingMore, searchQuery, displayedClubs.length, filteredClubs.length]);
+
   const filteredVideos = videoFeed.filter(
     (video) =>
       video.clubName.toLowerCase().includes(videoSearchQuery.toLowerCase()) ||
@@ -1110,21 +1141,28 @@ export const HomeScreen = () => {
         viewMode === "clubs" ? (
           <FlatList
             keyboardShouldPersistTaps="handled"
-            data={filteredClubs}
+            data={displayedClubs}
             keyExtractor={(item) => item.id}
             renderItem={renderClub}
             extraData={liked}
             contentContainerStyle={styles.listContent}
             showsVerticalScrollIndicator={false}
-            onEndReached={searchQuery ? undefined : loadMoreClubs}
+            onEndReached={handleClubsEndReached}
             onEndReachedThreshold={0.4}
             ListFooterComponent={
-              loadingMore ? (
-                <ActivityIndicator
-                  size="small"
-                  color={Colors.gold}
-                  style={{ marginVertical: 16 }}
-                />
+              filteredClubs.length > 0 ? (
+                loadingMore ? (
+                  <ActivityIndicator
+                    size="small"
+                    color={Colors.gold}
+                    style={{ marginVertical: 16 }}
+                  />
+                ) : !hasMoreClubs ? (
+                  <Text style={styles.clubsEndText}>
+                    {filteredClubs.length}{" "}
+                    {filteredClubs.length === 1 ? "club" : "clubs"} near you
+                  </Text>
+                ) : null
               ) : null
             }
             ListHeaderComponent={
@@ -1381,11 +1419,6 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     marginRight: 12,
     backgroundColor: Colors.bgCard,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.4,
-    shadowRadius: 14,
-    elevation: 10,
   },
   eventCardBg: {
     width: "100%",

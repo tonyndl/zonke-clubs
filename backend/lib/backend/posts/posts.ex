@@ -18,7 +18,7 @@ defmodule Backend.Posts do
     per_page = Keyword.get(opts, :per_page, 20)
     status = Keyword.get(opts, :status)
     user_id = Keyword.get(opts, :user_id)
-
+    search = Keyword.get(opts, :search)
     user_tagged_only = Keyword.get(opts, :user_tagged_only, false)
 
     # Only show posts that have at least one asset
@@ -45,6 +45,23 @@ defmodule Backend.Posts do
     query =
       if status do
         from p in query, where: p.status == ^status
+      else
+        query
+      end
+
+    # Search by caption or username
+    query =
+      if search && search != "" do
+        pattern = "%#{String.downcase(search)}%"
+        from p in query,
+          where:
+            ilike(p.caption, ^pattern) or
+              (not is_nil(p.user_id) and
+                 p.user_id in subquery(
+                   from u in Backend.Accounts.User,
+                     where: ilike(u.username, ^pattern),
+                     select: u.id
+                 ))
       else
         query
       end

@@ -6,6 +6,10 @@ defmodule BackendWeb.Admin.EventJSON do
   @doc """
   Renders a list of events.
   """
+  def index(%{events: events, paginate: paginate}) do
+    %{events: Enum.map(events, &data/1), paginate: paginate}
+  end
+
   def index(%{events: events}) do
     %{events: Enum.map(events, &data/1)}
   end

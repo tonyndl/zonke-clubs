@@ -100,7 +100,6 @@ export default function PeopleBrowseScreen() {
       })
       .catch((error) => {
         console.error("Error loading data:", error);
-        // On error, show empty state (no dummy data for testing real functionality)
         setIntentions([]);
       })
       .finally(() => {

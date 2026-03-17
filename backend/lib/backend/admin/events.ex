@@ -6,16 +6,20 @@ defmodule Backend.Admin.Events do
   import Ecto.Query
   alias Backend.Repo
   alias Backend.Admin.{Admin, Event}
+  alias Backend.PaginateHelper
 
   @doc """
-  Lists all events for a specific admin.
-  Returns events ordered by date (most recent first).
+  Lists events for a specific admin with pagination.
+  Returns {events, paginate_metadata}.
   """
-  def list_events(%Admin{} = admin) do
-    Event
-    |> where([e], e.admin_id == ^admin.id)
-    |> order_by([e], desc: e.date, desc: e.inserted_at)
-    |> Repo.all()
+  def list_events(%Admin{} = admin, params \\ %{}) do
+    page =
+      Event
+      |> where([e], e.admin_id == ^admin.id)
+      |> order_by([e], desc: e.date, desc: e.inserted_at)
+      |> Repo.paginate(PaginateHelper.prep_params(params))
+
+    {page.entries, PaginateHelper.prep_paginate(page)}
   end
 
   @doc """

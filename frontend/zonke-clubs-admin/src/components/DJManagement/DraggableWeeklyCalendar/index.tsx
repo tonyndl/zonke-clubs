@@ -213,9 +213,10 @@ export const DraggableWeeklyCalendar: React.FC<
       (e) => e.date === dateStr && e.status === "published",
     );
 
-    // Get all scheduled DJs for this day
-    const weeklySlots = schedules.filter(
-      (s) => s.dayOfWeek === index && s.type === "weekly",
+    // Get all scheduled DJs for this day (weekly recurring + specific date overrides)
+    const daySlots = schedules.filter(
+      (s) =>
+        s.dayOfWeek === index && (s.type === "weekly" || s.type === "specific"),
     );
 
     let slots: DJScheduleItem[];
@@ -227,7 +228,7 @@ export const DraggableWeeklyCalendar: React.FC<
         // Create slots for each DJ in the event lineup
         slots = event.dj_lineup.map((djIdOrName) => {
           // Check if this DJ already has a schedule for this day (by ID)
-          const existingSlot = weeklySlots.find((s) => s.djId === djIdOrName);
+          const existingSlot = daySlots.find((s) => s.djId === djIdOrName);
           if (existingSlot) {
             return { ...existingSlot, notes: `Part of ${event.title}` };
           }
@@ -261,7 +262,7 @@ export const DraggableWeeklyCalendar: React.FC<
         slots = [];
       }
     } else {
-      slots = weeklySlots;
+      slots = daySlots;
     }
 
     return {

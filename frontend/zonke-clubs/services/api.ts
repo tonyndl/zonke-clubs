@@ -25,6 +25,12 @@ export const setTokenClearer = (fn: () => Promise<void>) => {
   clearTokenFn = fn;
 };
 
+const handleServerError = (status: number): void => {
+  if (status === 500 && clearTokenFn) {
+    clearTokenFn();
+  }
+};
+
 export interface ApiResponse<T> {
   data?: T;
   error?: string;
@@ -82,6 +88,7 @@ class ApiService {
           throw new Error("Forbidden");
         }
         if (!response.ok) {
+          handleServerError(response.status);
           return response
             .json()
             .then((error) => {
@@ -133,6 +140,7 @@ class ApiService {
           throw new Error("Unauthorized");
         }
         if (!response.ok) {
+          handleServerError(response.status);
           return response
             .json()
             .then((error) => {
@@ -202,6 +210,7 @@ class ApiService {
           throw new Error("Unauthorized");
         }
         if (!response.ok) {
+          handleServerError(response.status);
           return response
             .json()
             .then((error) => {
@@ -355,6 +364,7 @@ class ApiService {
           throw new Error("Forbidden");
         }
         if (!response.ok) {
+          handleServerError(response.status);
           return response
             .json()
             .then((error) => {

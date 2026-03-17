@@ -120,6 +120,53 @@ export const FilterTab = styled.button<{ active?: boolean }>`
   }
 `;
 
+export const SearchBar = styled.div`
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing.sm};
+  margin-bottom: ${theme.spacing.lg};
+  padding: ${theme.spacing.sm} ${theme.spacing.md};
+  background: linear-gradient(
+    135deg,
+    rgba(15, 25, 35, 0.6) 0%,
+    rgba(15, 25, 35, 0.4) 100%
+  );
+  backdrop-filter: blur(10px);
+  border-radius: ${theme.borderRadius.xl};
+  border: 1px solid rgba(57, 243, 255, 0.1);
+  transition: border-color ${theme.transitions.normal};
+
+  &:focus-within {
+    border-color: rgba(57, 243, 255, 0.35);
+  }
+`;
+
+export const SearchIconWrapper = styled.div`
+  color: ${theme.colors.textSecondary};
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+
+  svg {
+    width: 18px;
+    height: 18px;
+  }
+`;
+
+export const SearchInput = styled.input`
+  flex: 1;
+  background: none;
+  border: none;
+  outline: none;
+  font-size: ${theme.typography.fontSize.sm};
+  color: ${theme.colors.textPrimary};
+  padding: ${theme.spacing.sm} 0;
+
+  &::placeholder {
+    color: ${theme.colors.textSecondary};
+  }
+`;
+
 export const PostsGrid = styled.div`
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
