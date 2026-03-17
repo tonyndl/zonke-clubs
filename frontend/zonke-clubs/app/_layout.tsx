@@ -7,6 +7,7 @@ import * as NavigationBar from "expo-navigation-bar";
 
 import { AuthProvider, useAuth } from "../contexts/AuthContext";
 import { UserRoleProvider } from "../contexts/UserRoleContext";
+import { LedColorProvider } from "../contexts/LedColorContext";
 import { AuthScreen } from "./_screens/Login";
 
 function RootNavigator() {
@@ -70,8 +71,10 @@ export default function RootLayout() {
     <PaperProvider>
       <AuthProvider>
         <UserRoleProvider>
-          <StatusBar barStyle="light-content" backgroundColor="transparent" />
-          <RootNavigator />
+          <LedColorProvider>
+            <StatusBar barStyle="light-content" backgroundColor="transparent" />
+            <RootNavigator />
+          </LedColorProvider>
         </UserRoleProvider>
       </AuthProvider>
     </PaperProvider>

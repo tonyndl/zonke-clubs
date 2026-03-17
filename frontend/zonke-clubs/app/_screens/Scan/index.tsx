@@ -1,12 +1,23 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import {
   View,
   Text,
   Dimensions,
   ScrollView,
   Animated,
+  Easing,
   TextInput,
+  Pressable,
+  PanResponder,
 } from "react-native";
+import { Modal } from "@/components/modal";
+import Svg, {
+  Path,
+  Circle,
+  Defs,
+  RadialGradient,
+  Stop,
+} from "react-native-svg";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
@@ -17,8 +28,10 @@ import { PressableScale } from "@/components/ui/PressableScale";
 import { useRouter } from "expo-router";
 import { TextStroke } from "../Login/utils";
 import { styles } from "./styles";
+import { useLedColor } from "@/contexts/LedColorContext";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
+const BOX_WIDTH = SCREEN_WIDTH - 32 - 8 - 6; // marginHorizontal(32) + ledBorder margin(8) + border(6)
 
 type LEDStyle =
   | "classic"
@@ -146,8 +159,127 @@ const FONT_STYLES: Record<FontStyle, FontStyleOption> = {
   },
 };
 
+function hsvToHex(h: number, s: number, v: number): string {
+  const i = Math.floor(h / 60) % 6;
+  const f = h / 60 - Math.floor(h / 60);
+  const p = v * (1 - s);
+  const q = v * (1 - f * s);
+  const t = v * (1 - (1 - f) * s);
+  let r: number, g: number, b: number;
+  switch (i) {
+    case 0:
+      [r, g, b] = [v, t, p];
+      break;
+    case 1:
+      [r, g, b] = [q, v, p];
+      break;
+    case 2:
+      [r, g, b] = [p, v, t];
+      break;
+    case 3:
+      [r, g, b] = [p, q, v];
+      break;
+    case 4:
+      [r, g, b] = [t, p, v];
+      break;
+    default:
+      [r, g, b] = [v, p, q];
+      break;
+  }
+  const toHex = (c: number) =>
+    Math.round(c * 255)
+      .toString(16)
+      .padStart(2, "0");
+  return `#${toHex(r!)}${toHex(g!)}${toHex(b!)}`;
+}
+
+const WHEEL_SLICES = 120;
+
+function ColorWheelPicker({
+  size,
+  initialColor,
+  onColorChange,
+}: {
+  size: number;
+  initialColor: string;
+  onColorChange: (hex: string) => void;
+}) {
+  const cx = size / 2;
+  const cy = size / 2;
+  const outerR = size / 2 - 2;
+  const holeR = size * 0.18;
+  const [selectedColor, setSelectedColor] = useState(initialColor);
+
+  const pickColor = (x: number, y: number) => {
+    const dx = x - cx;
+    const dy = y - cy;
+    const radius = Math.sqrt(dx * dx + dy * dy);
+    if (radius > outerR || radius < holeR) return;
+    let angle = Math.atan2(dy, dx) * (180 / Math.PI) + 90;
+    if (angle < 0) angle += 360;
+    const saturation = Math.min(1, (radius - holeR) / (outerR - holeR));
+    const hex = hsvToHex(angle, saturation, 1);
+    setSelectedColor(hex);
+    onColorChange(hex);
+  };
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderGrant: (e) =>
+        pickColor(e.nativeEvent.locationX, e.nativeEvent.locationY),
+      onPanResponderMove: (e) =>
+        pickColor(e.nativeEvent.locationX, e.nativeEvent.locationY),
+    }),
+  ).current;
+
+  const slices = useMemo(() => {
+    const paths: React.ReactElement[] = [];
+    for (let i = 0; i < WHEEL_SLICES; i++) {
+      const startAngle = (i / WHEEL_SLICES) * 2 * Math.PI - Math.PI / 2;
+      const endAngle = ((i + 1) / WHEEL_SLICES) * 2 * Math.PI - Math.PI / 2;
+      const hue = (i / WHEEL_SLICES) * 360;
+      const x1 = cx + outerR * Math.cos(startAngle);
+      const y1 = cy + outerR * Math.sin(startAngle);
+      const x2 = cx + outerR * Math.cos(endAngle);
+      const y2 = cy + outerR * Math.sin(endAngle);
+      const d = `M ${cx} ${cy} L ${x1} ${y1} A ${outerR} ${outerR} 0 0 1 ${x2} ${y2} Z`;
+      paths.push(<Path key={i} d={d} fill={`hsl(${hue}, 100%, 50%)`} />);
+    }
+    return paths;
+  }, [size]);
+
+  return (
+    <View {...panResponder.panHandlers} style={{ width: size, height: size }}>
+      <Svg width={size} height={size}>
+        <Defs>
+          <RadialGradient id="satMask" cx="50%" cy="50%" r="50%">
+            <Stop offset="0%" stopColor="white" stopOpacity="1" />
+            <Stop offset="100%" stopColor="white" stopOpacity="0" />
+          </RadialGradient>
+        </Defs>
+        {slices}
+        {/* White radial overlay to create saturation gradient from center */}
+        <Circle cx={cx} cy={cy} r={outerR} fill="url(#satMask)" />
+        {/* Center hole showing selected color */}
+        <Circle cx={cx} cy={cy} r={holeR} fill={selectedColor} />
+        <Circle
+          cx={cx}
+          cy={cy}
+          r={holeR}
+          fill="none"
+          stroke="rgba(255,255,255,0.6)"
+          strokeWidth={2}
+        />
+      </Svg>
+    </View>
+  );
+}
+
 export function ScanScreen() {
   const router = useRouter();
+  const { setLedPrimaryColor } = useLedColor();
   const [text, setText] = useState("TAP TO ENTER YOUR TEXT");
   const [speed, setSpeed] = useState(120); // Turbo speed
   const [currentStyle, setCurrentStyle] = useState<LEDStyle>("neon");
@@ -159,45 +291,61 @@ export function ScanScreen() {
   const [waveEnabled, setWaveEnabled] = useState(false);
   const [isEditingText, setIsEditingText] = useState(false);
   const [savedMessages, setSavedMessages] = useState<string[]>([]);
+  const [customColor, setCustomColor] = useState<string | null>(null);
+  const [showColorPicker, setShowColorPicker] = useState(false);
+  const pendingColorRef = useRef<string>(customColor || "#00FFFF");
 
   const scrollX = useRef(new Animated.Value(SCREEN_WIDTH)).current;
   const scrollY = useRef(new Animated.Value(0)).current;
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const waveAnim = useRef(new Animated.Value(0)).current;
   const textInputRef = useRef<TextInput>(null);
+  const [measuredTextWidth, setMeasuredTextWidth] = useState<number | null>(
+    null,
+  );
 
-  const theme = LED_THEMES[currentStyle];
+  const baseTheme = LED_THEMES[currentStyle];
+  const theme = customColor
+    ? {
+        ...baseTheme,
+        primaryColor: customColor,
+        secondaryColor: customColor,
+        glowColor: customColor + "99",
+      }
+    : baseTheme;
 
-  // Reset scroll position when scrolling is enabled or text changes
+  // Sync pending color ref when color picker opens
+  useEffect(() => {
+    if (showColorPicker) {
+      pendingColorRef.current = customColor || theme.primaryColor;
+    }
+  }, [showColorPicker]);
+
+  // Reset measurement when text or font size changes
   useEffect(() => {
     if (animationMode === "scroll") {
-      scrollX.setValue(SCREEN_WIDTH);
+      setMeasuredTextWidth(null);
     }
-  }, [animationMode, text]);
+  }, [text, fontSize, animationMode]);
 
-  // Horizontal scrolling animation (scroll mode)
+  // Horizontal scrolling animation — only starts once real text width is measured
   useEffect(() => {
     if (animationMode !== "scroll") return;
+    if (measuredTextWidth === null) return;
 
-    // Reset position before starting animation
-    scrollX.setValue(SCREEN_WIDTH);
+    const textWidth = measuredTextWidth;
 
-    const letterSpacing = 4;
-    const charWidth = 0.75; // More accurate estimate for monospace font
-    // Remove trailing spaces for display
-    const displayText = text.replace(/\s+$/, "").toUpperCase();
-    // Correct formula: N characters + (N-1) letter spacings
-    const textWidth =
-      displayText.length * fontSize * charWidth +
-      (displayText.length - 1) * letterSpacing;
-    const totalDistance = SCREEN_WIDTH + textWidth;
+    scrollX.setValue(BOX_WIDTH);
+
+    // Travel = textWidth + BOX_WIDTH so last char exits left exactly when next copy enters right
+    const totalDistance = BOX_WIDTH + textWidth;
     const duration = (totalDistance / speed) * 1000;
 
     const animation = Animated.loop(
       Animated.timing(scrollX, {
-        toValue: -textWidth - 20, // Extra margin to ensure last character fully exits
+        toValue: -textWidth,
         duration: duration,
-        delay: 0,
+        easing: Easing.linear,
         useNativeDriver: true,
         isInteraction: false,
       }),
@@ -206,7 +354,7 @@ export function ScanScreen() {
     animation.start();
 
     return () => animation.stop();
-  }, [text, speed, fontSize, animationMode]);
+  }, [measuredTextWidth, speed, animationMode]);
 
   // Pulse animation
   useEffect(() => {
@@ -252,6 +400,15 @@ export function ScanScreen() {
   const handleStyleChange = (style: LEDStyle) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setCurrentStyle(style);
+    setCustomColor(null);
+    setLedPrimaryColor(LED_THEMES[style].primaryColor);
+  };
+
+  const handleCustomColorComplete = (hex: string) => {
+    setCustomColor(hex);
+    setLedPrimaryColor(hex);
+    setShowColorPicker(false);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   };
 
   const handleFontStyleChange = (style: FontStyle) => {
@@ -270,6 +427,7 @@ export function ScanScreen() {
         fontSize: fontSize.toString(),
         animationMode,
         waveEnabled: waveEnabled.toString(),
+        customColor: customColor || "",
       },
     });
   };
@@ -393,21 +551,26 @@ export function ScanScreen() {
       const textWidth = animationMode === "scroll" ? 99999 : undefined;
 
       if (animationMode === "scroll") {
-        return (
-          <Animated.Text
+        const sharedTextStyle = {
+          fontSize: actualFontSize,
+          ...fontStyleProps,
+          letterSpacing: 4,
+          margin: "auto",
+        };
+        return measuredTextWidth !== null ? (
+          <Animated.View
             style={{
               position: "absolute",
               left: 0,
-              fontSize: actualFontSize,
-              ...fontStyleProps,
-              letterSpacing: 4,
+              flexDirection: "row",
               transform: [{ translateX: scrollX }],
-              width: textWidth,
             }}
           >
-            {displayText}
-          </Animated.Text>
-        );
+            <Text style={sharedTextStyle}>{displayText}</Text>
+            <View style={{ width: BOX_WIDTH }} />
+            <Text style={sharedTextStyle}>{displayText}</Text>
+          </Animated.View>
+        ) : null;
       }
 
       // Same approach as fullscreen but without rotation
@@ -554,12 +717,36 @@ export function ScanScreen() {
     );
   };
 
+  // Compute the text style used for the scroll preview so measurement matches render
+  const scrollMeasureStyle = {
+    fontSize: fontSize,
+    fontWeight: "900" as const,
+    fontFamily: "monospace",
+    letterSpacing: 4,
+  };
+
   return (
     <SafeAreaView
       style={[styles.container, { backgroundColor: theme.backgroundColor }]}
       edges={["top"]}
     >
       <StatusBar style="light" />
+
+      {/* Hidden off-screen node to measure true pixel width of one scroll text copy */}
+      {animationMode === "scroll" && measuredTextWidth === null && (
+        <View
+          style={{ position: "absolute", opacity: 0, width: 99999 }}
+          pointerEvents="none"
+        >
+          <Text
+            numberOfLines={1}
+            style={[scrollMeasureStyle, { alignSelf: "flex-start" }]}
+            onLayout={(e) => setMeasuredTextWidth(e.nativeEvent.layout.width)}
+          >
+            {text.replace(/\s+$/, "").toUpperCase()}
+          </Text>
+        </View>
+      )}
 
       <ScrollView
         style={styles.content}
@@ -912,9 +1099,39 @@ export function ScanScreen() {
             <Text style={[styles.sectionTitle, { color: theme.primaryColor }]}>
               LED STYLE
             </Text>
-            <Text style={[styles.sectionHint, { color: theme.secondaryColor }]}>
-              Swipe to browse →
-            </Text>
+            <View
+              style={{ flexDirection: "row", alignItems: "center", gap: 10 }}
+            >
+              <Text
+                style={[styles.sectionHint, { color: theme.secondaryColor }]}
+              >
+                Swipe to browse →
+              </Text>
+              {/* Color palette icon */}
+              <Pressable
+                onPress={() => setShowColorPicker(true)}
+                style={{
+                  width: 30,
+                  height: 30,
+                  borderRadius: 15,
+                  borderWidth: 2,
+                  borderColor: customColor
+                    ? customColor
+                    : "rgba(255,255,255,0.2)",
+                  backgroundColor: customColor
+                    ? customColor
+                    : "rgba(255,255,255,0.08)",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <Ionicons
+                  name="color-palette"
+                  size={16}
+                  color={customColor ? "#000" : "rgba(255,255,255,0.6)"}
+                />
+              </Pressable>
+            </View>
           </View>
           <ScrollView
             horizontal
@@ -923,7 +1140,7 @@ export function ScanScreen() {
           >
             {(Object.keys(LED_THEMES) as LEDStyle[]).map((style) => {
               const styleTheme = LED_THEMES[style];
-              const isActive = currentStyle === style;
+              const isActive = currentStyle === style && !customColor;
 
               return (
                 <PressableScale
@@ -1117,6 +1334,62 @@ export function ScanScreen() {
           </View>
         )}
       </ScrollView>
+
+      {/* Color Picker Modal */}
+      {showColorPicker && (
+        <Modal onDismiss={() => setShowColorPicker(false)}>
+          <View
+            style={{
+              alignItems: "center",
+              paddingHorizontal: 24,
+              paddingBottom: 24,
+            }}
+          >
+            <Text
+              style={{
+                color: "#fff",
+                fontWeight: "800",
+                fontSize: 16,
+                marginBottom: 20,
+                letterSpacing: 1,
+              }}
+            >
+              CUSTOM COLOR
+            </Text>
+
+            <ColorWheelPicker
+              key="color-wheel"
+              size={SCREEN_WIDTH * 0.72}
+              initialColor={customColor || theme.primaryColor}
+              onColorChange={(hex) => {
+                pendingColorRef.current = hex;
+              }}
+            />
+
+            <Pressable
+              onPress={() => handleCustomColorComplete(pendingColorRef.current)}
+              style={{
+                marginTop: 20,
+                paddingHorizontal: 40,
+                paddingVertical: 12,
+                borderRadius: 16,
+                backgroundColor: theme.primaryColor,
+              }}
+            >
+              <Text
+                style={{
+                  color: "#000",
+                  fontWeight: "800",
+                  fontSize: 14,
+                  letterSpacing: 1,
+                }}
+              >
+                APPLY
+              </Text>
+            </Pressable>
+          </View>
+        </Modal>
+      )}
     </SafeAreaView>
   );
 }

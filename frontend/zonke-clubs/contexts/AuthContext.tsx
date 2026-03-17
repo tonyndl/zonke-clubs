@@ -50,16 +50,23 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         setUser(currentUser);
       })
       .catch((error) => {
-        if (error.message !== "Unauthorized") {
+        const isAuthError =
+          error.message === "Unauthorized" ||
+          /Request failed with status 5\d\d/.test(error.message ?? "");
+
+        if (!isAuthError) {
           console.error("Check auth failed:", error);
         }
-        // If profile fetch fails (e.g., token invalid), try local cache as fallback
+
+        // Auth/server errors: token is already cleared by api.ts — go to login
+        if (isAuthError) {
+          setUser(null);
+          return;
+        }
+
+        // Network/unknown errors: fall back to cache so offline users stay logged in
         return authService.getCurrentUser().then((cachedUser) => {
-          if (cachedUser) {
-            setUser(cachedUser);
-          } else {
-            setUser(null);
-          }
+          setUser(cachedUser);
         });
       })
       .finally(() => {

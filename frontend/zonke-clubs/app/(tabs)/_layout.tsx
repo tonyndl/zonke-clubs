@@ -8,10 +8,12 @@ import { Ionicons } from "@expo/vector-icons";
 import { Colors } from "@/constants/ui";
 import { useConnectionBadges } from "@/hooks/useConnectionBadges";
 import { websocketService } from "@/services/websocketService";
+import { useLedColor } from "@/contexts/LedColorContext";
 
 export default function TabLayout() {
   const { requestsCount, unreadCount } = useConnectionBadges();
   const insets = useSafeAreaInsets();
+  const { ledPrimaryColor } = useLedColor();
 
   // Connect to WebSocket when tabs layout mounts (after login)
   useEffect(() => {
@@ -89,10 +91,14 @@ export default function TabLayout() {
         name="scan"
         options={{
           title: "",
-          tabBarIcon: ({ color, focused }) => (
+          tabBarIcon: ({ focused }) => (
             <View style={styles.scanButtonContainer}>
               <View
-                style={[styles.scanButton, focused && styles.scanButtonActive]}
+                style={[
+                  styles.scanButton,
+                  focused && styles.scanButtonActive,
+                  { backgroundColor: focused ? ledPrimaryColor : Colors.gold },
+                ]}
               >
                 <Ionicons size={32} name="add" color={Colors.bgCard} />
               </View>
