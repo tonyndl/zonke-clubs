@@ -199,10 +199,16 @@ function ColorWheelPicker({
   size,
   initialColor,
   onColorChange,
+  previewTextColor,
+  previewBgColor,
+  fontStyle = "solid",
 }: {
   size: number;
   initialColor: string;
   onColorChange: (hex: string) => void;
+  previewTextColor?: string;
+  previewBgColor?: string;
+  fontStyle?: FontStyle;
 }) {
   const cx = size / 2;
   const cy = size / 2;
@@ -250,6 +256,71 @@ function ColorWheelPicker({
     return paths;
   }, [size]);
 
+  const showPreview = !!(previewTextColor || previewBgColor);
+  // Color of the "A" letter:
+  //   text color picker (previewBgColor set): selectedColor (live, the color being chosen)
+  //   bg color picker   (previewTextColor set): previewTextColor (fixed LED text color)
+  const aColor = previewBgColor ? selectedColor : (previewTextColor as string);
+  // Fill inside the "A" for outline style
+  const aInsideColor = previewBgColor ?? selectedColor;
+
+  const getATextStyle = (): any => {
+    const base = {
+      fontWeight: "900" as const,
+      fontFamily: "monospace",
+      width: 80,
+      textAlign: "center",
+      fontSize: holeR * 0.9,
+      lineHeight: holeR * 0.9,
+      includeFontPadding: false,
+      overflow: "visible",
+    };
+    switch (fontStyle) {
+      case "outline":
+        return {
+          ...base,
+          color: aInsideColor,
+          textShadowColor: aColor,
+          textShadowOffset: { width: 0, height: 0 },
+          textShadowRadius: 8,
+        };
+      case "shadow":
+        return {
+          ...base,
+          color: aColor,
+          textShadowColor: aColor,
+          textShadowOffset: { width: 3, height: 3 },
+          textShadowRadius: 6,
+        };
+      case "neon":
+        return {
+          ...base,
+          color: aColor,
+          textShadowColor: aColor,
+          textShadowOffset: { width: 0, height: 0 },
+          textShadowRadius: 20,
+        };
+      case "glitch":
+        return {
+          ...base,
+          color: aColor,
+          textShadowColor: aColor,
+          textShadowOffset: { width: 4, height: -3 },
+          textShadowRadius: 10,
+        };
+      case "3d":
+        return {
+          ...base,
+          color: aColor,
+          textShadowColor: "rgba(255,255,255,0.4)",
+          textShadowOffset: { width: 4, height: 4 },
+          textShadowRadius: 2,
+        };
+      default:
+        return { ...base, color: aColor };
+    }
+  };
+
   return (
     <View {...panResponder.panHandlers} style={{ width: size, height: size }}>
       <Svg width={size} height={size}>
@@ -260,10 +331,14 @@ function ColorWheelPicker({
           </RadialGradient>
         </Defs>
         {slices}
-        {/* White radial overlay to create saturation gradient from center */}
         <Circle cx={cx} cy={cy} r={outerR} fill="url(#satMask)" />
-        {/* Center hole showing selected color */}
-        <Circle cx={cx} cy={cy} r={holeR} fill={selectedColor} />
+        {/* Center hole */}
+        <Circle
+          cx={cx}
+          cy={cy}
+          r={holeR}
+          fill={previewBgColor ?? selectedColor}
+        />
         <Circle
           cx={cx}
           cy={cy}
@@ -273,6 +348,30 @@ function ColorWheelPicker({
           strokeWidth={2}
         />
       </Svg>
+
+      {/* "A" preview overlay — rendered as RN Text so shadows/font styles work */}
+      {showPreview && (
+        <View
+          pointerEvents="none"
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          {fontStyle === "outline" ? (
+            <TextStroke color={aColor} stroke={1}>
+              <Text style={getATextStyle()}>A</Text>
+            </TextStroke>
+          ) : (
+            <Text style={getATextStyle()}>A</Text>
+          )}
+        </View>
+      )}
     </View>
   );
 }
@@ -425,7 +524,7 @@ function SpeedSlider({
               }}
             />
 
-            {/* Glowing thumb */}
+            {/*thumb */}
             <View
               style={{
                 position: "absolute",
@@ -436,11 +535,6 @@ function SpeedSlider({
                 backgroundColor: primaryColor,
                 borderWidth: 3,
                 borderColor: backgroundColor,
-                shadowColor: primaryColor,
-                shadowOffset: { width: 0, height: 0 },
-                shadowOpacity: 1,
-                shadowRadius: 10,
-                elevation: 10,
               }}
             />
           </>
@@ -496,7 +590,12 @@ export function ScanScreen() {
   const textBeforeEditRef = useRef<string>("");
   const [savedMessages, setSavedMessages] = useState<string[]>([]);
   const [customColor, setCustomColor] = useState<string | null>(null);
-  const [showColorPicker, setShowColorPicker] = useState(false);
+  const [bgColor, setBgColor] = useState("#000000");
+  const [showColorModal, setShowColorModal] = useState(false);
+  const [colorModalTab, setColorModalTab] = useState<"text" | "bg">("text");
+  const [pendingBgColor, setPendingBgColor] = useState("#000000");
+  const [modalWheelKey, setModalWheelKey] = useState(0);
+  const pendingBgColorRef = useRef<string>("#000000");
   const [scrollEnabled, setScrollEnabled] = useState(true);
   const pendingColorRef = useRef<string>(customColor || "#00FFFF");
 
@@ -519,12 +618,14 @@ export function ScanScreen() {
       }
     : baseTheme;
 
-  // Sync pending color ref when color picker opens
+  // Sync pending refs when color modal opens or tab changes
   useEffect(() => {
-    if (showColorPicker) {
+    if (showColorModal) {
       pendingColorRef.current = customColor || theme.primaryColor;
+      pendingBgColorRef.current = bgColor;
+      setPendingBgColor(bgColor);
     }
-  }, [showColorPicker]);
+  }, [showColorModal, colorModalTab]);
 
   // Reset measurement when text or font size changes
   useEffect(() => {
@@ -612,7 +713,7 @@ export function ScanScreen() {
   const handleCustomColorComplete = (hex: string) => {
     setCustomColor(hex);
     setLedPrimaryColor(hex);
-    setShowColorPicker(false);
+    setShowColorModal(false);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   };
 
@@ -634,6 +735,7 @@ export function ScanScreen() {
         waveEnabled: waveEnabled.toString(),
         customColor: customColor || "",
         speed: speed.toString(),
+        bgColor,
       },
     });
   };
@@ -683,9 +785,9 @@ export function ScanScreen() {
           color: baseColor,
         };
       case "outline":
-        // Create outline effect using strong shadow glow
         return {
           ...baseStyle,
+          color: bgColor,
           textShadowColor: baseColor,
           textShadowOffset: { width: 0, height: 0 },
           textShadowRadius: 10,
@@ -815,6 +917,7 @@ export function ScanScreen() {
                   style={{
                     width: ledBoxWidth * 0.98,
                     fontSize: actualFontSize,
+                    color: bgColor,
                     letterSpacing: 2,
                     fontWeight: "900",
                     fontFamily: "monospace",
@@ -858,6 +961,7 @@ export function ScanScreen() {
               style={{
                 width: ledBoxWidth * 0.98,
                 fontSize: actualFontSize,
+                color: bgColor,
                 letterSpacing: 2,
                 fontWeight: "900",
                 fontFamily: "monospace",
@@ -1003,10 +1107,7 @@ export function ScanScreen() {
             setIsEditingText(true);
             setTimeout(() => textInputRef.current?.focus(), 100);
           }}
-          style={[
-            styles.ledDisplay,
-            { backgroundColor: theme.backgroundColor },
-          ]}
+          style={[styles.ledDisplay, { backgroundColor: bgColor }]}
         >
           <View style={styles.ledBorder}>
             {/* Corner lights */}
@@ -1025,6 +1126,29 @@ export function ScanScreen() {
                 ]}
               />
             ))}
+
+            {/* BG color palette button - bottom left */}
+            <Pressable
+              style={styles.bgColorButton}
+              onPress={(e) => {
+                e.stopPropagation();
+                setColorModalTab("bg");
+                setModalWheelKey((k) => k + 1);
+                setShowColorModal(true);
+              }}
+            >
+              <View
+                style={[
+                  styles.bgColorSwatch,
+                  { backgroundColor: bgColor, borderColor: theme.primaryColor },
+                ]}
+              />
+              <Ionicons
+                name="color-palette-outline"
+                size={14}
+                color={theme.primaryColor}
+              />
+            </Pressable>
 
             {/* Edit hint overlay */}
             {!isEditingText && (
@@ -1080,7 +1204,7 @@ export function ScanScreen() {
           {/* Scanlines effect */}
           <View style={styles.scanlines} pointerEvents="none">
             {Array.from({ length: 20 }).map((_, i) => (
-              <View key={i} style={[styles.scanline, { opacity: 0.05 }]} />
+              <View key={i} style={[styles.scanline, { opacity: 0.1 }]} />
             ))}
           </View>
         </PressableScale>
@@ -1324,14 +1448,13 @@ export function ScanScreen() {
             <View
               style={{ flexDirection: "row", alignItems: "center", gap: 10 }}
             >
-              <Text
-                style={[styles.sectionHint, { color: theme.secondaryColor }]}
-              >
-                Swipe to browse →
-              </Text>
               {/* Color palette icon */}
               <Pressable
-                onPress={() => setShowColorPicker(true)}
+                onPress={() => {
+                  setColorModalTab("text");
+                  setModalWheelKey((k) => k + 1);
+                  setShowColorModal(true);
+                }}
                 style={{
                   width: 30,
                   height: 30,
@@ -1509,7 +1632,7 @@ export function ScanScreen() {
         </View>
 
         {/* Saved Messages */}
-        {savedMessages.length > 0 && (
+        {/* {savedMessages.length > 0 && (
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Text
@@ -1554,12 +1677,12 @@ export function ScanScreen() {
               </View>
             ))}
           </View>
-        )}
+        )} */}
       </ScrollView>
 
-      {/* Color Picker Modal */}
-      {showColorPicker && (
-        <Modal onDismiss={() => setShowColorPicker(false)}>
+      {/* Unified Color Picker Modal */}
+      {showColorModal && (
+        <Modal onDismiss={() => setShowColorModal(false)}>
           <View
             style={{
               alignItems: "center",
@@ -1567,29 +1690,105 @@ export function ScanScreen() {
               paddingBottom: 24,
             }}
           >
-            <Text
+            {/* Tab switcher */}
+            <View
               style={{
-                color: "#fff",
-                fontWeight: "800",
-                fontSize: 16,
+                flexDirection: "row",
+                backgroundColor: "rgba(255,255,255,0.07)",
+                borderRadius: 14,
+                padding: 4,
                 marginBottom: 20,
-                letterSpacing: 1,
+                width: "100%",
               }}
             >
-              CUSTOM COLOR
-            </Text>
+              {(["text", "bg"] as const).map((tab) => (
+                <Pressable
+                  key={tab}
+                  onPress={() => {
+                    setColorModalTab(tab);
+                    setModalWheelKey((k) => k + 1);
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  }}
+                  style={{
+                    flex: 1,
+                    paddingVertical: 10,
+                    borderRadius: 10,
+                    alignItems: "center",
+                    backgroundColor:
+                      colorModalTab === tab
+                        ? theme.primaryColor
+                        : "transparent",
+                  }}
+                >
+                  <Text
+                    style={{
+                      fontSize: 12,
+                      fontWeight: "800",
+                      letterSpacing: 1,
+                      color:
+                        colorModalTab === tab
+                          ? "#000"
+                          : "rgba(255,255,255,0.5)",
+                    }}
+                  >
+                    {tab === "text" ? "TEXT COLOR" : "BACKGROUND"}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+
+            {/* Reset bg to black button — only on bg tab when not black */}
+            {colorModalTab === "bg" && pendingBgColor !== "#000000" && (
+              <Pressable
+                onPress={() => {
+                  pendingBgColorRef.current = "#000000";
+                  setPendingBgColor("#000000");
+                  setModalWheelKey((k) => k + 1);
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                }}
+                style={{ position: "absolute", top: 56, right: 24, padding: 4 }}
+              >
+                <Ionicons
+                  name="refresh-outline"
+                  size={20}
+                  color="rgba(255,255,255,0.6)"
+                />
+              </Pressable>
+            )}
 
             <ColorWheelPicker
-              key="color-wheel"
+              key={`wheel-${colorModalTab}-${modalWheelKey}`}
               size={SCREEN_WIDTH * 0.72}
-              initialColor={customColor || theme.primaryColor}
+              initialColor={
+                colorModalTab === "text"
+                  ? customColor || theme.primaryColor
+                  : bgColor
+              }
               onColorChange={(hex) => {
-                pendingColorRef.current = hex;
+                if (colorModalTab === "text") {
+                  pendingColorRef.current = hex;
+                } else {
+                  pendingBgColorRef.current = hex;
+                  setPendingBgColor(hex);
+                }
               }}
+              previewTextColor={
+                colorModalTab === "bg" ? theme.primaryColor : undefined
+              }
+              previewBgColor={colorModalTab === "text" ? bgColor : undefined}
+              fontStyle={currentFontStyle}
             />
 
             <Pressable
-              onPress={() => handleCustomColorComplete(pendingColorRef.current)}
+              onPress={() => {
+                if (colorModalTab === "text") {
+                  handleCustomColorComplete(pendingColorRef.current);
+                } else {
+                  setBgColor(pendingBgColorRef.current);
+                  setShowColorModal(false);
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                }
+              }}
               style={{
                 marginTop: 20,
                 paddingHorizontal: 40,

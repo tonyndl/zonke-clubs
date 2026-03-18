@@ -130,7 +130,7 @@ export const styles = StyleSheet.create({
   },
   scanline: {
     height: 2,
-    backgroundColor: "#fff",
+    backgroundColor: Colors.platinum,
   },
   quickEditContainer: {
     marginHorizontal: 16,
@@ -315,6 +315,7 @@ export const styles = StyleSheet.create({
   styleScroll: {
     marginHorizontal: -16,
     paddingHorizontal: 16,
+    overflow: "visible",
   },
   styleCard: {
     width: 100,
@@ -576,5 +577,35 @@ export const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "900",
     letterSpacing: 2,
+  },
+  bgColorButton: {
+    position: "absolute",
+    top: 8,
+    left: 26,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    borderRadius: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    zIndex: 10,
+  },
+  bgColorSwatch: {
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    borderWidth: 1.5,
+  },
+  bgSwatchCard: {
+    width: 72,
+    height: 90,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.12)",
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 12,
+    overflow: "hidden",
   },
 });

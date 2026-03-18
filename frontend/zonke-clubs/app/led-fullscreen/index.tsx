@@ -44,6 +44,7 @@ interface LEDFullscreenProps {
   waveEnabled?: boolean;
   customColor?: string;
   speed?: number;
+  bgColor?: string;
 }
 
 const LED_THEMES: Record<LEDStyle, LEDTheme> = {
@@ -98,6 +99,7 @@ export function LEDFullscreenView({
   waveEnabled = false,
   customColor,
   speed = 180,
+  bgColor = "#000000",
 }: LEDFullscreenProps) {
   const router = useRouter();
 
@@ -140,10 +142,10 @@ export function LEDFullscreenView({
           color: baseColor,
         };
       case "outline":
-        // Create outline effect using strong shadow glow
+        // Fill inside of letters with background color so only the stroke is visible
         return {
           ...baseStyle,
-          color: "transparent",
+          color: bgColor,
           textShadowColor: baseColor,
           textShadowOffset: { width: 0, height: 0 },
           textShadowRadius: 15,
@@ -399,11 +401,14 @@ export function LEDFullscreenView({
         : [{ rotate: "90deg" }];
 
   return (
-    <SafeAreaView style={styles.container} edges={["bottom"]}>
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: bgColor }]}
+      edges={["bottom"]}
+    >
       <StatusBar style="light" hidden />
 
       <TouchableWithoutFeedback onPress={handleDoubleTap}>
-        <View style={styles.ledContainer}>
+        <View style={[styles.ledContainer, { backgroundColor: bgColor }]}>
           {/* Hidden off-screen node used only to measure the true rendered text width */}
           {animationMode === "scroll" && measuredTextWidth === null && (
             <View
@@ -475,6 +480,7 @@ export function LEDFullscreenView({
                     style={{
                       width: textWidth,
                       fontSize: actualFontSize,
+                      color: bgColor,
                       letterSpacing: 1,
                       fontWeight: "900",
                       fontFamily: "monospace",
@@ -534,6 +540,7 @@ export default function LEDFullscreenScreen() {
       waveEnabled={params.waveEnabled === "true"}
       customColor={(params.customColor as string) || undefined}
       speed={Number(params.speed) || 180}
+      bgColor={(params.bgColor as string) || "#000000"}
     />
   );
 }
