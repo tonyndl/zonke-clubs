@@ -277,11 +277,214 @@ function ColorWheelPicker({
   );
 }
 
+const SPEED_MIN = 50;
+const SPEED_MAX = 400;
+const THUMB_SIZE = 26;
+
+function SpeedSlider({
+  value,
+  onChange,
+  primaryColor,
+  secondaryColor,
+  backgroundColor,
+  onDragStart,
+  onDragEnd,
+}: {
+  value: number;
+  onChange: (speed: number) => void;
+  primaryColor: string;
+  secondaryColor: string;
+  backgroundColor: string;
+  onDragStart: () => void;
+  onDragEnd: () => void;
+}) {
+  const [trackWidth, setTrackWidth] = useState(0);
+  const positionRef = useRef(0);
+  const startXRef = useRef(0);
+  const effectiveWidthRef = useRef(1);
+  const onDragStartRef = useRef(onDragStart);
+  const onDragEndRef = useRef(onDragEnd);
+  const onChangeRef = useRef(onChange);
+  onDragStartRef.current = onDragStart;
+  onDragEndRef.current = onDragEnd;
+  onChangeRef.current = onChange;
+
+  const effectiveWidth = Math.max(1, trackWidth - THUMB_SIZE);
+  effectiveWidthRef.current = effectiveWidth;
+
+  const position =
+    trackWidth > 0
+      ? ((value - SPEED_MIN) / (SPEED_MAX - SPEED_MIN)) * effectiveWidth
+      : 0;
+  positionRef.current = position;
+
+  const getLabel = (v: number) => {
+    if (v < 100) return "SLOW";
+    if (v < 180) return "NORMAL";
+    if (v < 280) return "FAST";
+    return "TURBO";
+  };
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onStartShouldSetPanResponderCapture: () => true,
+      onPanResponderGrant: () => {
+        startXRef.current = positionRef.current;
+        onDragStartRef.current();
+      },
+      onPanResponderMove: (_, gs) => {
+        const ew = effectiveWidthRef.current;
+        const newPos = Math.max(0, Math.min(ew, startXRef.current + gs.dx));
+        const newSpeed = Math.round(
+          SPEED_MIN + (newPos / ew) * (SPEED_MAX - SPEED_MIN),
+        );
+        onChangeRef.current(newSpeed);
+      },
+      onPanResponderRelease: () => onDragEndRef.current(),
+      onPanResponderTerminate: () => onDragEndRef.current(),
+    }),
+  ).current;
+
+  return (
+    <View style={{ paddingHorizontal: 16, marginBottom: 4 }}>
+      {/* Header row */}
+      <View
+        style={{
+          flexDirection: "row",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: 14,
+        }}
+      >
+        <Text
+          style={{
+            color: Colors.white,
+            fontSize: 11,
+            fontWeight: "700",
+            letterSpacing: 1.5,
+          }}
+        >
+          SCROLL SPEED
+        </Text>
+        <View
+          style={{
+            paddingHorizontal: 10,
+            paddingVertical: 3,
+            borderRadius: 8,
+            backgroundColor: primaryColor + "22",
+            borderWidth: 1,
+            borderColor: primaryColor + "55",
+          }}
+        >
+          <Text
+            style={{
+              color: primaryColor,
+              fontSize: 11,
+              fontWeight: "800",
+              letterSpacing: 1,
+            }}
+          >
+            {getLabel(value)}
+          </Text>
+        </View>
+      </View>
+
+      {/* Slider track */}
+      <View
+        onLayout={(e) => setTrackWidth(e.nativeEvent.layout.width)}
+        style={{ height: THUMB_SIZE + 8, justifyContent: "center" }}
+        {...panResponder.panHandlers}
+      >
+        {trackWidth > 0 && (
+          <>
+            {/* Background track */}
+            <View
+              style={{
+                position: "absolute",
+                left: THUMB_SIZE / 2,
+                right: THUMB_SIZE / 2,
+                height: 4,
+                borderRadius: 2,
+                backgroundColor: "rgba(255,255,255,0.08)",
+              }}
+            />
+
+            {/* Filled gradient track */}
+            <LinearGradient
+              colors={[secondaryColor + "90", primaryColor]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={{
+                position: "absolute",
+                left: THUMB_SIZE / 2,
+                width: Math.max(0, position),
+                height: 4,
+                borderRadius: 2,
+              }}
+            />
+
+            {/* Glowing thumb */}
+            <View
+              style={{
+                position: "absolute",
+                left: position,
+                width: THUMB_SIZE,
+                height: THUMB_SIZE,
+                borderRadius: THUMB_SIZE / 2,
+                backgroundColor: primaryColor,
+                borderWidth: 3,
+                borderColor: backgroundColor,
+                shadowColor: primaryColor,
+                shadowOffset: { width: 0, height: 0 },
+                shadowOpacity: 1,
+                shadowRadius: 10,
+                elevation: 10,
+              }}
+            />
+          </>
+        )}
+      </View>
+
+      {/* SLOW / FAST labels */}
+      <View
+        style={{
+          flexDirection: "row",
+          justifyContent: "space-between",
+          marginTop: 6,
+        }}
+      >
+        <Text
+          style={{
+            color: Colors.platinum,
+            fontSize: 9,
+            fontWeight: "600",
+            letterSpacing: 1,
+          }}
+        >
+          SLOW
+        </Text>
+        <Text
+          style={{
+            color: Colors.platinum,
+            fontSize: 9,
+            fontWeight: "600",
+            letterSpacing: 1,
+          }}
+        >
+          FAST
+        </Text>
+      </View>
+    </View>
+  );
+}
+
 export function ScanScreen() {
   const router = useRouter();
   const { setLedPrimaryColor } = useLedColor();
   const [text, setText] = useState("TAP TO ENTER YOUR TEXT");
-  const [speed, setSpeed] = useState(120); // Turbo speed
+  const [speed, setSpeed] = useState(225);
   const [currentStyle, setCurrentStyle] = useState<LEDStyle>("neon");
   const [currentFontStyle, setCurrentFontStyle] = useState<FontStyle>("solid");
   const [fontSize, setFontSize] = useState(48);
@@ -290,9 +493,11 @@ export function ScanScreen() {
   );
   const [waveEnabled, setWaveEnabled] = useState(false);
   const [isEditingText, setIsEditingText] = useState(false);
+  const textBeforeEditRef = useRef<string>("");
   const [savedMessages, setSavedMessages] = useState<string[]>([]);
   const [customColor, setCustomColor] = useState<string | null>(null);
   const [showColorPicker, setShowColorPicker] = useState(false);
+  const [scrollEnabled, setScrollEnabled] = useState(true);
   const pendingColorRef = useRef<string>(customColor || "#00FFFF");
 
   const scrollX = useRef(new Animated.Value(SCREEN_WIDTH)).current;
@@ -428,6 +633,7 @@ export function ScanScreen() {
         animationMode,
         waveEnabled: waveEnabled.toString(),
         customColor: customColor || "",
+        speed: speed.toString(),
       },
     });
   };
@@ -752,6 +958,7 @@ export function ScanScreen() {
         style={styles.content}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        scrollEnabled={scrollEnabled}
       >
         {/* Header with Fullscreen Button */}
         <View style={styles.header}>
@@ -792,6 +999,7 @@ export function ScanScreen() {
         <PressableScale
           onPress={() => {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            textBeforeEditRef.current = text;
             setIsEditingText(true);
             setTimeout(() => textInputRef.current?.focus(), 100);
           }}
@@ -933,6 +1141,7 @@ export function ScanScreen() {
               <PressableScale
                 style={styles.quickEditButton}
                 onPress={() => {
+                  setText(textBeforeEditRef.current);
                   setIsEditingText(false);
                   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                 }}
@@ -1022,6 +1231,19 @@ export function ScanScreen() {
             </Text>
           </PressableScale>
         </View>
+
+        {/* Speed Slider - Only visible in scroll mode */}
+        {animationMode === "scroll" && (
+          <SpeedSlider
+            value={speed}
+            onChange={setSpeed}
+            primaryColor={theme.primaryColor}
+            secondaryColor={theme.secondaryColor}
+            backgroundColor={theme.backgroundColor}
+            onDragStart={() => setScrollEnabled(false)}
+            onDragEnd={() => setScrollEnabled(true)}
+          />
+        )}
 
         {/* 3D Wave Toggle - Only visible when Static is selected */}
         {animationMode === "static" && (

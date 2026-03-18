@@ -1144,7 +1144,7 @@ export const HomeScreen = () => {
             data={displayedClubs}
             keyExtractor={(item) => item.id}
             renderItem={renderClub}
-            extraData={liked}
+            extraData={{ liked, userCoords }}
             contentContainerStyle={styles.listContent}
             showsVerticalScrollIndicator={false}
             onEndReached={handleClubsEndReached}
@@ -1167,6 +1167,74 @@ export const HomeScreen = () => {
             }
             ListHeaderComponent={
               <>
+                {/* ── Nearby Clubs strip ── */}
+                {userCoords != null &&
+                  filteredClubs.some((c) => c.distance != null) && (
+                    <View style={styles.nearbySection}>
+                      <View style={styles.sectionHeaderRow}>
+                        <View style={styles.eventsTitleRow}>
+                          <Ionicons
+                            name="navigate"
+                            size={16}
+                            color={Colors.gold}
+                          />
+                          <Text
+                            style={[styles.sectionHeader, { marginLeft: 6 }]}
+                          >
+                            Nearby Clubs
+                          </Text>
+                        </View>
+                        <View
+                          style={[styles.sectionHeaderLine, { marginLeft: 8 }]}
+                        />
+                      </View>
+                      <ScrollView
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        contentContainerStyle={styles.nearbyScrollContent}
+                      >
+                        {filteredClubs
+                          .filter((c) => c.distance != null)
+                          .slice(0, 8)
+                          .map((club, index) => (
+                            <PressableScale
+                              key={club.id}
+                              onPress={() => openClub(club)}
+                              style={styles.nearbyCard}
+                            >
+                              <ImageBackground
+                                source={{ uri: club.image }}
+                                style={styles.nearbyCardImage}
+                                imageStyle={styles.nearbyCardImageStyle}
+                              >
+                                <LinearGradient
+                                  colors={["transparent", "rgba(0,0,0,0.85)"]}
+                                  style={styles.nearbyCardGradient}
+                                >
+                                  <View style={styles.nearbyDistanceBadge}>
+                                    <Ionicons
+                                      name="navigate"
+                                      size={9}
+                                      color={Colors.bg}
+                                    />
+                                    <Text style={styles.nearbyDistanceText}>
+                                      {formatDistance(club.distance!)}
+                                    </Text>
+                                  </View>
+                                  <Text
+                                    style={styles.nearbyCardName}
+                                    numberOfLines={2}
+                                  >
+                                    {club.name}
+                                  </Text>
+                                </LinearGradient>
+                              </ImageBackground>
+                            </PressableScale>
+                          ))}
+                      </ScrollView>
+                    </View>
+                  )}
+
                 {/* ── Events Carousel ── */}
                 <View style={styles.eventsSectionWrapper}>
                   <View style={styles.sectionHeaderRow}>
@@ -1782,6 +1850,66 @@ const styles = StyleSheet.create({
   },
   toggleEmoji: {
     fontSize: 20,
+  },
+
+  // ── End-of-list label ─────────────────────────────────────────────────────
+  clubsEndText: {
+    color: Colors.smoke,
+    fontSize: 13,
+    textAlign: "center",
+    paddingVertical: 20,
+  },
+
+  // ── Nearby Clubs strip ────────────────────────────────────────────────────
+  nearbySection: {
+    marginBottom: 4,
+  },
+  nearbyScrollContent: {
+    paddingHorizontal: 2,
+    paddingBottom: 8,
+    gap: 12,
+  },
+  nearbyCard: {
+    width: 120,
+    height: 160,
+    borderRadius: 16,
+    overflow: "hidden",
+  },
+  nearbyCardImage: {
+    width: 120,
+    height: 160,
+    justifyContent: "flex-end",
+  },
+  nearbyCardImageStyle: {
+    borderRadius: 16,
+  },
+  nearbyCardGradient: {
+    padding: 10,
+    paddingTop: 32,
+    borderBottomLeftRadius: 16,
+    borderBottomRightRadius: 16,
+  },
+  nearbyDistanceBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+    alignSelf: "flex-start",
+    backgroundColor: Colors.gold,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 8,
+    marginBottom: 6,
+  },
+  nearbyDistanceText: {
+    color: Colors.bg,
+    fontSize: 10,
+    fontWeight: "700",
+  },
+  nearbyCardName: {
+    color: Colors.white,
+    fontSize: 13,
+    fontWeight: "800",
+    lineHeight: 16,
   },
 });
 

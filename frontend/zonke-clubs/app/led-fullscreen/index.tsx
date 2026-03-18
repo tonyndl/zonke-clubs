@@ -43,6 +43,7 @@ interface LEDFullscreenProps {
   animationMode?: "static" | "scroll";
   waveEnabled?: boolean;
   customColor?: string;
+  speed?: number;
 }
 
 const LED_THEMES: Record<LEDStyle, LEDTheme> = {
@@ -96,6 +97,7 @@ export function LEDFullscreenView({
   animationMode = "scroll",
   waveEnabled = false,
   customColor,
+  speed = 180,
 }: LEDFullscreenProps) {
   const router = useRouter();
 
@@ -113,6 +115,12 @@ export function LEDFullscreenView({
   const [measuredTextWidth, setMeasuredTextWidth] = useState<number | null>(
     null,
   );
+  const [staticMeasuredWidth, setStaticMeasuredWidth] = useState<number | null>(
+    null,
+  );
+
+  // Reference font size used for static measurement
+  const STATIC_REF_FONT = 100;
 
   const baseTheme = LED_THEMES[currentStyle];
   const theme = customColor
@@ -212,12 +220,19 @@ export function LEDFullscreenView({
     };
   }, [animationMode, waveEnabled]);
 
-  // Reset measurement whenever the text or font size changes
+  // Reset scroll measurement when text/font changes
   useEffect(() => {
     if (animationMode === "scroll") {
       setMeasuredTextWidth(null);
     }
   }, [displayText, fontSize, animationMode]);
+
+  // Reset static measurement when text or mode changes
+  useEffect(() => {
+    if (animationMode !== "scroll") {
+      setStaticMeasuredWidth(null);
+    }
+  }, [displayText, animationMode]);
 
   // Vertical scrolling animation — only starts once the real text width is known
   useEffect(() => {
@@ -232,7 +247,10 @@ export function LEDFullscreenView({
     const endY = -SCREEN_HEIGHT / 2 - textHeight / 2;
 
     const totalDistance = startY - endY;
-    const pixelsPerSecond = 180;
+    // Scale speed so the text crosses its visible area (SCREEN_HEIGHT) in the same
+    // time it crosses the preview box (SCREEN_WIDTH - 46), giving matching perception
+    const previewBoxWidth = SCREEN_WIDTH + 100;
+    const pixelsPerSecond = speed * (SCREEN_HEIGHT / previewBoxWidth);
     const duration = (totalDistance / pixelsPerSecond) * 1000;
 
     const animation = Animated.loop(
@@ -257,7 +275,7 @@ export function LEDFullscreenView({
     return () => {
       animation.stop();
     };
-  }, [measuredTextWidth, animationMode]);
+  }, [measuredTextWidth, animationMode, speed]);
 
   // Cleanup timeout on unmount
   useEffect(() => {
@@ -297,94 +315,59 @@ export function LEDFullscreenView({
     lastTap.current = now;
   };
 
-  // Calculate maximum font size that fits the screen
-  const calculateStaticFontSize = () => {
-    // After 90° rotation: text width→vertical extent, text height→horizontal extent
-    // availableWidth = how wide text can be before rotation = vertical space after rotation
-    // availableHeight = how tall text can be before rotation = horizontal space after rotation
-    const availableWidth = SCREEN_HEIGHT * 0.98; // Width before rotation = vertical space after (HEIGHT!)
-    const availableHeight = SCREEN_WIDTH * 0.95; // Height before rotation = horizontal space after (WIDTH!)
-    const charWidth = 0.7; // Character width estimate
-    const letterSpacing = 1;
-    const lineHeight = 1; // More spacing between rows
-    const minFontSize = 20;
-    const maxFontSize = Math.floor(SCREEN_HEIGHT * 0.95);
-
-    let low = minFontSize;
-    let high = maxFontSize;
-    let bestFontSize = minFontSize;
-
-    while (low <= high) {
-      const mid = Math.floor((low + high) / 2);
-      const charWidthWithSpacing = mid * charWidth + letterSpacing;
-      const charsPerLine = Math.floor(availableWidth / charWidthWithSpacing);
-      const estimatedLines = Math.ceil(displayText.length / charsPerLine);
-      const requiredHeight = estimatedLines * mid * lineHeight;
-
-      if (requiredHeight <= availableHeight && charsPerLine > 0) {
-        bestFontSize = mid;
-        low = mid + 1; // Try even larger
-      } else {
-        high = mid - 1; // Too large, try smaller
-      }
-    }
-
-    return bestFontSize; // Use full calculated size
-  };
-
-  const letterSpacing = 1;
-
-  // For static/wave mode: check if it's a single word (no spaces)
-  const isSingleWord =
-    animationMode !== "scroll" && displayText.indexOf(" ") === -1;
-
-  // Calculate font size based on mode and text
-  let actualFontSize;
+  // ── Font size calculation ────────────────────────────────────────────────
+  // Scroll mode: large font (rotated text scrolls vertically)
+  // Static mode: measurement-based — render at STATIC_REF_FONT, measure true width,
+  //              then scale up so text fills as much of the screen as possible.
+  let actualFontSize: number;
 
   if (animationMode === "scroll") {
     actualFontSize = fontSize * 4.5;
-  } else if (isSingleWord) {
-    // For single words: calculate font size to fit in one row
-    const charWidth = 0.7; // Character width estimate
-    // Before rotation: width→horizontal, height→vertical
-    // After 90° rotation: width→vertical, height→horizontal
-    const maxTextWidth = SCREEN_HEIGHT * 0.85; // Max width before rotation (vertical space after = HEIGHT!) - accounts for notch/bottom
-    const maxFontHeight = SCREEN_WIDTH * 0.88; // Max font height (horizontal space after rotation = WIDTH!)
+  } else if (staticMeasuredWidth != null && staticMeasuredWidth > 0) {
+    // After 90° rotation:
+    //   text "width"  (before rotation) → vertical extent on screen  (≤ SCREEN_HEIGHT)
+    //   text "height" (before rotation) → horizontal extent on screen (≤ SCREEN_WIDTH)
+    //
+    // Strategy: binary-search the largest font F where the wrapped text block fits.
+    // Average char width at F = (measuredSingleLineWidth * F / REF) / charCount
+    // Lines needed           = ceil(charCount / floor(availW / charWidthAtF))
+    // Total block height     = lines * F * LINE_HEIGHT_RATIO  ← must fit SCREEN_WIDTH
+    const availW = SCREEN_HEIGHT * 0.94; // container width before rotation
+    const availH = SCREEN_WIDTH * 0.93; // container height before rotation
+    const LINE_HEIGHT_RATIO = 1.15;
+    const charCount = displayText.length;
 
-    // Calculate max font size that fits the text width (becomes vertical after rotation)
-    // Formula: displayText.length * fontSize * charWidth + (displayText.length - 1) * letterSpacing <= maxTextWidth
-    const maxFontSizeForWidth = Math.floor(
-      (maxTextWidth - (displayText.length - 1) * letterSpacing) /
-        (displayText.length * charWidth),
-    );
-
-    // The font size itself must fit within the available height (becomes horizontal after rotation)
-    const maxFontSizeForHeight = Math.floor(maxFontHeight);
-
-    // Use the smaller of the two to ensure it fits both dimensions
-    // Cap at 400px to prevent extremely large text for very short words
-    actualFontSize = Math.max(
-      Math.min(maxFontSizeForWidth, maxFontSizeForHeight, 400),
-      30,
-    ); // Min 30px, Max 400px
+    let low = 20,
+      high = 600,
+      best = 30;
+    while (low <= high) {
+      const mid = Math.floor((low + high) / 2);
+      const charWidthAtMid =
+        (staticMeasuredWidth * mid) / STATIC_REF_FONT / charCount;
+      const charsPerLine = Math.max(1, Math.floor(availW / charWidthAtMid));
+      const numLines = Math.ceil(charCount / charsPerLine);
+      const totalHeight = numLines * mid * LINE_HEIGHT_RATIO;
+      if (totalHeight <= availH) {
+        best = mid;
+        low = mid + 1;
+      } else {
+        high = mid - 1;
+      }
+    }
+    actualFontSize = best;
   } else {
-    // For multiple words: use binary search that allows wrapping
-    actualFontSize = Math.max(calculateStaticFontSize(), 30); // Minimum 30px
+    // Placeholder while measurement node hasn't fired yet — show nothing (hidden by render gate)
+    actualFontSize = STATIC_REF_FONT;
   }
 
   const textColor = theme.primaryColor;
-
   const fontStyleProps = getTextStyleForFont(textColor);
 
-  // Calculate text width: N characters + (N-1) letter spacings
-  // After 90° rotation: the text's width becomes its VERTICAL extent
-  // To span from top to bottom, width should be ~SCREEN_HEIGHT
-  const textWidth =
-    animationMode === "scroll"
-      ? 99999 // Very large width to ensure no wrapping for scrolling
-      : isSingleWord
-        ? SCREEN_HEIGHT * 0.95 // Single words: fit within screen height (becomes vertical after rotation)
-        : SCREEN_HEIGHT * 0.95; // Multiple words static/wave: width controls vertical space after rotation (use HEIGHT!)
+  // Container width passed to the Text node (before 90° rotation).
+  // For scroll: 99999 prevents any wrapping.
+  // For static: use the measured single-line width scaled to actualFontSize so the
+  //             text is sized exactly and centered correctly on screen.
+  const textWidth = animationMode === "scroll" ? 99999 : SCREEN_HEIGHT * 0.94; // text wraps within this width; after rotation = vertical extent
 
   // Pulsating animation interpolation - vibrating from bass/noise
   const pulseScale = waveAnim.interpolate({
@@ -452,8 +435,34 @@ export function LEDFullscreenView({
             </View>
           )}
 
+          {/* Hidden node to measure true single-line text width for static mode */}
+          {animationMode !== "scroll" && staticMeasuredWidth === null && (
+            <View
+              style={{ position: "absolute", opacity: 0, width: 99999 }}
+              pointerEvents="none"
+            >
+              <Text
+                numberOfLines={1}
+                onLayout={(e) =>
+                  setStaticMeasuredWidth(e.nativeEvent.layout.width)
+                }
+                style={{
+                  fontSize: STATIC_REF_FONT,
+                  fontWeight: "900",
+                  fontFamily: "monospace",
+                  letterSpacing: 1,
+                  alignSelf: "flex-start",
+                }}
+              >
+                {displayText}
+              </Text>
+            </View>
+          )}
+
           {/* Visible animated text — hidden until measurement is ready in scroll mode */}
-          {(animationMode !== "scroll" || measuredTextWidth !== null) &&
+          {(animationMode === "scroll"
+            ? measuredTextWidth !== null
+            : staticMeasuredWidth !== null) &&
             (currentFontStyle === "outline" ? (
               <Animated.View
                 style={{
@@ -524,6 +533,7 @@ export default function LEDFullscreenScreen() {
       animationMode={(params.animationMode as "static" | "scroll") || "scroll"}
       waveEnabled={params.waveEnabled === "true"}
       customColor={(params.customColor as string) || undefined}
+      speed={Number(params.speed) || 180}
     />
   );
 }
