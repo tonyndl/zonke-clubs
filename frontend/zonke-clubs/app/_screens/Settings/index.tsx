@@ -636,6 +636,64 @@ export default function SettingsScreen() {
           </View>
         </Animated.View> */}
 
+        {/* DJ Tools Section */}
+        <Animated.View
+          entering={FadeInDown.delay(250).springify()}
+          style={styles.section}
+        >
+          <View style={styles.sectionHeader}>
+            <View style={styles.sectionHeaderLeft}>
+              <LinearGradient
+                colors={["rgba(57,243,255,0.2)", "rgba(57,100,255,0.2)"]}
+                style={styles.iconGradient}
+              >
+                <Ionicons name="flash" size={20} color={Colors.primaryBlue} />
+              </LinearGradient>
+              <Text style={styles.sectionTitle}>DJ Tools</Text>
+            </View>
+          </View>
+
+          <View style={styles.card}>
+            <PressableScale
+              onPress={() => router.push("/strobe/dj" as any)}
+              style={styles.settingRow}
+            >
+              <View style={styles.settingLeft}>
+                <Ionicons name="flash" size={20} color={Colors.primaryBlue} />
+                <View>
+                  <Text style={styles.settingText}>Strobe Control</Text>
+                  <Text style={styles.settingSubText}>DJ flashlight sync</Text>
+                </View>
+              </View>
+              <Ionicons
+                name="chevron-forward"
+                size={20}
+                color={Colors.lightGrey}
+              />
+            </PressableScale>
+
+            <View style={styles.divider} />
+
+            <PressableScale
+              onPress={() => router.push("/strobe/join" as any)}
+              style={styles.settingRow}
+            >
+              <View style={styles.settingLeft}>
+                <Ionicons name="radio" size={20} color={Colors.primaryBlue} />
+                <View>
+                  <Text style={styles.settingText}>Join Strobe</Text>
+                  <Text style={styles.settingSubText}>Sync to DJ's beat</Text>
+                </View>
+              </View>
+              <Ionicons
+                name="chevron-forward"
+                size={20}
+                color={Colors.lightGrey}
+              />
+            </PressableScale>
+          </View>
+        </Animated.View>
+
         {/* Exit Section */}
         <Animated.View
           entering={FadeInDown.delay(300).springify()}
@@ -897,6 +955,11 @@ const styles = StyleSheet.create({
   },
   dangerText: {
     color: "#ff3b30",
+  },
+  settingSubText: {
+    fontSize: 11,
+    color: Colors.smoke,
+    marginTop: 1,
   },
   divider: {
     height: 1,

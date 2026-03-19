@@ -8,6 +8,7 @@ import {
   RiTimeLine,
   RiImageLine,
   RiMusic2Line,
+  RiFlashlightLine,
   RiLogoutBoxRLine,
   RiArrowLeftSLine,
 } from "react-icons/ri";
@@ -125,6 +126,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
             to="/spending"
             icon={RiWallet3Line}
             label="Spending"
+            collapsed={collapsed}
+          />
+          <NavItem
+            to="/strobe"
+            icon={RiFlashlightLine}
+            label="DJ Strobe"
             collapsed={collapsed}
           />
         </NavSection>

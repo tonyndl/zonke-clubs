@@ -1,0 +1,235 @@
+import React, { useState, useEffect, useCallback } from "react";
+import {
+  RiFlashlightLine,
+  RiCheckLine,
+  RiCloseLine,
+  RiUserLine,
+  RiTimeLine,
+  RiRefreshLine,
+} from "react-icons/ri";
+import { apiService } from "../../services/api";
+import {
+  strobeAdminService,
+  type DJApproval,
+} from "../../services/strobeAdminService";
+import {
+  StrobeContainer,
+  PageHeader,
+  PageTitle,
+  PageDescription,
+  SectionTitle,
+  Badge,
+  ApprovalList,
+  ApprovalCard,
+  Avatar,
+  DJInfo,
+  DJName,
+  ExpiresAt,
+  Actions,
+  ApproveButton,
+  RevokeButton,
+  EmptyState,
+  CountChip,
+} from "./styles";
+
+export const Strobe: React.FC = () => {
+  const [clubId, setClubId] = useState<string | null>(null);
+  const [approvals, setApprovals] = useState<DJApproval[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
+
+  const pending = approvals.filter((a) => a.status === "pending");
+  const approved = approvals.filter((a) => a.status === "approved");
+
+  const loadApprovals = useCallback((cid: string) => {
+    setLoading(true);
+    strobeAdminService
+      .getClubApprovals(cid)
+      .then((data) => setApprovals(data))
+      .catch((err) => console.error("Failed to load strobe approvals", err))
+      .finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => {
+    apiService
+      .getMyClub()
+      .then((club: any) => {
+        if (club?.id) {
+          setClubId(club.id);
+          loadApprovals(club.id);
+        }
+      })
+      .catch((err) => {
+        console.error("Failed to load club", err);
+        setLoading(false);
+      });
+  }, [loadApprovals]);
+
+  const handleApprove = (djUserId: string) => {
+    if (!clubId) return;
+    setActionLoading(djUserId);
+    strobeAdminService
+      .approveDJ(clubId, djUserId)
+      .then((updated) => {
+        setApprovals((prev) =>
+          prev.map((a) => (a.dj_user_id === djUserId ? updated : a)),
+        );
+      })
+      .catch((err) => console.error("Failed to approve DJ", err))
+      .finally(() => setActionLoading(null));
+  };
+
+  const handleRevoke = (djUserId: string) => {
+    if (!clubId) return;
+    setActionLoading(djUserId);
+    strobeAdminService
+      .revokeApproval(clubId, djUserId)
+      .then(() => {
+        setApprovals((prev) => prev.filter((a) => a.dj_user_id !== djUserId));
+      })
+      .catch((err) => console.error("Failed to revoke approval", err))
+      .finally(() => setActionLoading(null));
+  };
+
+  const formatExpiry = (expiresAt: string | null) => {
+    if (!expiresAt) return null;
+    const d = new Date(expiresAt);
+    return `Expires ${d.toLocaleString()}`;
+  };
+
+  const djInitial = (approval: DJApproval) => {
+    const name = approval.dj_user?.username || "?";
+    return name[0].toUpperCase();
+  };
+
+  return (
+    <StrobeContainer>
+      <PageHeader>
+        <div>
+          <PageTitle>DJ Strobe Requests</PageTitle>
+          <PageDescription>
+            Approve or revoke DJ strobe control access for your venue. Approvals
+            are valid for 24 hours.
+          </PageDescription>
+        </div>
+        {clubId && (
+          <RevokeButton
+            onClick={() => loadApprovals(clubId)}
+            disabled={loading}
+            style={{ alignSelf: "center" }}
+          >
+            {React.createElement(RiRefreshLine as React.ComponentType)}
+            Refresh
+          </RevokeButton>
+        )}
+      </PageHeader>
+
+      {/* Pending Requests */}
+      <SectionTitle>
+        {React.createElement(RiTimeLine as React.ComponentType)}
+        Pending Requests
+        {pending.length > 0 && <CountChip>{pending.length}</CountChip>}
+      </SectionTitle>
+
+      {loading ? (
+        <EmptyState>Loading…</EmptyState>
+      ) : pending.length === 0 ? (
+        <EmptyState>
+          {React.createElement(RiUserLine as React.ComponentType)}
+          No pending requests
+        </EmptyState>
+      ) : (
+        <ApprovalList>
+          {pending.map((approval) => {
+            const isActing = actionLoading === approval.dj_user_id;
+            return (
+              <ApprovalCard key={approval.id}>
+                <Avatar>
+                  {approval.dj_user?.avatar_url ? (
+                    <img
+                      src={approval.dj_user.avatar_url}
+                      alt={approval.dj_user.username}
+                    />
+                  ) : (
+                    djInitial(approval)
+                  )}
+                </Avatar>
+                <DJInfo>
+                  <DJName>
+                    @{approval.dj_user?.username ?? approval.dj_user_id}
+                  </DJName>
+                  <Badge variant="pending">PENDING</Badge>
+                </DJInfo>
+                <Actions>
+                  <ApproveButton
+                    onClick={() => handleApprove(approval.dj_user_id)}
+                    disabled={isActing}
+                  >
+                    {React.createElement(RiCheckLine as React.ComponentType)}
+                    Approve
+                  </ApproveButton>
+                  <RevokeButton
+                    onClick={() => handleRevoke(approval.dj_user_id)}
+                    disabled={isActing}
+                  >
+                    {React.createElement(RiCloseLine as React.ComponentType)}
+                    Deny
+                  </RevokeButton>
+                </Actions>
+              </ApprovalCard>
+            );
+          })}
+        </ApprovalList>
+      )}
+
+      {/* Active Approvals */}
+      <SectionTitle>
+        {React.createElement(RiFlashlightLine as React.ComponentType)}
+        Active Approvals
+        {approved.length > 0 && <CountChip>{approved.length}</CountChip>}
+      </SectionTitle>
+
+      {!loading && approved.length === 0 ? (
+        <EmptyState>No active DJ approvals</EmptyState>
+      ) : (
+        <ApprovalList>
+          {approved.map((approval) => {
+            const isActing = actionLoading === approval.dj_user_id;
+            return (
+              <ApprovalCard key={approval.id}>
+                <Avatar>
+                  {approval.dj_user?.avatar_url ? (
+                    <img
+                      src={approval.dj_user.avatar_url}
+                      alt={approval.dj_user.username}
+                    />
+                  ) : (
+                    djInitial(approval)
+                  )}
+                </Avatar>
+                <DJInfo>
+                  <DJName>
+                    @{approval.dj_user?.username ?? approval.dj_user_id}
+                  </DJName>
+                  <Badge variant="approved">APPROVED</Badge>
+                  {approval.expires_at && (
+                    <ExpiresAt>{formatExpiry(approval.expires_at)}</ExpiresAt>
+                  )}
+                </DJInfo>
+                <Actions>
+                  <RevokeButton
+                    onClick={() => handleRevoke(approval.dj_user_id)}
+                    disabled={isActing}
+                  >
+                    {React.createElement(RiCloseLine as React.ComponentType)}
+                    Revoke
+                  </RevokeButton>
+                </Actions>
+              </ApprovalCard>
+            );
+          })}
+        </ApprovalList>
+      )}
+    </StrobeContainer>
+  );
+};

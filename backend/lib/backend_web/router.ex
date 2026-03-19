@@ -77,6 +77,20 @@ defmodule BackendWeb.Router do
     post "/push_tokens", PushTokenController, :create
     delete "/push_tokens", PushTokenController, :delete
 
+    # Device location (for proximity-based strobe invites)
+    put "/location/device", LocationController, :update_device
+
+    # Strobe (DJ flashlight sync)
+    get "/strobe/active", StrobeController, :active_sessions
+    get "/strobe/approvals", StrobeController, :my_approvals
+    get "/strobe/sessions", StrobeController, :my_sessions
+    post "/strobe/clubs/:club_id/request", StrobeController, :request_approval
+    delete "/strobe/clubs/:club_id/request", StrobeController, :cancel_request
+    post "/strobe/clubs/:club_id/approve", StrobeController, :approve_dj
+    delete "/strobe/clubs/:club_id/approve", StrobeController, :revoke_approval
+    get "/strobe/clubs/:club_id/approvals", StrobeController, :club_approvals
+    get "/strobe/clubs/:club_id/session", StrobeController, :active_session
+
     # Posts (club feed)
     post "/posts", PostController, :create
     get "/posts/:id", PostController, :show

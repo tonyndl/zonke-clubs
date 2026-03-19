@@ -50,6 +50,14 @@
           }
         }
       ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Zonke Clubs uses the camera to control your flashlight for DJ strobe sync.",
+          "microphonePermission": false,
+          "recordAudioAndroid": false
+        }
+      ],
       "expo-font",
       "expo-web-browser",
       "expo-secure-store",

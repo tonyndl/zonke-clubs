@@ -86,6 +86,50 @@ defmodule Backend.Accounts.Users do
   end
 
   @doc """
+  Updates the user's real-time device location for proximity-based features (e.g. strobe invites).
+  """
+  def update_device_location(%User{} = user, lat, lng) do
+    now = DateTime.utc_now() |> DateTime.truncate(:second)
+
+    user
+    |> User.device_location_changeset(%{device_lat: lat, device_lng: lng, device_location_at: now})
+    |> Repo.update()
+  end
+
+  @doc """
+  Returns all users who were seen near a given lat/lng within the last `within_seconds` seconds.
+  Excludes the given `exclude_user_id`.
+  """
+  def list_users_near(lat, lng, radius_m \\ 500, within_seconds \\ 7200, exclude_user_id \\ nil) do
+    cutoff = DateTime.utc_now() |> DateTime.add(-within_seconds, :second)
+
+    User
+    |> where([u], not is_nil(u.device_lat) and not is_nil(u.device_lng))
+    |> where([u], u.device_location_at > ^cutoff)
+    |> then(fn q ->
+      if exclude_user_id, do: where(q, [u], u.id != ^exclude_user_id), else: q
+    end)
+    |> Repo.all()
+    |> Enum.filter(fn user ->
+      haversine_distance(lat, lng, user.device_lat, user.device_lng) <= radius_m
+    end)
+  end
+
+  defp haversine_distance(lat1, lng1, lat2, lng2) do
+    r = 6_371_000
+    phi1 = :math.pi() * lat1 / 180
+    phi2 = :math.pi() * lat2 / 180
+    d_phi = :math.pi() * (lat2 - lat1) / 180
+    d_lambda = :math.pi() * (lng2 - lng1) / 180
+
+    a =
+      :math.sin(d_phi / 2) ** 2 +
+        :math.cos(phi1) * :math.cos(phi2) * :math.sin(d_lambda / 2) ** 2
+
+    2 * r * :math.atan2(:math.sqrt(a), :math.sqrt(1 - a))
+  end
+
+  @doc """
   Updates a user's last_seen_at timestamp to the current time.
   """
   def update_last_seen(user_id) do
