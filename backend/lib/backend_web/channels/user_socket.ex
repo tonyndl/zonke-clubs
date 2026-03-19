@@ -5,6 +5,7 @@ defmodule BackendWeb.UserSocket do
   channel "user:*", BackendWeb.UserChannel
   channel "thread:*", BackendWeb.ThreadChannel
   channel "presence:lobby", BackendWeb.PresenceLobbyChannel
+  channel "strobe:*", BackendWeb.StrobeChannel
 
   @impl true
   def connect(%{"token" => token}, socket, _connect_info) do

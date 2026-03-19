@@ -8,6 +8,7 @@ import {
   Linking,
   FlatList,
   Dimensions,
+  Pressable,
 } from "react-native";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
@@ -57,6 +58,10 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import { websocketService } from "@/services/websocketService";
 import { ConnectionRequest } from "@/types/connection";
+import {
+  strobeService,
+  type StrobeSessionInfo,
+} from "@/services/strobeService";
 
 const HEADER_HEIGHT = 300;
 
@@ -158,6 +163,11 @@ export default function ClubScreen() {
     "current" | "upcoming"
   >("current");
 
+  // Active strobe session banner
+  const [activeStrobe, setActiveStrobe] = useState<StrobeSessionInfo | null>(
+    null,
+  );
+
   // Fetch club data
   useEffect(() => {
     loadClub();
@@ -191,6 +201,27 @@ export default function ClubScreen() {
       loadClubPosts();
     }
   }, [clubId, club]);
+
+  // Poll for active strobe session every 10s
+  useEffect(() => {
+    let cancelled = false;
+
+    const check = () => {
+      strobeService
+        .getActiveSession(clubId)
+        .then((session) => {
+          if (!cancelled) setActiveStrobe(session);
+        })
+        .catch(() => {});
+    };
+
+    check();
+    const interval = setInterval(check, 10000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [clubId]);
 
   const loadClubPosts = () => {
     clubsService
@@ -932,6 +963,29 @@ export default function ClubScreen() {
             <Text style={styles.locationText}>{club.location.name}</Text>
           </View>
         </Animated.View>
+
+        {/* DJ Strobe active banner */}
+        {activeStrobe && (
+          <Pressable
+            style={styles.strobeBanner}
+            onPress={() =>
+              router.push(
+                `/strobe/join?clubId=${clubId}&clubName=${encodeURIComponent(club.name)}` as any,
+              )
+            }
+          >
+            <Ionicons name="flash" size={18} color="#000" />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.strobeBannerTitle}>DJ STROBE ACTIVE</Text>
+              <Text style={styles.strobeBannerSub}>
+                {activeStrobe.bpm} BPM ·{" "}
+                {activeStrobe.effect.replace("_", " ").toUpperCase()} · Tap to
+                sync your flash
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color="#000" />
+          </Pressable>
+        )}
 
         {/* Section Tab Switcher */}
         <Animated.View
@@ -1796,6 +1850,27 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.bg,
+  },
+  strobeBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    backgroundColor: Colors.accent,
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    marginBottom: 14,
+  },
+  strobeBannerTitle: {
+    fontSize: 12,
+    fontWeight: "900",
+    color: "#000",
+    letterSpacing: 1.5,
+  },
+  strobeBannerSub: {
+    fontSize: 11,
+    color: "rgba(0,0,0,0.65)",
+    marginTop: 1,
   },
   headerContainer: {
     position: "absolute",

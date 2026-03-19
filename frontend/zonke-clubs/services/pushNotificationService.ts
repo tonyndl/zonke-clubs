@@ -106,10 +106,49 @@ export function unregisterToken(expoPushToken: string): Promise<void> {
 }
 
 export interface PushNotificationData {
-  type: "connection_request" | "message";
+  type: "connection_request" | "message" | "strobe_invite";
   request_id?: string;
   thread_id?: string;
   deep_link?: string;
+  // Strobe invite fields
+  club_id?: string;
+  club_name?: string;
+  session_id?: string;
+}
+
+/**
+ * Register the strobe_invite notification category with Join / Dismiss action buttons.
+ * Must be called once on app startup (before notifications arrive).
+ */
+export function setupStrobeNotificationCategory(): Promise<void> {
+  if (Platform.OS === "web" || IS_EXPO_GO) return Promise.resolve();
+
+  return Notifications.setNotificationCategoryAsync("strobe_invite", [
+    {
+      identifier: "join",
+      buttonTitle: "Join",
+      options: { opensAppToForeground: true },
+    },
+    {
+      identifier: "dismiss",
+      buttonTitle: "Dismiss",
+      options: { opensAppToForeground: false, isDestructive: false },
+    },
+  ]).then(() => {});
+}
+
+/**
+ * Send the user's current GPS position to the backend so the server can
+ * detect when they are near a club and send strobe invites.
+ */
+export function updateDeviceLocation(
+  latitude: number,
+  longitude: number,
+): Promise<void> {
+  return api
+    .put("/location/device", { latitude, longitude }, true)
+    .then(() => {})
+    .catch(() => {});
 }
 
 /**

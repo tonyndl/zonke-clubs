@@ -32,6 +32,11 @@ defmodule Backend.Accounts.User do
     field :location, :map
     field :onboarding_complete, :boolean, default: false
 
+    # Device location (real-time proximity tracking for strobe invites)
+    field :device_lat, :float
+    field :device_lng, :float
+    field :device_location_at, :utc_datetime
+
     # Activity tracking
     field :last_seen_at, :naive_datetime
 
@@ -135,4 +140,12 @@ defmodule Backend.Accounts.User do
   end
 
   defp put_password_hash(changeset), do: changeset
+
+  def device_location_changeset(user, attrs) do
+    user
+    |> cast(attrs, [:device_lat, :device_lng, :device_location_at])
+    |> validate_required([:device_lat, :device_lng, :device_location_at])
+    |> validate_number(:device_lat, greater_than_or_equal_to: -90, less_than_or_equal_to: 90)
+    |> validate_number(:device_lng, greater_than_or_equal_to: -180, less_than_or_equal_to: 180)
+  end
 end

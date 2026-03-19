@@ -8,15 +8,16 @@ defmodule Backend.Workers.PushNotificationWorker do
   @expo_receipts_url "https://exp.host/--/api/v2/push/getReceipts"
 
   @impl Oban.Worker
-  def perform(%Oban.Job{args: %{"recipient_id" => recipient_id, "title" => title, "body" => body, "data" => data}}) do
+  def perform(%Oban.Job{args: %{"recipient_id" => recipient_id, "title" => title, "body" => body, "data" => data} = args}) do
     tokens = PushTokens.get_tokens_for_user(recipient_id)
+    category = Map.get(args, "category")
 
     if tokens == [] do
       :ok
     else
       messages =
         Enum.map(tokens, fn token ->
-          %{
+          msg = %{
             to: token,
             title: title,
             body: body,
@@ -25,6 +26,7 @@ defmodule Backend.Workers.PushNotificationWorker do
             priority: "high",
             channelId: "zonkeclubs"
           }
+          if category, do: Map.put(msg, :categoryIdentifier, category), else: msg
         end)
 
       case Req.post(@expo_push_url, json: messages) do
@@ -55,14 +57,11 @@ defmodule Backend.Workers.PushNotificationWorker do
   @doc """
   Enqueue a push notification job.
   """
-  def enqueue(recipient_id, title, body, data \\ %{}) do
-    %{
-      recipient_id: recipient_id,
-      title: title,
-      body: body,
-      data: data
-    }
-    |> new()
-    |> Oban.insert()
+  def enqueue(recipient_id, title, body, data \\ %{}, category \\ nil) do
+    args =
+      %{recipient_id: recipient_id, title: title, body: body, data: data}
+      |> then(fn a -> if category, do: Map.put(a, :category, category), else: a end)
+
+    args |> new() |> Oban.insert()
   end
 end
