@@ -19,9 +19,7 @@ const VIBE_OPTIONS = [
   { emoji: "💃", name: "Dancing" },
   { emoji: "🎉", name: "High Energy" },
   { emoji: "✨", name: "VIP Lounges" },
-  { emoji: "🎵", name: "Live Music" },
-  { emoji: "🍸", name: "Cocktail Bars" },
-  { emoji: "🌆", name: "Rooftop" },
+  { emoji: "😌", name: "Chilled" },
 ];
 
 export default function ViewProfileScreen() {

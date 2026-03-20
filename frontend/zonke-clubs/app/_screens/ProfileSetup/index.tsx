@@ -43,17 +43,7 @@ const VIBE_OPTIONS = [
     name: "VIP Lounges",
     gradient: ["#FFD700", "#FFA500"] as const,
   },
-  {
-    emoji: "🎵",
-    name: "Live Music",
-    gradient: ["#39F3FF", "#0099FF"] as const,
-  },
-  {
-    emoji: "🍸",
-    name: "Cocktail Bars",
-    gradient: ["#C86BFF", "#9B51E0"] as const,
-  },
-  { emoji: "🌆", name: "Rooftop", gradient: ["#39F3FF", "#00C9FF"] as const },
+  { emoji: "😌", name: "Chilled", gradient: ["#39F3FF", "#00C9FF"] as const },
 ];
 
 const DRINK_SUGGESTIONS = [
