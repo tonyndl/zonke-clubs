@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -9,6 +9,8 @@ import {
   Modal,
   Switch,
   ActivityIndicator,
+  Alert,
+  Linking,
 } from "react-native";
 import { Toast } from "@/components/ui/Toast";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
@@ -25,6 +27,9 @@ import { Ionicons } from "@expo/vector-icons";
 import { router, Stack } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
+import * as Notifications from "expo-notifications";
+import * as Location from "expo-location";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import { Colors } from "@/constants/ui";
 import { PressableScale } from "@/components/ui/PressableScale";
@@ -32,6 +37,13 @@ import { TextStroke } from "../Login/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { authService } from "@/services/authService";
 import { changePasswordSchema, parseZodErrors } from "@/utils/validation";
+import {
+  registerForPushNotifications,
+  registerTokenWithBackend,
+  unregisterToken,
+} from "@/services/pushNotificationService";
+
+const PUSH_TOKEN_KEY = "@zonke/push_token";
 
 export default function SettingsScreen() {
   const { user, logout, refreshUser } = useAuth();
@@ -70,9 +82,74 @@ export default function SettingsScreen() {
     setPasswordErrors((prev) => ({ ...prev, [field]: "" }));
 
   // Preferences state
-  const [pushNotifications, setPushNotifications] = useState(true);
-  const [emailNotifications, setEmailNotifications] = useState(false);
-  const [locationServices, setLocationServices] = useState(true);
+  const [pushNotifications, setPushNotifications] = useState(false);
+  const [locationServices, setLocationServices] = useState(false);
+
+  useEffect(() => {
+    Promise.all([
+      AsyncStorage.getItem(PUSH_TOKEN_KEY),
+      Location.getForegroundPermissionsAsync(),
+    ]).then(([storedToken, locStatus]) => {
+      setPushNotifications(!!storedToken);
+      setLocationServices(locStatus.status === "granted");
+    });
+  }, []);
+
+  const handlePushToggle = (val: boolean) => {
+    if (val) {
+      registerForPushNotifications().then((token) => {
+        if (!token) {
+          Alert.alert(
+            "Permission Denied",
+            "Please enable notifications in your device settings.",
+            [
+              { text: "Cancel", style: "cancel" },
+              { text: "Open Settings", onPress: () => Linking.openSettings() },
+            ],
+          );
+          return;
+        }
+        setPushNotifications(true);
+        registerTokenWithBackend(token);
+        AsyncStorage.setItem(PUSH_TOKEN_KEY, token);
+      });
+    } else {
+      AsyncStorage.getItem(PUSH_TOKEN_KEY).then((token) => {
+        if (token) unregisterToken(token);
+        AsyncStorage.removeItem(PUSH_TOKEN_KEY);
+      });
+      setPushNotifications(false);
+    }
+  };
+
+  const handleLocationToggle = (val: boolean) => {
+    if (val) {
+      Location.requestForegroundPermissionsAsync().then(({ status }) => {
+        if (status === "granted") {
+          setLocationServices(true);
+        } else {
+          Alert.alert(
+            "Permission Denied",
+            "Please enable location access in your device settings.",
+            [
+              { text: "Cancel", style: "cancel" },
+              { text: "Open Settings", onPress: () => Linking.openSettings() },
+            ],
+          );
+        }
+      });
+    } else {
+      setLocationServices(false);
+      Alert.alert(
+        "Location Services",
+        "To fully disable location access, turn it off in your device settings.",
+        [
+          { text: "OK", style: "cancel" },
+          { text: "Open Settings", onPress: () => Linking.openSettings() },
+        ],
+      );
+    }
+  };
 
   const hasAccountChanges = () => {
     return (
@@ -527,22 +604,7 @@ export default function SettingsScreen() {
               </View>
               <Switch
                 value={pushNotifications}
-                onValueChange={setPushNotifications}
-                trackColor={{ false: Colors.bgCard, true: Colors.gold }}
-                thumbColor={Colors.white}
-              />
-            </View>
-
-            <View style={styles.divider} />
-
-            <View style={styles.settingRow}>
-              <View style={styles.settingLeft}>
-                <Ionicons name="mail" size={20} color={Colors.primaryBlue} />
-                <Text style={styles.settingText}>Email Notifications</Text>
-              </View>
-              <Switch
-                value={emailNotifications}
-                onValueChange={setEmailNotifications}
+                onValueChange={handlePushToggle}
                 trackColor={{ false: Colors.bgCard, true: Colors.gold }}
                 thumbColor={Colors.white}
               />
@@ -561,7 +623,7 @@ export default function SettingsScreen() {
               </View>
               <Switch
                 value={locationServices}
-                onValueChange={setLocationServices}
+                onValueChange={handleLocationToggle}
                 trackColor={{ false: Colors.bgCard, true: Colors.gold }}
                 thumbColor={Colors.white}
               />

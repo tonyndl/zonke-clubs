@@ -183,9 +183,7 @@ const VIBE_OPTIONS = [
   { emoji: "💃", name: "Dancing" },
   { emoji: "🎉", name: "High Energy" },
   { emoji: "✨", name: "VIP Lounges" },
-  { emoji: "🎵", name: "Live Music" },
-  { emoji: "🍸", name: "Cocktail Bars" },
-  { emoji: "🌆", name: "Rooftop" },
+  { emoji: "😌", name: "Chilled" },
 ];
 
 // Mock current user ID - in real app, get from auth context
@@ -210,7 +208,7 @@ const MOCK_USER_PROFILES: Record<string, any> = {
     age: 24,
     bio: "Music lover and dance enthusiast. Always looking for new places to explore and great people to meet!",
     favoriteDrinks: ["Aperol Spritz", "Champagne", "Mojito"],
-    vibes: ["Dancing", "Live Music", "Rooftop"],
+    vibes: ["Dancing", "High Energy", "Chilled"],
     favoriteClubIds: ["1", "3"],
   },
   user_2: {
@@ -220,7 +218,7 @@ const MOCK_USER_PROFILES: Record<string, any> = {
     age: 28,
     bio: "Tech enthusiast who loves mixing business with pleasure. You'll find me at the best clubs every Friday!",
     favoriteDrinks: ["Whiskey", "Gin & Tonic", "Craft Beer"],
-    vibes: ["VIP Lounges", "Rooftop", "High Energy"],
+    vibes: ["VIP Lounges", "High Energy", "Chilled"],
     favoriteClubIds: ["2", "4", "6"],
   },
   user_3: {
@@ -250,7 +248,7 @@ const MOCK_USER_PROFILES: Record<string, any> = {
     age: 23,
     bio: "Fashion student living for the weekend. Love dressing up and hitting the town with good people!",
     favoriteDrinks: ["Rosé", "Prosecco", "Cosmopolitan"],
-    vibes: ["VIP Lounges", "Rooftop", "Cocktail Bars"],
+    vibes: ["VIP Lounges", "Chilled", "High Energy"],
     favoriteClubIds: ["5", "6"],
   },
   user_6: {
@@ -260,7 +258,7 @@ const MOCK_USER_PROFILES: Record<string, any> = {
     age: 29,
     bio: "Finance guy who knows how to unwind. Premium vibes only!",
     favoriteDrinks: ["Champagne", "Johnny Walker Blue", "Cognac"],
-    vibes: ["VIP Lounges", "Rooftop", "Cocktail Bars"],
+    vibes: ["VIP Lounges", "Chilled", "High Energy"],
     favoriteClubIds: ["5", "6"],
   },
 };
@@ -506,7 +504,7 @@ export default function ProfileScreen() {
   const [allClubs, setAllClubs] = useState<
     Array<{ id: string; name: string; image: string; location: string }>
   >([]);
-  const [loadingClubs, setLoadingClubs] = useState(false);
+  const [loadingClubs, setLoadingClubs] = useState(true);
 
   // Map club IDs to names for display
   const clubNames: Record<string, string> = {};
@@ -821,8 +819,7 @@ export default function ProfileScreen() {
   const loadClubsAndFavorites = () => {
     setLoadingClubs(true);
 
-    // Load all clubs first
-    clubsService
+    const clubsPromise = clubsService
       .getClubs(false)
       .then((response) => {
         const formattedClubs = response.clubs.map(
@@ -839,29 +836,27 @@ export default function ProfileScreen() {
         console.error("[Profile] Failed to load all clubs:", error);
       });
 
-    // Load favorites separately if authenticated
-    if (isOwnProfile && authUser) {
-      clubsService
-        .getFavoriteClubs()
-        .then((favoritesResponse) => {
-          const favoriteIds = favoritesResponse.clubs.map(
-            (club: ApiClub) => club.id,
-          );
-          setSelectedClubs(favoriteIds);
-          setOriginalClubs(favoriteIds);
-        })
-        .catch((error) => {
-          console.error("[Profile] Failed to load favorites:", error);
-          // Don't show error to user - just means they have no favorites yet
-          setSelectedClubs([]);
-          setOriginalClubs([]);
-        })
-        .finally(() => {
-          setLoadingClubs(false);
-        });
-    } else {
+    const favoritesPromise =
+      isOwnProfile && authUser
+        ? clubsService
+            .getFavoriteClubs()
+            .then((favoritesResponse) => {
+              const favoriteIds = favoritesResponse.clubs.map(
+                (club: ApiClub) => club.id,
+              );
+              setSelectedClubs(favoriteIds);
+              setOriginalClubs(favoriteIds);
+            })
+            .catch((error) => {
+              console.error("[Profile] Failed to load favorites:", error);
+              setSelectedClubs([]);
+              setOriginalClubs([]);
+            })
+        : Promise.resolve();
+
+    Promise.all([clubsPromise, favoritesPromise]).finally(() => {
       setLoadingClubs(false);
-    }
+    });
   };
 
   const pickImage = () => {
