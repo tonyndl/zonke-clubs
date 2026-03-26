@@ -23,15 +23,60 @@ import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { Colors } from "@/constants/ui";
+import { FONT_FAMILIES } from "@/constants/fontFamilies";
 import * as Haptics from "expo-haptics";
 import { PressableScale } from "@/components/ui/PressableScale";
 import { useRouter } from "expo-router";
 import { TextStroke } from "../Login/utils";
 import { styles } from "./styles";
 import { useLedColor } from "@/contexts/LedColorContext";
+import { useFonts } from "expo-font";
+import { Nabla_400Regular } from "@expo-google-fonts/nabla";
+import { Sixtyfour_400Regular } from "@expo-google-fonts/sixtyfour";
+import { Ballet_400Regular } from "@expo-google-fonts/ballet";
+import { Miltonian_400Regular } from "@expo-google-fonts/miltonian";
+import { RalewayDots_400Regular } from "@expo-google-fonts/raleway-dots";
+import { CaesarDressing_400Regular } from "@expo-google-fonts/caesar-dressing";
+import { TradeWinds_400Regular } from "@expo-google-fonts/trade-winds";
+import { Sancreek_400Regular } from "@expo-google-fonts/sancreek";
+import { Lemon_400Regular } from "@expo-google-fonts/lemon";
+import { RubikDirt_400Regular } from "@expo-google-fonts/rubik-dirt";
+import { Codystar_400Regular } from "@expo-google-fonts/codystar";
+import { Kablammo_400Regular } from "@expo-google-fonts/kablammo";
+import { Matemasie_400Regular } from "@expo-google-fonts/matemasie";
+import { HoltwoodOneSC_400Regular } from "@expo-google-fonts/holtwood-one-sc";
+import { Nosifer_400Regular } from "@expo-google-fonts/nosifer";
+import { SairaStencilOne_400Regular } from "@expo-google-fonts/saira-stencil-one";
+import { UncialAntiqua_400Regular } from "@expo-google-fonts/uncial-antiqua";
+import { ProstoOne_400Regular } from "@expo-google-fonts/prosto-one";
+import { FontdinerSwanky_400Regular } from "@expo-google-fonts/fontdiner-swanky";
+import { BungeeShade_400Regular } from "@expo-google-fonts/bungee-shade";
+import { FasterOne_400Regular } from "@expo-google-fonts/faster-one";
+import { Wallpoet_400Regular } from "@expo-google-fonts/wallpoet";
+import { Monoton_400Regular } from "@expo-google-fonts/monoton";
+import { RockSalt_400Regular } from "@expo-google-fonts/rock-salt";
+import { Eater_400Regular } from "@expo-google-fonts/eater";
+import { Gelasio_400Regular } from "@expo-google-fonts/gelasio";
+import { Audiowide_400Regular } from "@expo-google-fonts/audiowide";
+import { RubikWetPaint_400Regular } from "@expo-google-fonts/rubik-wet-paint";
+import { Parisienne_400Regular } from "@expo-google-fonts/parisienne";
+import { RubikMarkerHatch_400Regular } from "@expo-google-fonts/rubik-marker-hatch";
+import { GloriaHallelujah_400Regular } from "@expo-google-fonts/gloria-hallelujah";
+import { PressStart2P_400Regular } from "@expo-google-fonts/press-start-2p";
+import { OleoScript_400Regular } from "@expo-google-fonts/oleo-script";
+import { Prata_400Regular } from "@expo-google-fonts/prata";
+import { GermaniaOne_400Regular } from "@expo-google-fonts/germania-one";
+import { Creepster_400Regular } from "@expo-google-fonts/creepster";
+import { BitcountInk_400Regular } from "@expo-google-fonts/bitcount-ink";
+import { EduAUVICWANTHand_400Regular } from "@expo-google-fonts/edu-au-vic-wa-nt-hand";
+import { PlaywriteIE_400Regular } from "@expo-google-fonts/playwrite-ie";
+import { Workbench_400Regular } from "@expo-google-fonts/workbench";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 const BOX_WIDTH = SCREEN_WIDTH - 32 - 8 - 6; // marginHorizontal(32) + ledBorder margin(8) + border(6)
+const PREVIEW_TEXT_WIDTH = BOX_WIDTH * 0.98; // matches render width
+const PREVIEW_BOX_HEIGHT = 186; // ledDisplay 200 - ledBorder margin(8) - border(6)
+const STATIC_REF_FONT = 50;
 
 type LEDStyle =
   | "classic"
@@ -42,8 +87,6 @@ type LEDStyle =
   | "pink"
   | "purple"
   | "white";
-type FontStyle = "solid" | "outline" | "shadow" | "neon" | "glitch" | "3d";
-
 interface LEDTheme {
   name: string;
   primaryColor: string;
@@ -51,12 +94,6 @@ interface LEDTheme {
   glowColor: string;
   backgroundColor: string;
   icon: string;
-}
-
-interface FontStyleOption {
-  name: string;
-  icon: string;
-  description: string;
 }
 
 const LED_THEMES: Record<LEDStyle, LEDTheme> = {
@@ -126,39 +163,6 @@ const LED_THEMES: Record<LEDStyle, LEDTheme> = {
   },
 };
 
-const FONT_STYLES: Record<FontStyle, FontStyleOption> = {
-  solid: {
-    name: "Solid",
-    icon: "square",
-    description: "Clean filled text",
-  },
-  outline: {
-    name: "Outline",
-    icon: "square-outline",
-    description: "Hollow stroke only",
-  },
-  shadow: {
-    name: "Shadow",
-    icon: "layers",
-    description: "Classic 3D drop",
-  },
-  neon: {
-    name: "Neon",
-    icon: "bulb",
-    description: "Ultra bright glow",
-  },
-  glitch: {
-    name: "Glitch",
-    icon: "bug",
-    description: "Cyberpunk shift",
-  },
-  "3d": {
-    name: "3D Pop",
-    icon: "cube",
-    description: "Extruded depth",
-  },
-};
-
 function hsvToHex(h: number, s: number, v: number): string {
   const i = Math.floor(h / 60) % 6;
   const f = h / 60 - Math.floor(h / 60);
@@ -201,14 +205,12 @@ function ColorWheelPicker({
   onColorChange,
   previewTextColor,
   previewBgColor,
-  fontStyle = "solid",
 }: {
   size: number;
   initialColor: string;
   onColorChange: (hex: string) => void;
   previewTextColor?: string;
   previewBgColor?: string;
-  fontStyle?: FontStyle;
 }) {
   const cx = size / 2;
   const cy = size / 2;
@@ -275,50 +277,7 @@ function ColorWheelPicker({
       includeFontPadding: false,
       overflow: "visible",
     };
-    switch (fontStyle) {
-      case "outline":
-        return {
-          ...base,
-          color: aInsideColor,
-          textShadowColor: aColor,
-          textShadowOffset: { width: 0, height: 0 },
-          textShadowRadius: 8,
-        };
-      case "shadow":
-        return {
-          ...base,
-          color: aColor,
-          textShadowColor: aColor,
-          textShadowOffset: { width: 3, height: 3 },
-          textShadowRadius: 6,
-        };
-      case "neon":
-        return {
-          ...base,
-          color: aColor,
-          textShadowColor: aColor,
-          textShadowOffset: { width: 0, height: 0 },
-          textShadowRadius: 20,
-        };
-      case "glitch":
-        return {
-          ...base,
-          color: aColor,
-          textShadowColor: aColor,
-          textShadowOffset: { width: 4, height: -3 },
-          textShadowRadius: 10,
-        };
-      case "3d":
-        return {
-          ...base,
-          color: aColor,
-          textShadowColor: "rgba(255,255,255,0.4)",
-          textShadowOffset: { width: 4, height: 4 },
-          textShadowRadius: 2,
-        };
-      default:
-        return { ...base, color: aColor };
-    }
+    return { ...base, color: aColor };
   };
 
   return (
@@ -363,13 +322,7 @@ function ColorWheelPicker({
             justifyContent: "center",
           }}
         >
-          {fontStyle === "outline" ? (
-            <TextStroke color={aColor} stroke={1}>
-              <Text style={getATextStyle()}>A</Text>
-            </TextStroke>
-          ) : (
-            <Text style={getATextStyle()}>A</Text>
-          )}
+          <Text style={getATextStyle()}>A</Text>
         </View>
       )}
     </View>
@@ -580,7 +533,6 @@ export function ScanScreen() {
   const [text, setText] = useState("TAP TO ENTER YOUR TEXT");
   const [speed, setSpeed] = useState(225);
   const [currentStyle, setCurrentStyle] = useState<LEDStyle>("neon");
-  const [currentFontStyle, setCurrentFontStyle] = useState<FontStyle>("solid");
   const [fontSize, setFontSize] = useState(48);
   const [animationMode, setAnimationMode] = useState<"static" | "scroll">(
     "scroll",
@@ -593,11 +545,59 @@ export function ScanScreen() {
   const [bgColor, setBgColor] = useState("#000000");
   const [showColorModal, setShowColorModal] = useState(false);
   const [colorModalTab, setColorModalTab] = useState<"text" | "bg">("text");
-  const [pendingBgColor, setPendingBgColor] = useState("#000000");
-  const [modalWheelKey, setModalWheelKey] = useState(0);
+  const [pendingTextColor, setPendingTextColor] = useState<string>("#00FFFF");
+  const [pendingBgColor, setPendingBgColor] = useState<string>("#000000");
+  const pendingTextColorRef = useRef<string>("#00FFFF");
   const pendingBgColorRef = useRef<string>("#000000");
+  const [modalWheelKey, setModalWheelKey] = useState(0);
   const [scrollEnabled, setScrollEnabled] = useState(true);
-  const pendingColorRef = useRef<string>(customColor || "#00FFFF");
+  const [currentFontFamily, setCurrentFontFamily] = useState("monospace");
+  const [hollowStroke, setHollowStroke] = useState(false);
+
+  useFonts({
+    Nabla_400Regular,
+    Sixtyfour_400Regular,
+    Ballet_400Regular,
+    Miltonian_400Regular,
+    RalewayDots_400Regular,
+    CaesarDressing_400Regular,
+    TradeWinds_400Regular,
+    Sancreek_400Regular,
+    Lemon_400Regular,
+    RubikDirt_400Regular,
+    Codystar_400Regular,
+    Kablammo_400Regular,
+    Matemasie_400Regular,
+    HoltwoodOneSC_400Regular,
+    Nosifer_400Regular,
+    SairaStencilOne_400Regular,
+    UncialAntiqua_400Regular,
+    ProstoOne_400Regular,
+    FontdinerSwanky_400Regular,
+    BungeeShade_400Regular,
+    FasterOne_400Regular,
+    Wallpoet_400Regular,
+    Monoton_400Regular,
+    RockSalt_400Regular,
+    Eater_400Regular,
+    Gelasio_400Regular,
+    Audiowide_400Regular,
+    RubikWetPaint_400Regular,
+    Parisienne_400Regular,
+    RubikMarkerHatch_400Regular,
+    GloriaHallelujah_400Regular,
+    PressStart2P_400Regular,
+    OleoScript_400Regular,
+    Prata_400Regular,
+    GermaniaOne_400Regular,
+    Creepster_400Regular,
+    BitcountInk_400Regular,
+    EduAUVICWANTHand_400Regular,
+    PlaywriteIE_400Regular,
+    Workbench_400Regular,
+  });
+
+  const effectiveFontFamily = currentFontFamily;
 
   const scrollX = useRef(new Animated.Value(SCREEN_WIDTH)).current;
   const scrollY = useRef(new Animated.Value(0)).current;
@@ -607,6 +607,12 @@ export function ScanScreen() {
   const [measuredTextWidth, setMeasuredTextWidth] = useState<number | null>(
     null,
   );
+  const [staticRefBlockHeight, setStaticRefBlockHeight] = useState<
+    number | null
+  >(null);
+  const [staticRefNoWrapWidth, setStaticRefNoWrapWidth] = useState<
+    number | null
+  >(null);
 
   const baseTheme = LED_THEMES[currentStyle];
   const theme = customColor
@@ -618,21 +624,24 @@ export function ScanScreen() {
       }
     : baseTheme;
 
-  // Sync pending refs when color modal opens or tab changes
+  // Initialize pending colors from committed state when modal opens
   useEffect(() => {
     if (showColorModal) {
-      pendingColorRef.current = customColor || theme.primaryColor;
-      pendingBgColorRef.current = bgColor;
-      setPendingBgColor(bgColor);
+      const tc = customColor || theme.primaryColor;
+      const bc = bgColor;
+      setPendingTextColor(tc);
+      setPendingBgColor(bc);
+      pendingTextColorRef.current = tc;
+      pendingBgColorRef.current = bc;
     }
-  }, [showColorModal, colorModalTab]);
+  }, [showColorModal]);
 
-  // Reset measurement when text or font size changes
+  // Reset scroll measurement when text or font changes
   useEffect(() => {
     if (animationMode === "scroll") {
       setMeasuredTextWidth(null);
     }
-  }, [text, fontSize, animationMode]);
+  }, [text, fontSize, animationMode, effectiveFontFamily]);
 
   // Horizontal scrolling animation — only starts once real text width is measured
   useEffect(() => {
@@ -717,11 +726,6 @@ export function ScanScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   };
 
-  const handleFontStyleChange = (style: FontStyle) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setCurrentFontStyle(style);
-  };
-
   const handleFullscreen = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
     router.push({
@@ -729,13 +733,14 @@ export function ScanScreen() {
       params: {
         text,
         style: currentStyle,
-        fontStyle: currentFontStyle,
         fontSize: fontSize.toString(),
         animationMode,
         waveEnabled: waveEnabled.toString(),
         customColor: customColor || "",
         speed: speed.toString(),
         bgColor,
+        fontFamily: effectiveFontFamily,
+        hollowStroke: hollowStroke.toString(),
       },
     });
   };
@@ -752,106 +757,56 @@ export function ScanScreen() {
     setSavedMessages(savedMessages.filter((m) => m !== message));
   };
 
-  // Calculate font size based on text length (simple approach)
-  const calculateStaticFontSize = () => {
-    const textLength = text.length;
+  const staticBaseText = text.replace(/\s+$/, "").toUpperCase();
+  const staticLongestWord = staticBaseText
+    .trim()
+    .split(/\s+/)
+    .reduce(
+      (a, b) => (b.length > a.length ? b : a),
+      staticBaseText.trim() || " ",
+    );
 
-    // Conservative font sizes to ensure text fits without overflow
-    if (textLength < 10) {
-      return 36;
-    } else if (textLength < 20) {
-      return 25;
-    } else if (textLength < 30) {
-      return 19;
-    } else if (textLength < 40) {
-      return 16;
-    } else if (textLength < 60) {
-      return 14;
-    } else {
-      return 12;
-    }
-  };
+  let staticFontSize = 24; // fallback while measuring
+  if (
+    staticRefBlockHeight !== null &&
+    staticRefNoWrapWidth !== null &&
+    staticRefBlockHeight > 0 &&
+    staticRefNoWrapWidth > 0
+  ) {
+    const fontFromHeight =
+      (STATIC_REF_FONT * (PREVIEW_BOX_HEIGHT * 0.9)) / staticRefBlockHeight;
+    const fontFromWidth =
+      (STATIC_REF_FONT * PREVIEW_TEXT_WIDTH) / staticRefNoWrapWidth;
+    staticFontSize = Math.floor(Math.min(fontFromHeight, fontFromWidth));
+  }
 
-  const getTextStyleForFont = (baseColor: any, actualFontSize: number) => {
-    const baseStyle: any = {
-      fontWeight: "900",
-      fontFamily: "monospace",
-    };
-
-    switch (currentFontStyle) {
-      case "solid":
-        return {
-          ...baseStyle,
-          color: baseColor,
-        };
-      case "outline":
-        return {
-          ...baseStyle,
-          color: bgColor,
-          textShadowColor: baseColor,
-          textShadowOffset: { width: 0, height: 0 },
-          textShadowRadius: 10,
-        };
-      case "shadow":
-        return {
-          ...baseStyle,
-          color: baseColor,
-          textShadowColor: baseColor,
-          textShadowOffset: { width: 4, height: 4 },
-          textShadowRadius: 8,
-        };
-      case "neon":
-        // Ultra intense neon glow
-        return {
-          ...baseStyle,
-          color: baseColor,
-          textShadowColor: baseColor,
-          textShadowOffset: { width: 0, height: 0 },
-          textShadowRadius: 50,
-        };
-      case "glitch":
-        // Cyberpunk glitch with offset
-        return {
-          ...baseStyle,
-          color: baseColor,
-          textShadowColor: baseColor,
-          textShadowOffset: { width: 3, height: -2 },
-          textShadowRadius: 15,
-        };
-      case "3d":
-        // 3D pop effect - dramatic raised effect with white shadow
-        return {
-          ...baseStyle,
-          color: baseColor,
-          textShadowColor: "rgba(255, 255, 255, 0.4)",
-          textShadowOffset: { width: 5, height: 5 },
-          textShadowRadius: 2,
-        };
-      default:
-        return {
-          ...baseStyle,
-          color: baseColor,
-          textShadowColor: theme.glowColor,
-          textShadowOffset: { width: 0, height: 0 },
-          textShadowRadius: 20,
-        };
-    }
-  };
+  const getTextStyleForFont = (baseColor: any) => ({
+    ...(effectiveFontFamily === "monospace"
+      ? { fontWeight: "900" as const }
+      : {}),
+    fontFamily: effectiveFontFamily,
+    color: baseColor,
+  });
 
   const renderLEDText = (customFontSize?: number, isFullscreen?: boolean) => {
     let actualFontSize = customFontSize || fontSize;
 
-    // Use fixed font size for static and wave modes to allow text wrapping
+    // Use measured font size for static/wave modes
     if (animationMode !== "scroll") {
-      actualFontSize = 24; // Fixed font size instead of dynamic calculation
+      actualFontSize = staticFontSize;
     }
 
-    // Remove trailing spaces for display
-    const displayText = text.replace(/\s+$/, "").toUpperCase();
+    const baseText = text.replace(/\s+$/, "").toUpperCase();
+    const fontWordGap =
+      FONT_FAMILIES.find((f) => f.key === effectiveFontFamily)?.wordGap ?? " ";
+    const displayText =
+      animationMode === "scroll"
+        ? baseText.replace(/ /g, fontWordGap)
+        : baseText;
 
     const textColor = theme.primaryColor;
 
-    const fontStyleProps = getTextStyleForFont(textColor, actualFontSize);
+    const fontStyleProps = getTextStyleForFont(textColor);
 
     // Normal mode
     if (!isFullscreen) {
@@ -860,23 +815,37 @@ export function ScanScreen() {
 
       if (animationMode === "scroll") {
         const sharedTextStyle = {
-          fontSize: actualFontSize,
+          fontSize: actualFontSize + 42,
           ...fontStyleProps,
+          color: hollowStroke ? bgColor : textColor,
           letterSpacing: 4,
-          margin: "auto",
+          width: 99999,
         };
+        const scrollText = (key: string) =>
+          hollowStroke ? (
+            <TextStroke key={key} color={textColor as string} stroke={2}>
+              <Text style={sharedTextStyle}>{displayText}</Text>
+            </TextStroke>
+          ) : (
+            <Text key={key} style={sharedTextStyle}>
+              {displayText}
+            </Text>
+          );
         return measuredTextWidth !== null ? (
           <Animated.View
             style={{
               position: "absolute",
               left: 0,
+              top: 0,
+              bottom: 0,
               flexDirection: "row",
+              alignItems: "center",
               transform: [{ translateX: scrollX }],
             }}
           >
-            <Text style={sharedTextStyle}>{displayText}</Text>
+            {scrollText("a")}
             <View style={{ width: BOX_WIDTH }} />
-            <Text style={sharedTextStyle}>{displayText}</Text>
+            {scrollText("b")}
           </Animated.View>
         ) : null;
       }
@@ -901,46 +870,24 @@ export function ScanScreen() {
           outputRange: [0, -1.5],
         });
 
-        if (currentFontStyle === "outline") {
-          return (
-            <Animated.View
-              style={{
-                transform: [
-                  { scale: pulseScale },
-                  { translateX: vibrateX },
-                  { translateY: vibrateY },
-                ],
-              }}
-            >
-              <TextStroke color={textColor as string} stroke={2}>
-                <Text
-                  style={{
-                    width: ledBoxWidth * 0.98,
-                    fontSize: actualFontSize,
-                    color: bgColor,
-                    letterSpacing: 2,
-                    fontWeight: "900",
-                    fontFamily: "monospace",
-                    textAlign: "center",
-                    lineHeight: actualFontSize * 1.2,
-                  }}
-                >
-                  {displayText}
-                </Text>
-              </TextStroke>
-            </Animated.View>
-          );
-        }
-
-        return (
-          <Animated.Text
+        const waveInner = (
+          <Text
             style={{
               width: ledBoxWidth * 0.98,
               fontSize: actualFontSize,
               ...fontStyleProps,
+              color: hollowStroke ? bgColor : textColor,
               letterSpacing: 2,
               textAlign: "center",
               lineHeight: actualFontSize * 1.2,
+            }}
+          >
+            {displayText}
+          </Text>
+        );
+        return (
+          <Animated.View
+            style={{
               transform: [
                 { scale: pulseScale },
                 { translateX: vibrateX },
@@ -948,23 +895,27 @@ export function ScanScreen() {
               ],
             }}
           >
-            {displayText}
-          </Animated.Text>
+            {hollowStroke ? (
+              <TextStroke color={textColor as string} stroke={2}>
+                {waveInner}
+              </TextStroke>
+            ) : (
+              waveInner
+            )}
+          </Animated.View>
         );
       }
 
-      // Use TextStroke for outline effect when static
-      if (currentFontStyle === "outline") {
+      if (hollowStroke) {
         return (
           <TextStroke color={textColor as string} stroke={2}>
             <Text
               style={{
                 width: ledBoxWidth * 0.98,
                 fontSize: actualFontSize,
+                ...fontStyleProps,
                 color: bgColor,
                 letterSpacing: 2,
-                fontWeight: "900",
-                fontFamily: "monospace",
                 textAlign: "center",
                 lineHeight: actualFontSize * 1.2,
               }}
@@ -1029,9 +980,11 @@ export function ScanScreen() {
 
   // Compute the text style used for the scroll preview so measurement matches render
   const scrollMeasureStyle = {
-    fontSize: fontSize,
-    fontWeight: "900" as const,
-    fontFamily: "monospace",
+    fontSize: fontSize + 42,
+    ...(effectiveFontFamily === "monospace"
+      ? { fontWeight: "900" as const }
+      : {}),
+    fontFamily: effectiveFontFamily,
     letterSpacing: 4,
   };
 
@@ -1053,9 +1006,70 @@ export function ScanScreen() {
             style={[scrollMeasureStyle, { alignSelf: "flex-start" }]}
             onLayout={(e) => setMeasuredTextWidth(e.nativeEvent.layout.width)}
           >
-            {text.replace(/\s+$/, "").toUpperCase()}
+            {text
+              .replace(/\s+$/, "")
+              .toUpperCase()
+              .replace(
+                / /g,
+                FONT_FAMILIES.find((f) => f.key === effectiveFontFamily)
+                  ?.wordGap ?? " ",
+              )}
           </Text>
         </View>
+      )}
+
+      {/* Two hidden nodes to compute maximum font size for static mode — always rendered so they re-measure automatically when text/font changes */}
+      {animationMode !== "scroll" && staticBaseText.length > 0 && (
+        <>
+          <View
+            style={{
+              position: "absolute",
+              opacity: 0,
+              width: PREVIEW_TEXT_WIDTH,
+            }}
+            pointerEvents="none"
+          >
+            <Text
+              onLayout={(e) =>
+                setStaticRefBlockHeight(e.nativeEvent.layout.height)
+              }
+              style={{
+                fontSize: STATIC_REF_FONT,
+                fontFamily: effectiveFontFamily,
+                ...(effectiveFontFamily === "monospace"
+                  ? { fontWeight: "900" as const }
+                  : {}),
+                width: PREVIEW_TEXT_WIDTH,
+                textAlign: "center",
+                letterSpacing: 2,
+              }}
+            >
+              {staticBaseText}
+            </Text>
+          </View>
+          <View
+            style={{ position: "absolute", opacity: 0, width: 99999 }}
+            pointerEvents="none"
+          >
+            <Text
+              numberOfLines={1}
+              onLayout={(e) =>
+                setStaticRefNoWrapWidth(e.nativeEvent.layout.width)
+              }
+              style={{
+                fontSize: STATIC_REF_FONT,
+                fontFamily: effectiveFontFamily,
+                ...(effectiveFontFamily === "monospace"
+                  ? { fontWeight: "900" as const }
+                  : {}),
+                alignSelf: "flex-start",
+                letterSpacing: 2,
+              }}
+            >
+              {staticLongestWord}
+            </Text>
+          </View>
+        </>
       )}
 
       <ScrollView
@@ -1127,7 +1141,7 @@ export function ScanScreen() {
               />
             ))}
 
-            {/* BG color palette button - bottom left */}
+            {/* BG color palette button - top left */}
             <Pressable
               style={styles.bgColorButton}
               onPress={(e) => {
@@ -1439,6 +1453,116 @@ export function ScanScreen() {
           </Animated.View>
         )}
 
+        {/* Font Family Selector */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={[styles.sectionTitle, { color: theme.primaryColor }]}>
+              FONT FAMILY
+            </Text>
+            <Pressable
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                setHollowStroke((v) => !v);
+              }}
+              style={{ flexDirection: "row", alignItems: "center", gap: 6 }}
+            >
+              <Text
+                style={{
+                  fontSize: 11,
+                  fontWeight: "700",
+                  letterSpacing: 0.5,
+                  color: hollowStroke ? theme.primaryColor : Colors.smoke,
+                }}
+              >
+                HOLLOW
+              </Text>
+              <View
+                style={{
+                  width: 36,
+                  height: 20,
+                  borderRadius: 10,
+                  backgroundColor: hollowStroke
+                    ? theme.primaryColor
+                    : "rgba(255,255,255,0.12)",
+                  justifyContent: "center",
+                  paddingHorizontal: 2,
+                }}
+              >
+                <View
+                  style={{
+                    width: 16,
+                    height: 16,
+                    borderRadius: 8,
+                    backgroundColor: "#fff",
+                    transform: [{ translateX: hollowStroke ? 16 : 0 }],
+                  }}
+                />
+              </View>
+            </Pressable>
+          </View>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.styleScroll}
+          >
+            {FONT_FAMILIES.map((font) => {
+              const isActive = currentFontFamily === font.key;
+              return (
+                <PressableScale
+                  key={font.key}
+                  style={[
+                    styles.fontStyleCard,
+                    isActive && {
+                      borderColor: theme.primaryColor,
+                      borderWidth: 2,
+                    },
+                  ]}
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    setCurrentFontFamily(font.key);
+                  }}
+                >
+                  <View
+                    style={[
+                      styles.fontStylePreview,
+                      { backgroundColor: theme.backgroundColor },
+                    ]}
+                  >
+                    <Text
+                      style={{
+                        fontSize: 28,
+                        fontFamily: font.key,
+                        color: theme.primaryColor,
+                      }}
+                    >
+                      Aa
+                    </Text>
+                  </View>
+                  <View style={styles.fontStyleInfo}>
+                    <Text
+                      style={[
+                        styles.fontStyleLabel,
+                        { color: Colors.platinum },
+                      ]}
+                      numberOfLines={1}
+                    >
+                      {font.name}
+                    </Text>
+                  </View>
+                  {isActive && (
+                    <View
+                      style={[
+                        styles.activeIndicator,
+                        { backgroundColor: theme.primaryColor },
+                      ]}
+                    />
+                  )}
+                </PressableScale>
+              );
+            })}
+          </ScrollView>
+        </View>
+
         {/* Style Selector */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
@@ -1520,108 +1644,6 @@ export function ScanScreen() {
                       style={[
                         styles.activeIndicator,
                         { backgroundColor: styleTheme.primaryColor },
-                      ]}
-                    />
-                  )}
-                </PressableScale>
-              );
-            })}
-          </ScrollView>
-        </View>
-
-        {/* Font Style Selector */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={[styles.sectionTitle, { color: theme.primaryColor }]}>
-              FONT STYLE
-            </Text>
-            <Text style={[styles.sectionHint, { color: theme.secondaryColor }]}>
-              Choose effect →
-            </Text>
-          </View>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            style={styles.styleScroll}
-          >
-            {(Object.keys(FONT_STYLES) as FontStyle[]).map((fontStyle) => {
-              const styleOption = FONT_STYLES[fontStyle];
-              const isActive = currentFontStyle === fontStyle;
-
-              return (
-                <PressableScale
-                  key={fontStyle}
-                  style={[
-                    styles.fontStyleCard,
-                    isActive && {
-                      borderColor: theme.primaryColor,
-                      borderWidth: 2,
-                    },
-                  ]}
-                  onPress={() => handleFontStyleChange(fontStyle)}
-                >
-                  <View
-                    style={[
-                      styles.fontStylePreview,
-                      { backgroundColor: theme.backgroundColor },
-                    ]}
-                  >
-                    {fontStyle === "outline" ? (
-                      <TextStroke color={theme.primaryColor} stroke={0.6}>
-                        <Text style={{ fontSize: 36 }}>A</Text>
-                      </TextStroke>
-                    ) : (
-                      <Text
-                        style={[
-                          styles.fontStylePreviewText,
-                          {
-                            color: theme.primaryColor,
-                            ...(fontStyle === "shadow" && {
-                              textShadowColor: theme.primaryColor,
-                              textShadowOffset: { width: 2, height: 2 },
-                              textShadowRadius: 4,
-                            }),
-                            ...(fontStyle === "neon" && {
-                              textShadowColor: theme.primaryColor,
-                              textShadowRadius: 20,
-                            }),
-                            ...(fontStyle === "glitch" && {
-                              textShadowColor: theme.primaryColor,
-                              textShadowOffset: { width: 2, height: -1 },
-                              textShadowRadius: 6,
-                            }),
-                            ...(fontStyle === "3d" && {
-                              textShadowColor: "rgba(255, 255, 255, 0.4)",
-                              textShadowOffset: { width: 2, height: 2 },
-                              textShadowRadius: 1,
-                            }),
-                          },
-                        ]}
-                      >
-                        A
-                      </Text>
-                    )}
-                  </View>
-                  <View style={styles.fontStyleInfo}>
-                    <Text
-                      style={[
-                        styles.fontStyleLabel,
-                        { color: Colors.platinum },
-                      ]}
-                    >
-                      {styleOption.name}
-                    </Text>
-                    <Text
-                      style={[styles.fontStyleDesc, { color: Colors.smoke }]}
-                    >
-                      {styleOption.description}
-                    </Text>
-                  </View>
-                  {isActive && (
-                    <View
-                      style={[
-                        styles.activeIndicator,
-                        { backgroundColor: theme.primaryColor },
                       ]}
                     />
                   )}
@@ -1741,8 +1763,8 @@ export function ScanScreen() {
             {colorModalTab === "bg" && pendingBgColor !== "#000000" && (
               <Pressable
                 onPress={() => {
-                  pendingBgColorRef.current = "#000000";
                   setPendingBgColor("#000000");
+                  pendingBgColorRef.current = "#000000";
                   setModalWheelKey((k) => k + 1);
                   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                 }}
@@ -1760,29 +1782,29 @@ export function ScanScreen() {
               key={`wheel-${colorModalTab}-${modalWheelKey}`}
               size={SCREEN_WIDTH * 0.72}
               initialColor={
-                colorModalTab === "text"
-                  ? customColor || theme.primaryColor
-                  : bgColor
+                colorModalTab === "text" ? pendingTextColor : pendingBgColor
               }
               onColorChange={(hex) => {
                 if (colorModalTab === "text") {
-                  pendingColorRef.current = hex;
+                  setPendingTextColor(hex);
+                  pendingTextColorRef.current = hex;
                 } else {
-                  pendingBgColorRef.current = hex;
                   setPendingBgColor(hex);
+                  pendingBgColorRef.current = hex;
                 }
               }}
               previewTextColor={
-                colorModalTab === "bg" ? theme.primaryColor : undefined
+                colorModalTab === "bg" ? pendingTextColor : undefined
               }
-              previewBgColor={colorModalTab === "text" ? bgColor : undefined}
-              fontStyle={currentFontStyle}
+              previewBgColor={
+                colorModalTab === "text" ? pendingBgColor : undefined
+              }
             />
 
             <Pressable
               onPress={() => {
                 if (colorModalTab === "text") {
-                  handleCustomColorComplete(pendingColorRef.current);
+                  handleCustomColorComplete(pendingTextColorRef.current);
                 } else {
                   setBgColor(pendingBgColorRef.current);
                   setShowColorModal(false);
