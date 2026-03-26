@@ -143,6 +143,7 @@ class StrobeChannel {
     customOnMs?: number,
     customOffMs?: number,
   ): Promise<StrobeSessionInfo> {
+    if (!this.channel) return Promise.reject(new Error("Channel not joined"));
     return new Promise((resolve, reject) => {
       this.channel
         .push("start_strobe", {
@@ -164,6 +165,7 @@ class StrobeChannel {
     customOnMs?: number,
     customOffMs?: number,
   ): Promise<void> {
+    if (!this.channel) return Promise.resolve();
     return new Promise((resolve, reject) => {
       this.channel
         .push("update_strobe", {
@@ -180,6 +182,7 @@ class StrobeChannel {
 
   // DJ: stop strobe
   stopStrobe(sessionId: string): Promise<void> {
+    if (!this.channel) return Promise.resolve();
     return new Promise((resolve, reject) => {
       this.channel
         .push("stop_strobe", { session_id: sessionId })
@@ -190,6 +193,7 @@ class StrobeChannel {
 
   // Audience: fetch current session on join
   getCurrentSession(): Promise<StrobeSessionInfo | null> {
+    if (!this.channel) return Promise.resolve(null);
     return new Promise((resolve, reject) => {
       this.channel
         .push("get_current_session", {})

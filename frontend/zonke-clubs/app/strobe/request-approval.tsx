@@ -26,6 +26,10 @@ export default function RequestApprovalScreen() {
   const [search, setSearch] = useState("");
   const [requesting, setRequesting] = useState<string | null>(null);
   const [requested, setRequested] = useState<Set<string>>(new Set());
+  const [approvedClubIds, setApprovedClubIds] = useState<Set<string>>(
+    new Set(),
+  );
+  const [pendingClubIds, setPendingClubIds] = useState<Set<string>>(new Set());
   const isMountedRef = useRef(true);
 
   useEffect(() => {
@@ -38,11 +42,21 @@ export default function RequestApprovalScreen() {
 
   const loadClubs = () => {
     setLoading(true);
-    clubsService
-      .getClubs(true, 1, 50)
-      .then((res) => {
+    Promise.all([
+      clubsService.getClubs(true, 1, 50),
+      strobeService.getMyApprovals(),
+    ])
+      .then(([clubsRes, approvals]) => {
         if (!isMountedRef.current) return;
-        setClubs(res.clubs || []);
+        setClubs(clubsRes.clubs || []);
+        const approved = new Set<string>();
+        const pending = new Set<string>();
+        approvals.forEach((a) => {
+          if (a.status === "approved") approved.add(a.club_id);
+          else if (a.status === "pending") pending.add(a.club_id);
+        });
+        setApprovedClubIds(approved);
+        setPendingClubIds(pending);
       })
       .catch((err) => console.error("Failed to load clubs", err))
       .finally(() => {
@@ -135,7 +149,10 @@ export default function RequestApprovalScreen() {
           }
           renderItem={({ item: club }) => {
             const isRequesting = requesting === club.id;
-            const isDone = requested.has(club.id);
+            const isSentNow = requested.has(club.id);
+            const isApproved = approvedClubIds.has(club.id);
+            const isPending = pendingClubIds.has(club.id) || isSentNow;
+            const isDisabled = isApproved || isPending || isRequesting;
 
             return (
               <View style={styles.clubCard}>
@@ -156,28 +173,38 @@ export default function RequestApprovalScreen() {
                 <Pressable
                   style={[
                     styles.requestBtn,
-                    isDone && styles.requestBtnDone,
+                    isApproved && styles.requestBtnApproved,
+                    isPending && !isApproved && styles.requestBtnDone,
                     isRequesting && styles.requestBtnLoading,
                   ]}
-                  onPress={() => !isDone && handleRequest(club)}
-                  disabled={isDone || isRequesting}
+                  onPress={() => !isDisabled && handleRequest(club)}
+                  disabled={isDisabled}
                 >
                   {isRequesting ? (
                     <ActivityIndicator size="small" color={Colors.accent} />
-                  ) : isDone ? (
+                  ) : isApproved ? (
                     <>
                       <Ionicons
-                        name="checkmark"
-                        size={16}
-                        color={Colors.accent}
+                        name="shield-checkmark"
+                        size={14}
+                        color="#00C853"
                       />
+                      <Text
+                        style={[styles.requestBtnText, { color: "#00C853" }]}
+                      >
+                        APPROVED
+                      </Text>
+                    </>
+                  ) : isPending ? (
+                    <>
+                      <Ionicons name="time" size={14} color={Colors.accent} />
                       <Text
                         style={[
                           styles.requestBtnText,
                           { color: Colors.accent },
                         ]}
                       >
-                        SENT
+                        PENDING
                       </Text>
                     </>
                   ) : (
@@ -305,6 +332,11 @@ const styles = StyleSheet.create({
     paddingVertical: 9,
     minWidth: 90,
     justifyContent: "center",
+  },
+  requestBtnApproved: {
+    backgroundColor: "rgba(0,200,83,0.1)",
+    borderWidth: 1,
+    borderColor: "#00C853",
   },
   requestBtnDone: {
     backgroundColor: "rgba(57,243,255,0.1)",

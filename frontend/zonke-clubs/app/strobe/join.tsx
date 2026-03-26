@@ -14,8 +14,10 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { StatusBar } from "expo-status-bar";
-import { CameraView, useCameraPermissions } from "expo-camera";
+import { useCameraPermissions } from "expo-camera";
 import * as Haptics from "expo-haptics";
+import * as Notifications from "expo-notifications";
+import Torch from "react-native-torch";
 import { Colors } from "@/constants/ui";
 import { useAuth } from "@/contexts/AuthContext";
 import {
@@ -120,8 +122,53 @@ export default function JoinStrobeScreen() {
       isMountedRef.current = false;
       stopBeatTimer();
       strobeChannel.leave();
+      Torch?.switchState(false).catch(() => {});
     };
   }, []);
+
+  // Drive the hardware torch via react-native-torch (works with screen off)
+  useEffect(() => {
+    if (!isActive) return;
+    Torch?.switchState(torchOn).catch((err: unknown) =>
+      console.warn("Torch error:", err),
+    );
+  }, [torchOn, isActive]);
+
+  // Show a persistent foreground notification while strobe is active.
+  // On Android this promotes the app to foreground-service priority so the
+  // system keeps the JS thread running even when the screen turns off.
+  useEffect(() => {
+    if (!isActive) return;
+
+    Notifications.setNotificationChannelAsync("strobe-active", {
+      name: "Strobe Active",
+      importance: Notifications.AndroidImportance.MAX,
+      lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
+    }).catch(() => {});
+
+    let notifId: string | null = null;
+    Notifications.scheduleNotificationAsync({
+      content: {
+        title: "⚡ Strobe Sync Active",
+        body: "Your flashlight is synced to the DJ — keep this running",
+        sticky: true,
+        autoDismiss: false,
+        priority: Notifications.AndroidNotificationPriority.MAX,
+        color: "#39F3FF",
+      },
+      trigger: null,
+    })
+      .then((id) => {
+        notifId = id;
+      })
+      .catch(() => {});
+
+    return () => {
+      if (notifId)
+        Notifications.dismissNotificationAsync(notifId).catch(() => {});
+      Notifications.dismissAllNotificationsAsync().catch(() => {});
+    };
+  }, [isActive]);
 
   // Load active sessions when no club pre-selected
   useFocusEffect(
@@ -440,10 +487,13 @@ export default function JoinStrobeScreen() {
 
   const handleEndStrobe = () => {
     if (!sessionInfo) return;
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     strobeChannel
       .stopStrobe(sessionInfo.session_id)
-      .catch((err) => console.error("Failed to end strobe", err));
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      .catch((err) => console.error("Failed to end strobe", err))
+      .finally(() => {
+        if (isMountedRef.current) router.replace("/strobe/dj");
+      });
   };
 
   // ── Beat timer ──────────────────────────────────────────────────────────────
@@ -588,14 +638,6 @@ export default function JoinStrobeScreen() {
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
       <StatusBar style="light" />
-
-      {isActive && (
-        <CameraView
-          style={styles.hiddenCamera}
-          enableTorch={torchOn}
-          facing="back"
-        />
-      )}
 
       <View style={styles.header}>
         <Pressable

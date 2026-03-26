@@ -5,10 +5,10 @@ import { Platform } from "react-native";
 const LOCAL_IP = "192.168.1.139";
 
 const getApiUrl = () => {
-  if (Platform.OS === "android") {
-    return `http://${LOCAL_IP}:4000/api`;
+  if (Platform.OS === "web") {
+    return "http://localhost:4000/api";
   }
-  return "http://localhost:4000/api";
+  return `http://${LOCAL_IP}:4000/api`;
 };
 
 const API_URL = getApiUrl();

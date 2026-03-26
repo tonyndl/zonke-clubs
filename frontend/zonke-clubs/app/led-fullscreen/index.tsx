@@ -15,6 +15,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { TextStroke } from "../_screens/Login/utils";
 import { styles } from "./_styles";
+import { FONT_FAMILIES } from "@/constants/fontFamilies";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -45,6 +46,8 @@ interface LEDFullscreenProps {
   customColor?: string;
   speed?: number;
   bgColor?: string;
+  fontFamily?: string;
+  hollowStroke?: boolean;
 }
 
 const LED_THEMES: Record<LEDStyle, LEDTheme> = {
@@ -100,11 +103,16 @@ export function LEDFullscreenView({
   customColor,
   speed = 180,
   bgColor = "#000000",
+  fontFamily = "monospace",
+  hollowStroke = false,
 }: LEDFullscreenProps) {
   const router = useRouter();
 
-  // Remove trailing spaces and convert to uppercase for display
-  const displayText = text.replace(/\s+$/, "").toUpperCase();
+  const baseText = text.replace(/\s+$/, "").toUpperCase();
+  const wordGap =
+    FONT_FAMILIES.find((f) => f.key === fontFamily)?.wordGap ?? " ";
+  const displayText =
+    animationMode === "scroll" ? baseText.replace(/ /g, wordGap) : baseText;
   const currentStyle = style;
   const currentFontStyle = fontStyle;
 
@@ -120,6 +128,8 @@ export function LEDFullscreenView({
   const [staticMeasuredWidth, setStaticMeasuredWidth] = useState<number | null>(
     null,
   );
+  const [lineHeightMult, setLineHeightMult] = useState(1.3);
+  const [textBlockHeight, setTextBlockHeight] = useState<number | null>(null);
 
   // Reference font size used for static measurement
   const STATIC_REF_FONT = 100;
@@ -227,14 +237,28 @@ export function LEDFullscreenView({
     if (animationMode === "scroll") {
       setMeasuredTextWidth(null);
     }
-  }, [displayText, fontSize, animationMode]);
+  }, [displayText, fontSize, animationMode, fontFamily]);
 
-  // Reset static measurement when text or mode changes
+  // Reset static measurement and line height when text/font/mode changes
   useEffect(() => {
     if (animationMode !== "scroll") {
       setStaticMeasuredWidth(null);
+      setLineHeightMult(1.3);
+      setTextBlockHeight(null);
     }
-  }, [displayText, animationMode]);
+  }, [displayText, animationMode, fontFamily]);
+
+  // Detect overflow and reduce line height until it fits
+  useEffect(() => {
+    if (animationMode === "scroll" || textBlockHeight === null) return;
+    const availH = SCREEN_WIDTH;
+    const isOverflowing = textBlockHeight > availH;
+    console.log("Text overlapping:", isOverflowing);
+    if (isOverflowing && lineHeightMult > 0.9) {
+      const newMult = (availH / textBlockHeight) * lineHeightMult;
+      setLineHeightMult(Math.max(0.9, newMult));
+    }
+  }, [textBlockHeight]);
 
   // Vertical scrolling animation — only starts once the real text width is known
   useEffect(() => {
@@ -244,15 +268,13 @@ export function LEDFullscreenView({
     // After 90° rotation the text's width becomes its vertical travel extent
     const textHeight = measuredTextWidth;
 
-    // Start: text fully below screen; End: text fully above screen
-    const startY = SCREEN_HEIGHT / 2 + textHeight / 2;
-    const endY = -SCREEN_HEIGHT / 2 - textHeight / 2;
-
-    const totalDistance = startY - endY;
-    // Scale speed so the text crosses its visible area (SCREEN_HEIGHT) in the same
-    // time it crosses the preview box (SCREEN_WIDTH - 46), giving matching perception
     const previewBoxWidth = SCREEN_WIDTH + 100;
     const pixelsPerSecond = speed * (SCREEN_HEIGHT / previewBoxWidth);
+
+    // Text scrolls from below screen to above screen, then resets
+    const startY = SCREEN_HEIGHT / 2 + textHeight / 2;
+    const endY = -SCREEN_HEIGHT / 2 - textHeight / 2;
+    const totalDistance = startY - endY;
     const duration = (totalDistance / pixelsPerSecond) * 1000;
 
     const animation = Animated.loop(
@@ -324,7 +346,7 @@ export function LEDFullscreenView({
   let actualFontSize: number;
 
   if (animationMode === "scroll") {
-    actualFontSize = fontSize * 4.5;
+    actualFontSize = fontSize * 7;
   } else if (staticMeasuredWidth != null && staticMeasuredWidth > 0) {
     // After 90° rotation:
     //   text "width"  (before rotation) → vertical extent on screen  (≤ SCREEN_HEIGHT)
@@ -356,7 +378,9 @@ export function LEDFullscreenView({
         high = mid - 1;
       }
     }
-    actualFontSize = best;
+    const sizeScale =
+      FONT_FAMILIES.find((f) => f.key === fontFamily)?.sizeScale ?? 1.0;
+    actualFontSize = Math.floor(best * sizeScale);
   } else {
     // Placeholder while measurement node hasn't fired yet — show nothing (hidden by render gate)
     actualFontSize = STATIC_REF_FONT;
@@ -430,8 +454,10 @@ export function LEDFullscreenView({
                 style={{
                   fontSize: actualFontSize,
                   letterSpacing: 1,
-                  fontWeight: "900",
-                  fontFamily: "monospace",
+                  ...(fontFamily === "monospace"
+                    ? { fontWeight: "900" as const }
+                    : {}),
+                  fontFamily,
                   alignSelf: "flex-start",
                 }}
               >
@@ -453,8 +479,8 @@ export function LEDFullscreenView({
                 }
                 style={{
                   fontSize: STATIC_REF_FONT,
-                  fontWeight: "900",
-                  fontFamily: "monospace",
+                  fontFamily,
+                  fontWeight: fontFamily === "monospace" ? "900" : "normal",
                   letterSpacing: 1,
                   alignSelf: "flex-start",
                 }}
@@ -468,49 +494,61 @@ export function LEDFullscreenView({
           {(animationMode === "scroll"
             ? measuredTextWidth !== null
             : staticMeasuredWidth !== null) &&
-            (currentFontStyle === "outline" ? (
-              <Animated.View
-                style={{
-                  position: "absolute",
-                  transform: textTransform,
-                }}
-              >
-                <TextStroke color={textColor as string} stroke={3}>
+            (() => {
+              const lineHeight = actualFontSize * lineHeightMult;
+              const textNode =
+                currentFontStyle === "outline" || hollowStroke ? (
+                  <TextStroke color={textColor as string} stroke={3}>
+                    <Text
+                      style={{
+                        width: textWidth,
+                        fontSize: actualFontSize,
+                        lineHeight,
+                        color: bgColor,
+                        letterSpacing: 1,
+                        ...(fontFamily === "monospace"
+                          ? { fontWeight: "900" as const }
+                          : {}),
+                        fontFamily,
+                        textAlign: "center",
+                      }}
+                    >
+                      {displayText}
+                    </Text>
+                  </TextStroke>
+                ) : (
                   <Text
                     style={{
                       width: textWidth,
                       fontSize: actualFontSize,
-                      color: bgColor,
+                      lineHeight,
+                      ...fontStyleProps,
+                      fontFamily,
+                      fontWeight: fontFamily === "monospace" ? "400" : "normal",
                       letterSpacing: 1,
-                      fontWeight: "900",
-                      fontFamily: "monospace",
                       textAlign: "center",
                     }}
                   >
                     {displayText}
                   </Text>
-                </TextStroke>
-              </Animated.View>
-            ) : (
-              <Animated.View
-                style={{
-                  position: "absolute",
-                  transform: textTransform,
-                }}
-              >
-                <Text
+                );
+
+              return (
+                <Animated.View
                   style={{
-                    width: textWidth,
-                    fontSize: actualFontSize,
-                    ...fontStyleProps,
-                    letterSpacing: 1,
-                    textAlign: "center",
+                    position: "absolute",
+                    transform: textTransform,
+                  }}
+                  onLayout={(e) => {
+                    if (animationMode !== "scroll") {
+                      setTextBlockHeight(e.nativeEvent.layout.height);
+                    }
                   }}
                 >
-                  {displayText}
-                </Text>
-              </Animated.View>
-            ))}
+                  {textNode}
+                </Animated.View>
+              );
+            })()}
         </View>
       </TouchableWithoutFeedback>
 
@@ -541,6 +579,8 @@ export default function LEDFullscreenScreen() {
       customColor={(params.customColor as string) || undefined}
       speed={Number(params.speed) || 180}
       bgColor={(params.bgColor as string) || "#000000"}
+      fontFamily={(params.fontFamily as string) || "monospace"}
+      hollowStroke={params.hollowStroke === "true"}
     />
   );
 }

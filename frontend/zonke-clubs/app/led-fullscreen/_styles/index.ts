@@ -11,7 +11,6 @@ export const styles = StyleSheet.create({
     width: SCREEN_WIDTH,
     height: SCREEN_HEIGHT,
     backgroundColor: "#000000",
-    overflow: "hidden",
     alignItems: "center",
     justifyContent: "center",
   },
