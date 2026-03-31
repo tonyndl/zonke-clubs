@@ -14,6 +14,7 @@ interface Props {
   clubName: string;
   existingIntention?: MeetupIntention;
   fixedDate?: string; // When provided, locks the date and hides date selection
+  closedDays?: string[];
   onClose: () => void;
   onSubmit: (
     activityType: ActivityType,
@@ -86,6 +87,7 @@ export function PostIntentionModal({
   clubName,
   existingIntention,
   fixedDate,
+  closedDays = [],
   onClose,
   onSubmit,
   onRemove,
@@ -101,6 +103,12 @@ export function PostIntentionModal({
   );
   const [showCalendar, setShowCalendar] = useState(false);
   const [activityError, setActivityError] = useState("");
+
+  const hasChanged =
+    !existingIntention ||
+    selectedActivity !== existingIntention.activityType ||
+    selectedDate !== existingIntention.plannedDate ||
+    message !== (existingIntention.message || "");
 
   const dateOptions = generateDateOptions();
 
@@ -254,6 +262,7 @@ export function PostIntentionModal({
           initialDate={selectedDate}
           minDate={getDateString(0)}
           title="Select Date"
+          closedDays={closedDays}
         />
       )}
 
@@ -281,7 +290,13 @@ export function PostIntentionModal({
           </PressableScale>
         )}
 
-        <PressableScale style={styles.submitButton} onPress={handleSubmit}>
+        <PressableScale
+          style={[
+            styles.submitButton,
+            !hasChanged && styles.submitButtonDisabled,
+          ]}
+          onPress={hasChanged ? handleSubmit : undefined}
+        >
           <Text style={styles.submitText}>
             {existingIntention ? "Update Status" : "Post Status"}
           </Text>

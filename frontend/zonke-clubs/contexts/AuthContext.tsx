@@ -11,10 +11,13 @@ import {
   LoginData,
   RegisterData,
 } from "../services/authService";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   registerForPushNotifications,
   registerTokenWithBackend,
 } from "../services/pushNotificationService";
+
+const PUSH_TOKEN_KEY = "@zonke/push_token";
 
 interface AuthContextType {
   user: User | null;
@@ -79,9 +82,14 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       .login(data)
       .then((response) => {
         setUser(response.user);
-        registerForPushNotifications().then((token) => {
-          if (token) {
-            registerTokenWithBackend(token);
+        AsyncStorage.getItem(PUSH_TOKEN_KEY).then((storedToken) => {
+          if (storedToken !== null) {
+            registerForPushNotifications().then((token) => {
+              if (token) {
+                registerTokenWithBackend(token);
+                AsyncStorage.setItem(PUSH_TOKEN_KEY, token);
+              }
+            });
           }
         });
       })

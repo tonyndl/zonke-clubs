@@ -23,6 +23,10 @@ import Animated, {
   useAnimatedStyle,
   interpolate,
   Extrapolation,
+  withRepeat,
+  withSequence,
+  withTiming,
+  cancelAnimation,
 } from "react-native-reanimated";
 
 import { Ionicons, FontAwesome5 } from "@expo/vector-icons";
@@ -60,6 +64,7 @@ import { websocketService } from "@/services/websocketService";
 import { ConnectionRequest } from "@/types/connection";
 import {
   strobeService,
+  strobeChannel,
   type StrobeSessionInfo,
 } from "@/services/strobeService";
 
@@ -168,6 +173,33 @@ export default function ClubScreen() {
     null,
   );
 
+  // Heartbeat animation for the strobe banner
+  const heartbeatScale = useSharedValue(1);
+
+  useEffect(() => {
+    if (!activeStrobe) {
+      cancelAnimation(heartbeatScale);
+      heartbeatScale.value = 1;
+      return;
+    }
+    heartbeatScale.value = withRepeat(
+      withSequence(
+        withTiming(1.06, { duration: 700 }),
+        withTiming(1.0, { duration: 700 }),
+      ),
+      -1,
+      false,
+    );
+    return () => {
+      cancelAnimation(heartbeatScale);
+      heartbeatScale.value = 1;
+    };
+  }, [activeStrobe]);
+
+  const heartbeatStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: heartbeatScale.value }],
+  }));
+
   // Fetch club data
   useEffect(() => {
     loadClub();
@@ -202,24 +234,37 @@ export default function ClubScreen() {
     }
   }, [clubId, club]);
 
-  // Poll for active strobe session every 10s
+  // Subscribe to strobe channel for real-time start/stop events
   useEffect(() => {
     let cancelled = false;
+    setActiveStrobe(null);
 
-    const check = () => {
-      strobeService
-        .getActiveSession(clubId)
-        .then((session) => {
-          if (!cancelled) setActiveStrobe(session);
-        })
-        .catch(() => {});
-    };
+    // Use REST as the authoritative source of truth for initial state
+    strobeService
+      .getActiveSession(clubId)
+      .then((session) => {
+        if (!cancelled) setActiveStrobe(session);
+      })
+      .catch(() => {
+        if (!cancelled) setActiveStrobe(null);
+      });
 
-    check();
-    const interval = setInterval(check, 10000);
+    // WebSocket for real-time updates after initial load
+    strobeChannel.onStrobeStarted((info) => {
+      if (!cancelled) setActiveStrobe(info);
+    });
+    strobeChannel.onStrobeUpdated((info) => {
+      if (!cancelled) setActiveStrobe(info);
+    });
+    strobeChannel.onStrobeStopped(() => {
+      if (!cancelled) setActiveStrobe(null);
+    });
+
+    strobeChannel.join(clubId).catch(() => {});
+
     return () => {
       cancelled = true;
-      clearInterval(interval);
+      strobeChannel.leave();
     };
   }, [clubId]);
 
@@ -895,7 +940,7 @@ export default function ClubScreen() {
           onPress={() => router.back()}
           style={[styles.backButton, { top: insets.top + 8 }]}
         >
-          <Ionicons name="arrow-back" size={24} color={Colors.platinum} />
+          <Ionicons name="arrow-back" size={24} color={Colors.gold} />
         </PressableScale>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={Colors.gold} />
@@ -913,7 +958,7 @@ export default function ClubScreen() {
           onPress={() => router.back()}
           style={[styles.backButton, { top: insets.top + 8 }]}
         >
-          <Ionicons name="arrow-back" size={24} color={Colors.platinum} />
+          <Ionicons name="arrow-back" size={24} color={Colors.gold} />
         </PressableScale>
         <View style={styles.errorContainer}>
           <Ionicons name="alert-circle" size={48} color={Colors.gold} />
@@ -941,7 +986,7 @@ export default function ClubScreen() {
         onPress={() => router.back()}
         style={[styles.backButton, { top: insets.top + 8 }]}
       >
-        <Ionicons name="arrow-back" size={24} color={Colors.platinum} />
+        <Ionicons name="arrow-back" size={24} color={Colors.gold} />
       </PressableScale>
 
       {/* Content */}
@@ -963,29 +1008,6 @@ export default function ClubScreen() {
             <Text style={styles.locationText}>{club.location.name}</Text>
           </View>
         </Animated.View>
-
-        {/* DJ Strobe active banner */}
-        {activeStrobe && (
-          <Pressable
-            style={styles.strobeBanner}
-            onPress={() =>
-              router.push(
-                `/strobe/join?clubId=${clubId}&clubName=${encodeURIComponent(club.name)}` as any,
-              )
-            }
-          >
-            <Ionicons name="flash" size={18} color="#000" />
-            <View style={{ flex: 1 }}>
-              <Text style={styles.strobeBannerTitle}>DJ STROBE ACTIVE</Text>
-              <Text style={styles.strobeBannerSub}>
-                {activeStrobe.bpm} BPM ·{" "}
-                {activeStrobe.effect.replace("_", " ").toUpperCase()} · Tap to
-                sync your flash
-              </Text>
-            </View>
-            <Ionicons name="chevron-forward" size={18} color="#000" />
-          </Pressable>
-        )}
 
         {/* Section Tab Switcher */}
         <Animated.View
@@ -1036,6 +1058,31 @@ export default function ClubScreen() {
             </Text>
           </PressableScale>
         </Animated.View>
+
+        {/* DJ Strobe active banner */}
+        {activeStrobe && (
+          <Animated.View style={heartbeatStyle}>
+            <Pressable
+              style={styles.strobeBanner}
+              onPress={() =>
+                router.push(
+                  `/strobe/join?clubId=${clubId}&clubName=${encodeURIComponent(club.name)}` as any,
+                )
+              }
+            >
+              <Ionicons name="flash" size={18} color="#000" />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.strobeBannerTitle}>DJ STROBE ACTIVE</Text>
+                <Text style={styles.strobeBannerSub}>
+                  {activeStrobe.bpm} BPM ·{" "}
+                  {activeStrobe.effect.replace("_", " ").toUpperCase()} · Tap to
+                  sync your flash
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color="#000" />
+            </Pressable>
+          </Animated.View>
+        )}
 
         {/* ========== SECTION 1: CLUB INFORMATION ========== */}
         {activeSection === "info" && (
@@ -1650,6 +1697,22 @@ export default function ClubScreen() {
           visible={showIntentionModal}
           clubName={club.name}
           existingIntention={userIntention || undefined}
+          closedDays={
+            club.opening_hours && Object.keys(club.opening_hours).length > 0
+              ? [
+                  "Monday",
+                  "Tuesday",
+                  "Wednesday",
+                  "Thursday",
+                  "Friday",
+                  "Saturday",
+                  "Sunday",
+                ].filter((day) => {
+                  const h = club.opening_hours[day];
+                  return !h || !h.open || !h.close;
+                })
+              : []
+          }
           onClose={() => setShowIntentionModal(false)}
           onSubmit={(
             activityType: ActivityType,
@@ -1859,7 +1922,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     paddingHorizontal: 16,
     paddingVertical: 12,
-    marginBottom: 14,
+    marginTop: 20,
   },
   strobeBannerTitle: {
     fontSize: 12,

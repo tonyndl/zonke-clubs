@@ -255,7 +255,9 @@ export function LEDFullscreenView({
     const isOverflowing = textBlockHeight > availH;
     console.log("Text overlapping:", isOverflowing);
     if (isOverflowing && lineHeightMult > 0.9) {
-      const newMult = (availH / textBlockHeight) * lineHeightMult;
+      // 0.95 safety factor ensures convergence even when decorative glyphs
+      // extend beyond the line box and don't shrink with lineHeight
+      const newMult = (availH / textBlockHeight) * lineHeightMult * 0.95;
       setLineHeightMult(Math.max(0.9, newMult));
     }
   }, [textBlockHeight]);
@@ -346,7 +348,11 @@ export function LEDFullscreenView({
   let actualFontSize: number;
 
   if (animationMode === "scroll") {
-    actualFontSize = fontSize * 7;
+    // Cap so line height fits within SCREEN_WIDTH after 90° rotation
+    actualFontSize = Math.min(
+      fontSize * 7,
+      Math.floor(SCREEN_WIDTH / lineHeightMult),
+    );
   } else if (staticMeasuredWidth != null && staticMeasuredWidth > 0) {
     // After 90° rotation:
     //   text "width"  (before rotation) → vertical extent on screen  (≤ SCREEN_HEIGHT)
@@ -390,10 +396,12 @@ export function LEDFullscreenView({
   const fontStyleProps = getTextStyleForFont(textColor);
 
   // Container width passed to the Text node (before 90° rotation).
-  // For scroll: 99999 prevents any wrapping.
-  // For static: use the measured single-line width scaled to actualFontSize so the
-  //             text is sized exactly and centered correctly on screen.
-  const textWidth = animationMode === "scroll" ? 99999 : SCREEN_HEIGHT * 0.94; // text wraps within this width; after rotation = vertical extent
+  // For scroll: use measured width + buffer to prevent last-word wrapping from subpixel rounding.
+  // For static: container spans rotated screen so text can wrap naturally.
+  const textWidth =
+    animationMode === "scroll"
+      ? (measuredTextWidth ?? 0) + 10
+      : SCREEN_HEIGHT * 0.94;
 
   // Pulsating animation interpolation - vibrating from bass/noise
   const pulseScale = waveAnim.interpolate({
@@ -482,7 +490,7 @@ export function LEDFullscreenView({
                   fontFamily,
                   fontWeight: fontFamily === "monospace" ? "900" : "normal",
                   letterSpacing: 1,
-                  alignSelf: "flex-start",
+                  alignSelf: "center",
                 }}
               >
                 {displayText}
@@ -537,6 +545,11 @@ export function LEDFullscreenView({
                 <Animated.View
                   style={{
                     position: "absolute",
+                    // For scroll: vertically center the element so rotation pivot = screen center
+                    // and translateY animation is symmetric around 0.
+                    ...(animationMode === "scroll"
+                      ? { top: (SCREEN_HEIGHT - lineHeight) / 2 }
+                      : {}),
                     transform: textTransform,
                   }}
                   onLayout={(e) => {

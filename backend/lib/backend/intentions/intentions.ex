@@ -44,12 +44,17 @@ defmodule Backend.Intentions do
   end
 
   @doc """
-  Creates an intention for a user.
+  Creates an intention for a user. If one already exists for the same
+  user/club/date, updates it in place instead of creating a duplicate.
   """
   def create_intention(attrs) do
     %Intention{}
     |> Intention.changeset(attrs)
-    |> Repo.insert()
+    |> Repo.insert(
+      on_conflict: {:replace, [:activity_type, :message, :active, :updated_at]},
+      conflict_target: [:user_id, :club_id, :planned_date],
+      returning: true
+    )
   end
 
   @doc """

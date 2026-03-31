@@ -354,20 +354,20 @@ const EventInstagramModal = ({
 
           {/* Action buttons */}
           <View style={igStyles.actionRow}>
-            {eventIntentions.length > 0 && (
-              <PressableScale
-                style={igStyles.ghostBtn}
-                onPress={() => {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  setShowPeopleBrowse(true);
-                }}
-              >
-                <Ionicons name="people-outline" size={15} color={Colors.gold} />
-                <Text style={igStyles.ghostBtnText}>
-                  {eventIntentions.length} Looking to Meet
-                </Text>
-              </PressableScale>
-            )}
+            <PressableScale
+              style={igStyles.ghostBtn}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                setShowPeopleBrowse(true);
+              }}
+            >
+              <Ionicons name="people-outline" size={15} color={Colors.gold} />
+              <Text style={igStyles.ghostBtnText}>
+                {eventIntentions.length > 0
+                  ? `${eventIntentions.length} Going`
+                  : "Who's Going"}
+              </Text>
+            </PressableScale>
 
             <PressableScale
               style={[
@@ -1931,7 +1931,9 @@ const igStyles = StyleSheet.create({
   // ── Content panel ──────────────────────────────────────────────────────────
   contentPanel: {
     flex: 1,
-    backgroundColor: "#0a0d14",
+    backgroundColor: Colors.bgCard,
+    borderTopLeftRadius: 25,
+    borderTopRightRadius: 25,
     paddingHorizontal: 16,
     paddingTop: 14,
     justifyContent: "space-between",
@@ -2060,7 +2062,7 @@ const igStyles = StyleSheet.create({
     justifyContent: "center",
     gap: 6,
     paddingVertical: 13,
-    borderRadius: 12,
+    borderRadius: 6,
     backgroundColor: Colors.gold,
   },
   solidBtnActive: {

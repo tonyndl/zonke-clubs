@@ -365,7 +365,7 @@ export default function DJStrobeScreen() {
         <StatusBar style="light" />
         <View style={styles.header}>
           <Pressable onPress={() => router.back()} style={styles.backBtn}>
-            <Ionicons name="arrow-back" size={24} color={Colors.platinum} />
+            <Ionicons name="arrow-back" size={24} color={Colors.gold} />
           </Pressable>
           <Text style={styles.headerTitle}>DJ STROBE</Text>
           <View style={{ width: 40 }} />
@@ -391,7 +391,7 @@ export default function DJStrobeScreen() {
       {/* Header */}
       <View style={styles.header}>
         <Pressable onPress={() => router.back()} style={styles.backBtn}>
-          <Ionicons name="arrow-back" size={24} color={Colors.platinum} />
+          <Ionicons name="arrow-back" size={24} color={Colors.gold} />
         </Pressable>
         <Text style={styles.headerTitle}>DJ STROBE</Text>
         {/* Request approval button */}
@@ -736,13 +736,14 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: "900",
-    color: Colors.platinum,
+    color: Colors.gold,
     letterSpacing: 3,
   },
   scroll: {
     flex: 1,
   },
   scrollContent: {
+    flexGrow: 1,
     paddingHorizontal: 16,
     paddingBottom: 120,
   },
@@ -764,8 +765,9 @@ const styles = StyleSheet.create({
     color: Colors.smoke,
   },
   emptyCard: {
+    flex: 1,
     alignItems: "center",
-    paddingVertical: 60,
+    justifyContent: "center",
     gap: 12,
   },
   emptyTitle: {

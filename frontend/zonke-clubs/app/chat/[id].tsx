@@ -11,8 +11,9 @@ import {
   Keyboard,
   ActivityIndicator,
   Modal,
-  Alert,
+  Pressable,
 } from "react-native";
+import { BlurView } from "expo-blur";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
   router,
@@ -59,6 +60,20 @@ export default function ChatScreen() {
   const [toastType, setToastType] = useState<"success" | "error" | "info">(
     "success",
   );
+  const [confirmModal, setConfirmModal] = useState<{
+    visible: boolean;
+    title: string;
+    message: string;
+    confirmText: string;
+    confirmColor?: string;
+    onConfirm: () => void;
+  }>({
+    visible: false,
+    title: "",
+    message: "",
+    confirmText: "",
+    onConfirm: () => {},
+  });
   const flatListRef = useRef<FlatList>(null);
   const inputRef = useRef<TextInput>(null);
 
@@ -402,37 +417,30 @@ export default function ChatScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setShowMenu(false);
 
-    Alert.alert(
-      "Clear Chat",
-      "Are you sure you want to clear all messages in this chat? This action cannot be undone.",
-      [
-        {
-          text: "Cancel",
-          style: "cancel",
-        },
-        {
-          text: "Clear",
-          style: "destructive",
-          onPress: () => {
-            if (!threadId) return;
-
-            clearThread(threadId)
-              .then(() => {
-                setMessages([]);
-                setToastMessage("Chat cleared");
-                setToastType("info");
-                setToastVisible(true);
-              })
-              .catch((error) => {
-                console.error("Error clearing chat:", error);
-                setToastMessage("Failed to clear chat");
-                setToastType("error");
-                setToastVisible(true);
-              });
-          },
-        },
-      ],
-    );
+    setConfirmModal({
+      visible: true,
+      title: "Clear Chat",
+      message:
+        "Are you sure you want to clear all messages in this chat? This action cannot be undone.",
+      confirmText: "Clear",
+      confirmColor: "#EF4444",
+      onConfirm: () => {
+        if (!threadId) return;
+        clearThread(threadId)
+          .then(() => {
+            setMessages([]);
+            setToastMessage("Chat cleared");
+            setToastType("info");
+            setToastVisible(true);
+          })
+          .catch((error) => {
+            console.error("Error clearing chat:", error);
+            setToastMessage("Failed to clear chat");
+            setToastType("error");
+            setToastVisible(true);
+          });
+      },
+    });
   };
 
   const handleDisconnect = () => {
@@ -443,38 +451,29 @@ export default function ChatScreen() {
 
     const displayName = otherUser.username;
 
-    Alert.alert(
-      "Disconnect",
-      `Are you sure you want to disconnect from ${displayName}? You will no longer be able to send messages to each other. To reconnect, you will need to send a new connection request.`,
-      [
-        {
-          text: "Cancel",
-          style: "cancel",
-        },
-        {
-          text: "Disconnect",
-          style: "destructive",
-          onPress: () => {
-            if (!threadId) return;
-
-            connectionService
-              .disconnectByThread(threadId)
-              .then(() => {
-                setIsDisconnected(true);
-                setDisconnectedByMe(true);
-                // Show the disconnect message briefly, then go back
-                setTimeout(() => router.back(), 1000);
-              })
-              .catch((error) => {
-                console.error("Error disconnecting:", error);
-                setToastMessage("Failed to disconnect. Please try again.");
-                setToastType("error");
-                setToastVisible(true);
-              });
-          },
-        },
-      ],
-    );
+    setConfirmModal({
+      visible: true,
+      title: "Disconnect",
+      message: `Are you sure you want to disconnect from ${displayName}? You will no longer be able to send messages to each other.`,
+      confirmText: "Disconnect",
+      confirmColor: "#EF4444",
+      onConfirm: () => {
+        if (!threadId) return;
+        connectionService
+          .disconnectByThread(threadId)
+          .then(() => {
+            setIsDisconnected(true);
+            setDisconnectedByMe(true);
+            setTimeout(() => router.back(), 1000);
+          })
+          .catch((error) => {
+            console.error("Error disconnecting:", error);
+            setToastMessage("Failed to disconnect. Please try again.");
+            setToastType("error");
+            setToastVisible(true);
+          });
+      },
+    });
   };
 
   // sentAt is pre-formatted by the backend ("HH:MM" or "D Mon").
@@ -811,37 +810,29 @@ export default function ChatScreen() {
 
                   if (!threadId) return;
 
-                  Alert.alert(
-                    "Send Connection Request",
-                    `Send a new connection request to ${displayName}?`,
-                    [
-                      {
-                        text: "Cancel",
-                        style: "cancel",
-                      },
-                      {
-                        text: "Send Request",
-                        onPress: () => {
-                          connectionService
-                            .reconnectByThread(threadId)
-                            .then(() => {
-                              setToastMessage("Connection request sent!");
-                              setToastType("success");
-                              setToastVisible(true);
-                              setTimeout(() => router.back(), 1500);
-                            })
-                            .catch((error) => {
-                              console.error("Error reconnecting:", error);
-                              setToastMessage(
-                                "Failed to send connection request",
-                              );
-                              setToastType("error");
-                              setToastVisible(true);
-                            });
-                        },
-                      },
-                    ],
-                  );
+                  setConfirmModal({
+                    visible: true,
+                    title: "Send Connection Request",
+                    message: `Send a new connection request to ${displayName}?`,
+                    confirmText: "Send Request",
+                    confirmColor: Colors.gold,
+                    onConfirm: () => {
+                      connectionService
+                        .reconnectByThread(threadId)
+                        .then(() => {
+                          setToastMessage("Connection request sent!");
+                          setToastType("success");
+                          setToastVisible(true);
+                          setTimeout(() => router.back(), 1500);
+                        })
+                        .catch((error) => {
+                          console.error("Error reconnecting:", error);
+                          setToastMessage("Failed to send connection request");
+                          setToastType("error");
+                          setToastVisible(true);
+                        });
+                    },
+                  });
                 }}
               >
                 <Ionicons
@@ -913,6 +904,115 @@ export default function ChatScreen() {
           onHide={() => setToastVisible(false)}
         />
       </SafeAreaView>
+
+      {/* Confirm Modal */}
+      <Modal
+        visible={confirmModal.visible}
+        transparent
+        animationType="fade"
+        onRequestClose={() =>
+          setConfirmModal((prev) => ({ ...prev, visible: false }))
+        }
+      >
+        <BlurView intensity={60} tint="dark" style={{ flex: 1 }}>
+          <Pressable
+            style={{
+              flex: 1,
+              justifyContent: "center",
+              alignItems: "center",
+              padding: 32,
+            }}
+            onPress={() =>
+              setConfirmModal((prev) => ({ ...prev, visible: false }))
+            }
+          >
+            <Pressable
+              onPress={() => {}}
+              style={{
+                backgroundColor: Colors.bgCard,
+                borderRadius: 20,
+                padding: 24,
+                width: "100%",
+                borderWidth: 1,
+                borderColor: "rgba(57, 243, 255, 0.15)",
+              }}
+            >
+              <Text
+                style={{
+                  fontSize: 18,
+                  fontWeight: "700",
+                  color: Colors.platinum,
+                  marginBottom: 10,
+                }}
+              >
+                {confirmModal.title}
+              </Text>
+              <Text
+                style={{
+                  fontSize: 14,
+                  color: Colors.smoke,
+                  lineHeight: 20,
+                  marginBottom: 24,
+                }}
+              >
+                {confirmModal.message}
+              </Text>
+              <View style={{ flexDirection: "row", gap: 10 }}>
+                <PressableScale
+                  onPress={() =>
+                    setConfirmModal((prev) => ({ ...prev, visible: false }))
+                  }
+                  style={{
+                    flex: 1,
+                    paddingVertical: 12,
+                    borderRadius: 14,
+                    backgroundColor: Colors.bgSecondary,
+                    alignItems: "center",
+                    borderWidth: 1,
+                    borderColor: "rgba(255,255,255,0.1)",
+                  }}
+                >
+                  <Text
+                    style={{
+                      fontSize: 15,
+                      fontWeight: "600",
+                      color: Colors.lightGrey,
+                    }}
+                  >
+                    Cancel
+                  </Text>
+                </PressableScale>
+                <PressableScale
+                  onPress={() => {
+                    setConfirmModal((prev) => ({ ...prev, visible: false }));
+                    confirmModal.onConfirm();
+                  }}
+                  style={{
+                    flex: 1,
+                    paddingVertical: 12,
+                    borderRadius: 14,
+                    backgroundColor: confirmModal.confirmColor || Colors.gold,
+                    alignItems: "center",
+                  }}
+                >
+                  <Text
+                    style={{
+                      fontSize: 15,
+                      fontWeight: "700",
+                      color:
+                        confirmModal.confirmColor === "#EF4444"
+                          ? Colors.white
+                          : Colors.bg,
+                    }}
+                  >
+                    {confirmModal.confirmText}
+                  </Text>
+                </PressableScale>
+              </View>
+            </Pressable>
+          </Pressable>
+        </BlurView>
+      </Modal>
     </>
   );
 }

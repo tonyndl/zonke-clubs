@@ -1442,35 +1442,37 @@ export default function ProfileScreen() {
         {activeTab === "info" && (
           <>
             {/* Bio Section */}
-            <Animated.View
-              entering={FadeInDown.delay(150).springify()}
-              style={styles.section}
-            >
-              <View style={styles.sectionCard}>
-                <View style={styles.sectionHeader}>
-                  <View style={styles.sectionHeaderLeft}>
-                    <Ionicons name="person" size={20} color={Colors.gold} />
-                    <Text style={styles.sectionTitle}>Bio</Text>
+            {(isOwnProfile || bio) && (
+              <Animated.View
+                entering={FadeInDown.delay(150).springify()}
+                style={styles.section}
+              >
+                <View style={styles.sectionCard}>
+                  <View style={styles.sectionHeader}>
+                    <View style={styles.sectionHeaderLeft}>
+                      <Ionicons name="person" size={20} color={Colors.gold} />
+                      <Text style={styles.sectionTitle}>Bio</Text>
+                    </View>
                   </View>
+                  {isOwnProfile ? (
+                    <View style={styles.bioEditContainer}>
+                      <TextInput
+                        style={styles.bioInput}
+                        value={bio}
+                        onChangeText={setBio}
+                        multiline
+                        maxLength={200}
+                        placeholder="Tell people about yourself..."
+                        placeholderTextColor={Colors.lightGrey}
+                      />
+                      <Text style={styles.charCount}>{bio.length}/200</Text>
+                    </View>
+                  ) : (
+                    <Text style={styles.bioText}>{bio}</Text>
+                  )}
                 </View>
-                {isOwnProfile ? (
-                  <View style={styles.bioEditContainer}>
-                    <TextInput
-                      style={styles.bioInput}
-                      value={bio}
-                      onChangeText={setBio}
-                      multiline
-                      maxLength={200}
-                      placeholder="Tell people about yourself..."
-                      placeholderTextColor={Colors.lightGrey}
-                    />
-                    <Text style={styles.charCount}>{bio.length}/200</Text>
-                  </View>
-                ) : (
-                  <Text style={styles.bioText}>{bio}</Text>
-                )}
-              </View>
-            </Animated.View>
+              </Animated.View>
+            )}
 
             {/* My Plans Section — only visible on own profile */}
             {isOwnProfile && (
@@ -1567,165 +1569,169 @@ export default function ProfileScreen() {
             )}
 
             {/* Location Section */}
-            <Animated.View
-              entering={FadeInDown.delay(175).springify()}
-              style={styles.section}
-            >
-              <View style={styles.sectionCard}>
-                <View style={[styles.sectionHeader, { marginBottom: 4 }]}>
-                  <View style={styles.sectionHeaderLeft}>
-                    <Ionicons name="location" size={20} color={Colors.gold} />
-                    <Text style={styles.sectionTitle}>Location</Text>
+            {(isOwnProfile || location) && (
+              <Animated.View
+                entering={FadeInDown.delay(175).springify()}
+                style={styles.section}
+              >
+                <View style={styles.sectionCard}>
+                  <View style={[styles.sectionHeader, { marginBottom: 4 }]}>
+                    <View style={styles.sectionHeaderLeft}>
+                      <Ionicons name="location" size={20} color={Colors.gold} />
+                      <Text style={styles.sectionTitle}>Location</Text>
+                    </View>
                   </View>
-                </View>
-                {isOwnProfile ? (
-                  <LocationPicker
-                    value={location}
-                    onChange={setLocation}
-                    placeholder="Search for your location..."
-                  />
-                ) : location ? (
-                  <View style={styles.locationDisplay}>
-                    <Ionicons
-                      name="location"
-                      size={16}
-                      color={Colors.primaryBlue}
+                  {isOwnProfile ? (
+                    <LocationPicker
+                      value={location}
+                      onChange={setLocation}
+                      placeholder="Search for your location..."
                     />
-                    <Text style={styles.locationText}>{location.name}</Text>
-                  </View>
-                ) : (
-                  <Text style={styles.emptyText}>No location set</Text>
-                )}
-              </View>
-            </Animated.View>
-
-            {/* Favorite Drinks Section */}
-            <Animated.View
-              entering={FadeInDown.delay(200).springify()}
-              style={styles.section}
-            >
-              <View style={styles.sectionCard}>
-                <View style={styles.sectionHeader}>
-                  <View style={styles.sectionHeaderLeft}>
-                    <Ionicons name="wine" size={20} color={Colors.gold} />
-                    <Text style={styles.sectionTitle}>Favorite Drinks</Text>
-                  </View>
-                  {isOwnProfile && (
-                    <PressableScale
-                      style={styles.addButton}
-                      onPress={() => setShowDrinkModal(true)}
-                    >
-                      <Ionicons name="add" size={18} color={Colors.gold} />
-                    </PressableScale>
+                  ) : (
+                    <View style={styles.locationDisplay}>
+                      <Ionicons
+                        name="location"
+                        size={16}
+                        color={Colors.primaryBlue}
+                      />
+                      <Text style={styles.locationText}>{location!.name}</Text>
+                    </View>
                   )}
                 </View>
-                {isOwnProfile && (
-                  <Text style={styles.sectionSubtitle}>
-                    Add your favorite drink brands
-                  </Text>
-                )}
-                <View style={styles.drinksContainer}>
-                  {favoriteDrinks.map((drink, index) => (
-                    <Animated.View
-                      key={drink}
-                      entering={SlideInRight.delay(index * 50).springify()}
-                      style={styles.drinkChip}
-                    >
-                      <Text style={styles.drinkEmoji}>🥃</Text>
-                      <Text style={styles.drinkText}>{drink}</Text>
-                      {isOwnProfile && (
-                        <TouchableOpacity
-                          onPress={() => removeDrink(drink)}
-                          style={styles.removeButton}
-                        >
-                          <Ionicons
-                            name="close-circle"
-                            size={18}
-                            color={Colors.primaryBlue}
-                          />
-                        </TouchableOpacity>
-                      )}
-                    </Animated.View>
-                  ))}
+              </Animated.View>
+            )}
+
+            {/* Favorite Drinks Section */}
+            {(isOwnProfile || favoriteDrinks.length > 0) && (
+              <Animated.View
+                entering={FadeInDown.delay(200).springify()}
+                style={styles.section}
+              >
+                <View style={styles.sectionCard}>
+                  <View style={styles.sectionHeader}>
+                    <View style={styles.sectionHeaderLeft}>
+                      <Ionicons name="wine" size={20} color={Colors.gold} />
+                      <Text style={styles.sectionTitle}>Favorite Drinks</Text>
+                    </View>
+                    {isOwnProfile && (
+                      <PressableScale
+                        style={styles.addButton}
+                        onPress={() => setShowDrinkModal(true)}
+                      >
+                        <Ionicons name="add" size={18} color={Colors.gold} />
+                      </PressableScale>
+                    )}
+                  </View>
+                  {isOwnProfile && (
+                    <Text style={styles.sectionSubtitle}>
+                      Add your favorite drink brands
+                    </Text>
+                  )}
+                  <View style={styles.drinksContainer}>
+                    {favoriteDrinks.map((drink, index) => (
+                      <Animated.View
+                        key={drink}
+                        entering={SlideInRight.delay(index * 50).springify()}
+                        style={styles.drinkChip}
+                      >
+                        <Text style={styles.drinkEmoji}>🥃</Text>
+                        <Text style={styles.drinkText}>{drink}</Text>
+                        {isOwnProfile && (
+                          <TouchableOpacity
+                            onPress={() => removeDrink(drink)}
+                            style={styles.removeButton}
+                          >
+                            <Ionicons
+                              name="close-circle"
+                              size={18}
+                              color={Colors.primaryBlue}
+                            />
+                          </TouchableOpacity>
+                        )}
+                      </Animated.View>
+                    ))}
+                  </View>
                 </View>
-              </View>
-            </Animated.View>
+              </Animated.View>
+            )}
 
             {/* Club Vibes Section */}
-            <Animated.View
-              entering={FadeInDown.delay(250).springify()}
-              style={styles.section}
-            >
-              <View style={styles.sectionCard}>
-                <View style={styles.sectionHeader}>
-                  <View style={styles.sectionHeaderLeft}>
-                    <Ionicons name="flash" size={20} color={Colors.gold} />
-                    <Text style={styles.sectionTitle}>My Vibe</Text>
+            {(isOwnProfile || selectedVibes.length > 0) && (
+              <Animated.View
+                entering={FadeInDown.delay(250).springify()}
+                style={styles.section}
+              >
+                <View style={styles.sectionCard}>
+                  <View style={styles.sectionHeader}>
+                    <View style={styles.sectionHeaderLeft}>
+                      <Ionicons name="flash" size={20} color={Colors.gold} />
+                      <Text style={styles.sectionTitle}>My Vibe</Text>
+                    </View>
                   </View>
-                </View>
-                {isOwnProfile && (
-                  <Text style={styles.sectionSubtitle}>
-                    Select your club preferences
-                  </Text>
-                )}
-                {selectedVibes.length === 0 && !isOwnProfile ? (
-                  <Text style={styles.emptyText}>No vibes selected yet</Text>
-                ) : (
-                  <View style={styles.vibesGrid}>
-                    {VIBE_OPTIONS.map((vibe) => {
-                      const isSelected = selectedVibes.includes(vibe.name);
-                      return isOwnProfile ? (
-                        <PressableScale
-                          key={vibe.name}
-                          style={StyleSheet.flatten([
-                            styles.vibeChip,
-                            isSelected && styles.vibeChipSelected,
-                          ])}
-                          onPress={() => toggleVibe(vibe.name)}
-                        >
-                          <Text style={styles.vibeEmoji}>{vibe.emoji}</Text>
-                          <Text
-                            style={[
-                              styles.vibeText,
-                              isSelected && styles.vibeTextSelected,
-                            ]}
+                  {isOwnProfile && (
+                    <Text style={styles.sectionSubtitle}>
+                      Select your club preferences
+                    </Text>
+                  )}
+                  {selectedVibes.length === 0 && !isOwnProfile ? (
+                    <Text style={styles.emptyText}>No vibes selected yet</Text>
+                  ) : (
+                    <View style={styles.vibesGrid}>
+                      {VIBE_OPTIONS.map((vibe) => {
+                        const isSelected = selectedVibes.includes(vibe.name);
+                        return isOwnProfile ? (
+                          <PressableScale
+                            key={vibe.name}
+                            style={StyleSheet.flatten([
+                              styles.vibeChip,
+                              isSelected && styles.vibeChipSelected,
+                            ])}
+                            onPress={() => toggleVibe(vibe.name)}
                           >
-                            {vibe.name}
-                          </Text>
-                          {isSelected && (
-                            <Animated.View
-                              entering={ZoomIn.springify()}
-                              style={styles.checkmark}
+                            <Text style={styles.vibeEmoji}>{vibe.emoji}</Text>
+                            <Text
+                              style={[
+                                styles.vibeText,
+                                isSelected && styles.vibeTextSelected,
+                              ]}
                             >
-                              <Ionicons
-                                name="checkmark"
-                                size={10}
-                                color={Colors.bg}
-                              />
-                            </Animated.View>
-                          )}
-                        </PressableScale>
-                      ) : isSelected ? (
-                        <View
-                          key={vibe.name}
-                          style={StyleSheet.flatten([
-                            styles.vibeChip,
-                            styles.vibeChipSelected,
-                          ])}
-                        >
-                          <Text style={styles.vibeEmoji}>{vibe.emoji}</Text>
-                          <Text
-                            style={[styles.vibeText, styles.vibeTextSelected]}
+                              {vibe.name}
+                            </Text>
+                            {isSelected && (
+                              <Animated.View
+                                entering={ZoomIn.springify()}
+                                style={styles.checkmark}
+                              >
+                                <Ionicons
+                                  name="checkmark"
+                                  size={10}
+                                  color={Colors.bg}
+                                />
+                              </Animated.View>
+                            )}
+                          </PressableScale>
+                        ) : isSelected ? (
+                          <View
+                            key={vibe.name}
+                            style={StyleSheet.flatten([
+                              styles.vibeChip,
+                              styles.vibeChipSelected,
+                            ])}
                           >
-                            {vibe.name}
-                          </Text>
-                        </View>
-                      ) : null;
-                    })}
-                  </View>
-                )}
-              </View>
-            </Animated.View>
+                            <Text style={styles.vibeEmoji}>{vibe.emoji}</Text>
+                            <Text
+                              style={[styles.vibeText, styles.vibeTextSelected]}
+                            >
+                              {vibe.name}
+                            </Text>
+                          </View>
+                        ) : null;
+                      })}
+                    </View>
+                  )}
+                </View>
+              </Animated.View>
+            )}
 
             {/* Favourite Clubs Section */}
             <Animated.View

@@ -214,9 +214,6 @@ export const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: "rgba(57, 243, 255, 0.1)",
     marginBottom: 16,
   },
   emptyText: {
