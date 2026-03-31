@@ -15,13 +15,38 @@ defmodule Backend.Strobe do
     # Remove any existing request first
     delete_approval(club_id, session.id)
 
-    %DJApproval{}
-    |> DJApproval.changeset(%{
-      dj_user_id: session.id,
-      club_id: club_id,
-      status: "pending"
-    })
-    |> Repo.insert()
+    result =
+      %DJApproval{}
+      |> DJApproval.changeset(%{
+        dj_user_id: session.id,
+        club_id: club_id,
+        status: "pending"
+      })
+      |> Repo.insert()
+
+    case result do
+      {:ok, approval} ->
+        # Preload DJ user info and broadcast to the club's strobe channel
+        approval = Repo.preload(approval, :dj_user)
+        BackendWeb.Endpoint.broadcast("strobe:#{club_id}", "new_dj_request", %{
+          approval: %{
+            id: approval.id,
+            dj_user_id: approval.dj_user_id,
+            club_id: approval.club_id,
+            status: approval.status,
+            expires_at: approval.expires_at,
+            dj_user: %{
+              id: approval.dj_user.id,
+              username: approval.dj_user.username,
+              avatar_url: approval.dj_user.avatar_url
+            }
+          }
+        })
+        {:ok, approval}
+
+      error ->
+        error
+    end
   end
 
   @doc "Cancel a pending approval request"
@@ -29,6 +54,10 @@ defmodule Backend.Strobe do
     DJApproval
     |> where([a], a.club_id == ^club_id and a.dj_user_id == ^session.id and a.status == "pending")
     |> Repo.delete_all()
+
+    BackendWeb.Endpoint.broadcast("strobe:#{club_id}", "dj_request_cancelled", %{
+      dj_user_id: session.id
+    })
 
     {:ok, :cancelled}
   end
@@ -186,8 +215,10 @@ defmodule Backend.Strobe do
 
   @doc "Get the current active session for a club"
   def get_active_session(club_id) do
+    expiry = DateTime.utc_now() |> DateTime.add(-6 * 3600, :second)
+
     StrobeSession
-    |> where([s], s.club_id == ^club_id and s.status == "active")
+    |> where([s], s.club_id == ^club_id and s.status == "active" and s.started_at >= ^expiry)
     |> order_by([s], desc: s.started_at)
     |> limit(1)
     |> Repo.one()

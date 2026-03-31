@@ -1759,24 +1759,33 @@ export function ScanScreen() {
               ))}
             </View>
 
-            {/* Reset bg to black button — only on bg tab when not black */}
-            {colorModalTab === "bg" && pendingBgColor !== "#000000" && (
-              <Pressable
-                onPress={() => {
+            {/* Reset to initial color — works for both text and bg tabs */}
+            <PressableScale
+              onPress={() => {
+                if (colorModalTab === "text") {
+                  const defaultColor = LED_THEMES[currentStyle].primaryColor;
+                  setPendingTextColor(defaultColor);
+                  pendingTextColorRef.current = defaultColor;
+                } else {
                   setPendingBgColor("#000000");
                   pendingBgColorRef.current = "#000000";
-                  setModalWheelKey((k) => k + 1);
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                }}
-                style={{ position: "absolute", top: 56, right: 24, padding: 4 }}
-              >
-                <Ionicons
-                  name="refresh-outline"
-                  size={20}
-                  color="rgba(255,255,255,0.6)"
-                />
-              </Pressable>
-            )}
+                }
+                setModalWheelKey((k) => k + 1);
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              }}
+              style={{
+                alignSelf: "flex-end",
+                padding: 6,
+                marginBottom: 4,
+                marginTop: -8,
+              }}
+            >
+              <Ionicons
+                name="refresh-outline"
+                size={22}
+                color="rgba(255,255,255,0.6)"
+              />
+            </PressableScale>
 
             <ColorWheelPicker
               key={`wheel-${colorModalTab}-${modalWheelKey}`}
@@ -1803,13 +1812,11 @@ export function ScanScreen() {
 
             <Pressable
               onPress={() => {
-                if (colorModalTab === "text") {
-                  handleCustomColorComplete(pendingTextColorRef.current);
-                } else {
-                  setBgColor(pendingBgColorRef.current);
-                  setShowColorModal(false);
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                }
+                setCustomColor(pendingTextColorRef.current);
+                setLedPrimaryColor(pendingTextColorRef.current);
+                setBgColor(pendingBgColorRef.current);
+                setShowColorModal(false);
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               }}
               style={{
                 marginTop: 20,

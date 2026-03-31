@@ -8,7 +8,6 @@ export const FONT_FAMILIES: {
   sizeScale?: number;
 }[] = [
   { name: "Default", key: "monospace" },
-  { name: "Rubik Mono One", key: "RubikMonoOne_400Regular", wordGap: " " },
   { name: "Rubik Storm", key: "RubikStorm_400Regular", wordGap: "  " },
   { name: "Gelasio", key: "Gelasio_400Regular" },
   { name: "Audiowide", key: "Audiowide_400Regular", wordGap: "  " },
@@ -35,7 +34,6 @@ export const FONT_FAMILIES: {
     name: "Germania One",
     key: "GermaniaOne_400Regular",
     wordGap: "  ",
-    sizeScale: 1.4,
   },
   { name: "Bitcount Ink", key: "BitcountInk_400Regular" },
   { name: "Lemon", key: "Lemon_400Regular", wordGap: "  " },

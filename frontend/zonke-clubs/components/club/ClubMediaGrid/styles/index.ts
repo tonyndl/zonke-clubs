@@ -8,7 +8,6 @@ export const styles = StyleSheet.create({
   headerActions: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: 12,
   },
   subsectionTitle: {
     fontSize: 16,

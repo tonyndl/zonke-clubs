@@ -6,12 +6,14 @@ import {
   RiUserLine,
   RiTimeLine,
   RiRefreshLine,
+  RiWifiLine,
 } from "react-icons/ri";
 import { apiService } from "../../services/api";
 import {
   strobeAdminService,
   type DJApproval,
 } from "../../services/strobeAdminService";
+import { adminSocketService } from "../../services/adminSocketService";
 import {
   StrobeContainer,
   PageHeader,
@@ -57,13 +59,60 @@ export const Strobe: React.FC = () => {
         if (club?.id) {
           setClubId(club.id);
           loadApprovals(club.id);
+
+          // Join the strobe channel for real-time updates
+          adminSocketService.joinStrobeChannel(club.id);
         }
       })
       .catch((err) => {
         console.error("Failed to load club", err);
         setLoading(false);
       });
+
+    return () => {
+      adminSocketService.leaveStrobeChannel();
+    };
   }, [loadApprovals]);
+
+  // Listen for real-time DJ request events
+  useEffect(() => {
+    const handleNewRequest = (payload: any) => {
+      if (!payload?.approval) return;
+      const newApproval: DJApproval = {
+        id: payload.approval.id,
+        dj_user_id: payload.approval.dj_user_id,
+        club_id: payload.approval.club_id,
+        status: payload.approval.status,
+        expires_at: payload.approval.expires_at,
+        dj_user: payload.approval.dj_user,
+      };
+      setApprovals((prev) => {
+        // Avoid duplicates
+        if (prev.some((a) => a.id === newApproval.id)) return prev;
+        return [newApproval, ...prev];
+      });
+    };
+
+    const handleRequestCancelled = (payload: any) => {
+      if (!payload?.dj_user_id) return;
+      setApprovals((prev) =>
+        prev.filter(
+          (a) => a.dj_user_id !== payload.dj_user_id || a.status !== "pending",
+        ),
+      );
+    };
+
+    const unsub1 = adminSocketService.on("new_dj_request", handleNewRequest);
+    const unsub2 = adminSocketService.on(
+      "dj_request_cancelled",
+      handleRequestCancelled,
+    );
+
+    return () => {
+      unsub1();
+      unsub2();
+    };
+  }, []);
 
   const handleApprove = (djUserId: string) => {
     if (!clubId) return;
@@ -109,7 +158,7 @@ export const Strobe: React.FC = () => {
           <PageTitle>DJ Strobe Requests</PageTitle>
           <PageDescription>
             Approve or revoke DJ strobe control access for your venue. Approvals
-            are valid for 24 hours.
+            are valid for 24 hours. Requests appear in real-time.
           </PageDescription>
         </div>
         {clubId && (

@@ -38,7 +38,6 @@ export const styles = StyleSheet.create({
   tabContainer: {
     flexDirection: "row",
     paddingHorizontal: 20,
-    marginBottom: 16,
     borderBottomWidth: 1,
     borderBottomColor: "rgba(57, 243, 255, 0.1)",
   },
@@ -96,14 +95,91 @@ export const styles = StyleSheet.create({
     borderTopLeftRadius: 2,
     borderTopRightRadius: 2,
   },
+
+  // ── Filter Bar ──────────────────────────────────────────────────────────
+  filterBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    gap: 8,
+  },
+  filterPills: {
+    flexDirection: "row",
+    gap: 8,
+    flex: 1,
+  },
+  filterPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 20,
+    backgroundColor: "rgba(57, 243, 255, 0.06)",
+    borderWidth: 1,
+    borderColor: "rgba(57, 243, 255, 0.15)",
+  },
+  filterPillActive: {
+    backgroundColor: Colors.gold,
+    borderColor: Colors.gold,
+  },
+  filterPillText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: Colors.smoke,
+  },
+  filterPillTextActive: {
+    color: Colors.bg,
+  },
+  filterPillCount: {
+    backgroundColor: "rgba(57, 243, 255, 0.15)",
+    borderRadius: 8,
+    minWidth: 20,
+    height: 18,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 5,
+  },
+  filterPillCountActive: {
+    backgroundColor: "rgba(0, 0, 0, 0.2)",
+  },
+  filterPillCountText: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: Colors.gold,
+  },
+  filterPillCountTextActive: {
+    color: Colors.bg,
+  },
+  sortButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "rgba(57, 243, 255, 0.2)",
+  },
+  sortButtonText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: Colors.gold,
+  },
+
+  // ── Content ─────────────────────────────────────────────────────────────
   content: {
     flex: 1,
   },
   contentContainer: {
     flexGrow: 1,
     padding: 20,
+    paddingTop: 8,
     paddingBottom: 40,
   },
+
+  // ── Request Card ────────────────────────────────────────────────────────
   requestCard: {
     marginBottom: 16,
     borderRadius: 20,
@@ -114,6 +190,32 @@ export const styles = StyleSheet.create({
   cardGradient: {
     padding: 16,
     backgroundColor: Colors.bgCard,
+  },
+  statusBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    alignSelf: "flex-start",
+    gap: 4,
+    paddingVertical: 3,
+    paddingHorizontal: 8,
+    borderRadius: 10,
+    marginBottom: 10,
+  },
+  statusBadgePending: {
+    backgroundColor: "rgba(57, 243, 255, 0.1)",
+  },
+  statusBadgeAccepted: {
+    backgroundColor: "rgba(16, 185, 129, 0.12)",
+  },
+  statusBadgeText: {
+    fontSize: 11,
+    fontWeight: "700",
+  },
+  statusBadgeTextPending: {
+    color: Colors.gold,
+  },
+  statusBadgeTextAccepted: {
+    color: "#10B981",
   },
   userSection: {
     flexDirection: "row",

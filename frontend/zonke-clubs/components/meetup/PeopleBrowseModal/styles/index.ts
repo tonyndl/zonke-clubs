@@ -21,7 +21,6 @@ export const styles = StyleSheet.create({
   closeButton: {
     width: 40,
     height: 40,
-    alignItems: "center",
     justifyContent: "center",
   },
   headerCenter: {

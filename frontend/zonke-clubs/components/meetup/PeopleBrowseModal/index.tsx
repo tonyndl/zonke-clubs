@@ -1,19 +1,9 @@
-import React, {
-  useState,
-  useMemo,
-  useEffect,
-  useCallback,
-  useRef,
-} from "react";
-import {
-  View,
-  Text,
-  FlatList,
-  Image,
-  Pressable,
-  ActivityIndicator,
-} from "react-native";
+import React, { useState, useMemo, useEffect, useCallback } from "react";
+import { View, Text, FlatList, Image, Pressable } from "react-native";
 import Animated, { FadeInDown, FadeIn, FadeOut } from "react-native-reanimated";
+import * as Haptics from "expo-haptics";
+import { SafeAreaView } from "react-native-safe-area-context";
+
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { Colors } from "@/constants/ui";
@@ -24,13 +14,7 @@ import {
   ActivityType,
   formatPlannedDate,
 } from "@/types/meetup";
-import { LinearGradient } from "expo-linear-gradient";
 
-import * as Haptics from "expo-haptics";
-import {
-  SafeAreaView,
-  useSafeAreaInsets,
-} from "react-native-safe-area-context";
 import { Modal } from "../../modal";
 import { styles } from "./styles";
 
@@ -71,7 +55,6 @@ export function PeopleBrowse({
   clubId,
 }: Props) {
   const router = useRouter();
-  const insets = useSafeAreaInsets();
   const [expandedCard, setExpandedCard] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<string>("all");
   const [selectedActivity, setSelectedActivity] = useState<
@@ -143,29 +126,6 @@ export function PeopleBrowse({
     return counts;
   }, [intentions, selectedDate]);
 
-  // Date counts (for current activity filter)
-  const dateCounts = useMemo(() => {
-    const counts: Record<string, number> = { all: intentions.length };
-
-    // Initialize all dates with 0
-    availableDates.forEach((date) => {
-      counts[date] = 0;
-    });
-
-    const activityFiltered =
-      selectedActivity === "all"
-        ? intentions
-        : intentions.filter((i) => i.activityType === selectedActivity);
-
-    activityFiltered.forEach((i) => {
-      if (counts.hasOwnProperty(i.plannedDate)) {
-        counts[i.plannedDate]++;
-      }
-    });
-
-    return counts;
-  }, [intentions, selectedActivity, availableDates]);
-
   // Reset to page 1 whenever filters change
   useEffect(() => {
     setPage(1);
@@ -191,7 +151,7 @@ export function PeopleBrowse({
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
-      <View style={[styles.header, { paddingTop: insets.top }]}>
+      <View style={[styles.header]}>
         <PressableScale
           onPress={() => (onClose ? onClose() : router.back())}
           style={styles.closeButton}
@@ -201,11 +161,6 @@ export function PeopleBrowse({
 
         <View style={styles.headerCenter}>
           <Text style={styles.headerTitle}>People Looking to Meet</Text>
-          {filteredIntentions.length > 0 && (
-            <Text style={styles.headerSubtitle}>
-              {displayedIntentions.length} of {filteredIntentions.length}
-            </Text>
-          )}
         </View>
 
         <View style={{ width: 40 }} />
@@ -496,21 +451,6 @@ export function PeopleBrowse({
               <Text style={styles.resetButtonText}>Reset Filters</Text>
             </PressableScale>
           </Animated.View>
-        }
-        ListFooterComponent={
-          filteredIntentions.length > 0 ? (
-            <View style={styles.paginationFooter}>
-              {loadingMore ? (
-                <ActivityIndicator size="small" color={Colors.gold} />
-              ) : hasMore ? null : (
-                <Text style={styles.paginationEnd}>
-                  {filteredIntentions.length}{" "}
-                  {filteredIntentions.length === 1 ? "person" : "people"} here
-                  tonight
-                </Text>
-              )}
-            </View>
-          ) : null
         }
       />
     </SafeAreaView>

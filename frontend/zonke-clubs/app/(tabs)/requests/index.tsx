@@ -6,7 +6,6 @@ import {
   RefreshControl,
   Image,
   TouchableOpacity,
-  Touchable,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useFocusEffect } from "expo-router";
@@ -22,15 +21,18 @@ import {
   transformRequest,
 } from "@/services/connectionService";
 import { websocketService } from "@/services/websocketService";
-import { LinearGradient } from "expo-linear-gradient";
 import { TextStroke } from "../../_screens/Login/utils";
 import { Toast } from "@/components/ui/Toast";
 import { styles } from "./_styles";
 
 type TabType = "received" | "sent";
+type StatusFilter = "all" | "pending" | "accepted";
+type SortOrder = "newest" | "oldest";
 
 export default function RequestsScreen() {
   const [activeTab, setActiveTab] = useState<TabType>("received");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [sortOrder, setSortOrder] = useState<SortOrder>("newest");
   const [receivedRequests, setReceivedRequests] = useState<ConnectionRequest[]>(
     [],
   );
@@ -46,7 +48,6 @@ export default function RequestsScreen() {
   const [toastType, setToastType] = useState<"success" | "error" | "info">(
     "success",
   );
-  const [acceptedUserName, setAcceptedUserName] = useState("");
 
   const loadRequests = () => {
     return Promise.all([
@@ -68,7 +69,6 @@ export default function RequestsScreen() {
   useEffect(() => {
     loadRequests();
 
-    // Listen for new connection requests (WebSocket is connected globally in tabs layout)
     const handleNewRequest = (payload: any) => {
       try {
         const transformedRequest = transformRequest(payload.request);
@@ -76,14 +76,11 @@ export default function RequestsScreen() {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       } catch (error) {
         console.error("Error transforming request:", error);
-        // Fallback: reload all requests
         loadRequests();
       }
     };
 
-    // Listen for accepted requests
     const handleRequestAccepted = (payload: any) => {
-      // Update the request status in sent requests (don't remove, show Chat Now button)
       setSentRequests((prev) =>
         prev.map((req) =>
           req.id === payload.request.id
@@ -95,20 +92,16 @@ export default function RequestsScreen() {
             : req,
         ),
       );
-
       setToastMessage("Your connection request was accepted!");
       setToastType("success");
       setToastVisible(true);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     };
 
-    // Listen for declined requests
     const handleRequestDeclined = (payload: any) => {
-      // Remove from sent requests
       setSentRequests((prev) =>
         prev.filter((req) => req.id !== payload.request.id),
       );
-
       setToastMessage("Your connection request was declined");
       setToastType("info");
       setToastVisible(true);
@@ -118,7 +111,6 @@ export default function RequestsScreen() {
     websocketService.on("connection_request_accepted", handleRequestAccepted);
     websocketService.on("connection_request_declined", handleRequestDeclined);
 
-    // Cleanup
     return () => {
       websocketService.off("new_connection_request", handleNewRequest);
       websocketService.off(
@@ -132,7 +124,6 @@ export default function RequestsScreen() {
     };
   }, []);
 
-  // Reload requests when screen comes into focus
   useFocusEffect(
     useCallback(() => {
       loadRequests();
@@ -148,10 +139,8 @@ export default function RequestsScreen() {
   };
 
   const handleAccept = (requestId: string) => {
-    // Find the request to get user details
     const request = receivedRequests.find((req) => req.id === requestId);
     if (!request) return;
-
     const userName = request.sender.username;
 
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -160,27 +149,19 @@ export default function RequestsScreen() {
     connectionService
       .acceptRequest(requestId)
       .then(() => {
-        // DON'T remove from list - keep it visible with updated status
-        // Update the request status in the list
         setReceivedRequests((prev) =>
           prev.map((req) =>
             req.id === requestId ? { ...req, status: "accepted" as any } : req,
           ),
         );
-
-        // Show success toast
-        setAcceptedUserName(userName);
         setToastMessage(`You can now chat with ${userName}!`);
         setToastType("success");
         setToastVisible(true);
       })
       .catch((error) => {
         console.error("Error accepting request:", error);
-        console.error("Error details:", JSON.stringify(error, null, 2));
         const errorMessage =
-          error?.message ||
-          error?.error ||
-          "Failed to accept request. Please try again.";
+          error?.message || "Failed to accept request. Please try again.";
         setToastMessage(errorMessage);
         setToastType("error");
         setToastVisible(true);
@@ -206,11 +187,8 @@ export default function RequestsScreen() {
       })
       .catch((error) => {
         console.error("Error declining request:", error);
-        console.error("Error details:", JSON.stringify(error, null, 2));
         const errorMessage =
-          error?.message ||
-          error?.error ||
-          "Failed to decline request. Please try again.";
+          error?.message || "Failed to decline request. Please try again.";
         setToastMessage(errorMessage);
         setToastType("error");
         setToastVisible(true);
@@ -234,11 +212,8 @@ export default function RequestsScreen() {
       })
       .catch((error) => {
         console.error("Error canceling request:", error);
-        console.error("Error details:", JSON.stringify(error, null, 2));
         const errorMessage =
-          error?.message ||
-          error?.error ||
-          "Failed to cancel request. Please try again.";
+          error?.message || "Failed to cancel request. Please try again.";
         setToastMessage(errorMessage);
         setToastType("error");
         setToastVisible(true);
@@ -252,26 +227,17 @@ export default function RequestsScreen() {
     if (tab !== activeTab) {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       setActiveTab(tab);
+      setStatusFilter("all");
     }
   };
 
   const formatTimeAgo = (dateString: string): string => {
     if (!dateString) return "";
-
     const date = new Date(dateString);
     const now = new Date();
-
-    // Check if date is valid
-    if (isNaN(date.getTime())) {
-      console.warn("Invalid date string:", dateString);
-      return "";
-    }
-
+    if (isNaN(date.getTime())) return "";
     const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
-
-    // Handle future dates (shouldn't happen, but just in case)
     if (diffInSeconds < 0) return "just now";
-
     if (diffInSeconds < 60) return "just now";
     if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
     if (diffInSeconds < 86400)
@@ -280,6 +246,25 @@ export default function RequestsScreen() {
       return `${Math.floor(diffInSeconds / 86400)}d ago`;
     return `${Math.floor(diffInSeconds / 604800)}w ago`;
   };
+
+  // Get filtered & sorted requests
+  const rawRequests =
+    activeTab === "received" ? receivedRequests : sentRequests;
+  const pendingCount = rawRequests.filter((r) => r.status === "pending").length;
+  const acceptedCount = rawRequests.filter(
+    (r) => r.status === "accepted",
+  ).length;
+
+  const filteredRequests = rawRequests
+    .filter((r) => {
+      if (statusFilter === "all") return true;
+      return r.status === statusFilter;
+    })
+    .sort((a, b) => {
+      const dateA = new Date(a.createdAt).getTime();
+      const dateB = new Date(b.createdAt).getTime();
+      return sortOrder === "newest" ? dateB - dateA : dateA - dateB;
+    });
 
   const renderRequest = (
     request: ConnectionRequest,
@@ -309,7 +294,6 @@ export default function RequestsScreen() {
         <TouchableOpacity
           onPress={() => {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-            // Route to profile tab with userId and connection request data
             const requestData = encodeURIComponent(
               JSON.stringify({
                 id: request.id,
@@ -323,6 +307,32 @@ export default function RequestsScreen() {
           }}
           style={styles.cardGradient}
         >
+          {/* Status badge */}
+          <View
+            style={[
+              styles.statusBadge,
+              isAccepted
+                ? styles.statusBadgeAccepted
+                : styles.statusBadgePending,
+            ]}
+          >
+            <Ionicons
+              name={isAccepted ? "checkmark-circle" : "time-outline"}
+              size={12}
+              color={isAccepted ? "#10B981" : Colors.gold}
+            />
+            <Text
+              style={[
+                styles.statusBadgeText,
+                isAccepted
+                  ? styles.statusBadgeTextAccepted
+                  : styles.statusBadgeTextPending,
+              ]}
+            >
+              {isAccepted ? "Approved" : "Pending"}
+            </Text>
+          </View>
+
           {/* User Info */}
           <View style={styles.userSection}>
             <View style={styles.avatarContainer}>
@@ -375,12 +385,10 @@ export default function RequestsScreen() {
           <View style={styles.actions}>
             {!isSent ? (
               isAccepted ? (
-                // Show Chat Now button for accepted requests
                 <PressableScale
                   style={[styles.button, styles.chatNowButton]}
                   onPress={() => {
                     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                    // Use threadId if available, otherwise fall back to user.id to create new thread
                     const chatId = request.threadId || user.id;
                     router.push(`/chat/${chatId}`);
                   }}
@@ -398,9 +406,7 @@ export default function RequestsScreen() {
                 <>
                   <PressableScale
                     style={[styles.button, styles.declineButton]}
-                    onPress={() => {
-                      handleDecline(request.id);
-                    }}
+                    onPress={() => handleDecline(request.id)}
                     disabled={isDeclining || isAccepting}
                   >
                     <Ionicons name="close" size={20} color={Colors.lightGrey} />
@@ -411,9 +417,7 @@ export default function RequestsScreen() {
 
                   <PressableScale
                     style={[styles.button, styles.acceptButtonContainer]}
-                    onPress={() => {
-                      handleAccept(request.id);
-                    }}
+                    onPress={() => handleAccept(request.id)}
                     disabled={isAccepting || isDeclining}
                   >
                     <View style={styles.acceptGradient} pointerEvents="none">
@@ -425,14 +429,11 @@ export default function RequestsScreen() {
                   </PressableScale>
                 </>
               )
-            ) : // For sent requests
-            isAccepted ? (
-              // Show Chat Now button for accepted sent requests
+            ) : isAccepted ? (
               <PressableScale
                 style={[styles.button, styles.chatNowButton]}
                 onPress={() => {
                   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  // Use threadId if available, otherwise fall back to user.id to create new thread
                   const chatId = request.threadId || user.id;
                   router.push(`/chat/${chatId}`);
                 }}
@@ -443,7 +444,6 @@ export default function RequestsScreen() {
                 </View>
               </PressableScale>
             ) : (
-              // Show Cancel Request button for pending sent requests
               <PressableScale
                 style={[styles.button, styles.cancelButton]}
                 onPress={() => handleCancel(request.id)}
@@ -475,17 +475,21 @@ export default function RequestsScreen() {
         />
       </View>
       <Text style={styles.emptyTitle}>
-        {isSent ? "No Sent Requests" : "No Pending Requests"}
+        {statusFilter !== "all"
+          ? `No ${statusFilter === "accepted" ? "Approved" : "Pending"} Requests`
+          : isSent
+            ? "No Sent Requests"
+            : "No Pending Requests"}
       </Text>
       <Text style={styles.emptyText}>
-        {isSent
-          ? "You haven't sent any connection requests yet. Start connecting with people at clubs!"
-          : "When someone sends you a connection request, it will appear here."}
+        {statusFilter !== "all"
+          ? "Try a different filter to see more requests."
+          : isSent
+            ? "You haven't sent any connection requests yet. Start connecting with people at clubs!"
+            : "When someone sends you a connection request, it will appear here."}
       </Text>
     </Animated.View>
   );
-
-  const requests = activeTab === "received" ? receivedRequests : sentRequests;
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
@@ -517,23 +521,6 @@ export default function RequestsScreen() {
             >
               Received
             </Text>
-            {receivedRequests.length > 0 && (
-              <View
-                style={[
-                  styles.tabBadge,
-                  activeTab === "received" && styles.tabBadgeActive,
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.tabBadgeText,
-                    activeTab === "received" && styles.tabBadgeTextActive,
-                  ]}
-                >
-                  {receivedRequests.length}
-                </Text>
-              </View>
-            )}
           </View>
           {activeTab === "received" && <View style={styles.tabIndicator} />}
         </TouchableOpacity>
@@ -557,27 +544,88 @@ export default function RequestsScreen() {
             >
               Requested
             </Text>
-            {sentRequests.length > 0 && (
-              <View
-                style={[
-                  styles.tabBadge,
-                  activeTab === "sent" && styles.tabBadgeActive,
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.tabBadgeText,
-                    activeTab === "sent" && styles.tabBadgeTextActive,
-                  ]}
-                >
-                  {sentRequests.length}
-                </Text>
-              </View>
-            )}
           </View>
           {activeTab === "sent" && <View style={styles.tabIndicator} />}
         </TouchableOpacity>
       </View>
+
+      {/* Filter Bar */}
+      {rawRequests.length > 0 && (
+        <View style={styles.filterBar}>
+          {/* Status Filters */}
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.filterPills}
+          >
+            {(
+              [
+                { key: "all", label: "All", count: rawRequests.length },
+                { key: "pending", label: "Pending", count: pendingCount },
+                { key: "accepted", label: "Approved", count: acceptedCount },
+              ] as const
+            ).map(({ key, label, count }) => {
+              if (count === 0 && key === "all") return null;
+              const isActive = statusFilter === key;
+              return (
+                <PressableScale
+                  key={key}
+                  style={[
+                    styles.filterPill,
+                    isActive && styles.filterPillActive,
+                  ]}
+                  onPress={() => {
+                    setStatusFilter(key);
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  }}
+                >
+                  <Text
+                    style={[
+                      styles.filterPillText,
+                      isActive && styles.filterPillTextActive,
+                    ]}
+                  >
+                    {label}
+                  </Text>
+                  <View
+                    style={[
+                      styles.filterPillCount,
+                      isActive && styles.filterPillCountActive,
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.filterPillCountText,
+                        isActive && styles.filterPillCountTextActive,
+                      ]}
+                    >
+                      {count}
+                    </Text>
+                  </View>
+                </PressableScale>
+              );
+            })}
+          </ScrollView>
+
+          {/* Sort Toggle */}
+          <PressableScale
+            style={styles.sortButton}
+            onPress={() => {
+              setSortOrder((prev) => (prev === "newest" ? "oldest" : "newest"));
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            }}
+          >
+            <Ionicons
+              name={sortOrder === "newest" ? "arrow-down" : "arrow-up"}
+              size={14}
+              color={Colors.gold}
+            />
+            <Text style={styles.sortButtonText}>
+              {sortOrder === "newest" ? "New" : "Old"}
+            </Text>
+          </PressableScale>
+        </View>
+      )}
 
       {/* Content */}
       <ScrollView
@@ -598,10 +646,10 @@ export default function RequestsScreen() {
           <View style={styles.loadingContainer}>
             <Text style={styles.loadingText}>Loading requests...</Text>
           </View>
-        ) : requests.length === 0 ? (
+        ) : filteredRequests.length === 0 ? (
           renderEmptyState(activeTab === "sent")
         ) : (
-          requests.map((request, index) =>
+          filteredRequests.map((request, index) =>
             renderRequest(request, index, activeTab === "sent"),
           )
         )}

@@ -96,7 +96,7 @@ export default function RequestApprovalScreen() {
       {/* Header */}
       <View style={styles.header}>
         <Pressable onPress={() => router.back()} style={styles.backBtn}>
-          <Ionicons name="arrow-back" size={24} color={Colors.platinum} />
+          <Ionicons name="arrow-back" size={24} color={Colors.gold} />
         </Pressable>
         <Text style={styles.headerTitle}>REQUEST APPROVAL</Text>
         <View style={{ width: 40 }} />
@@ -135,10 +135,19 @@ export default function RequestApprovalScreen() {
           style={{ marginTop: 40 }}
           size="large"
         />
+      ) : search.length === 0 ? (
+        <View style={styles.emptyCenter}>
+          <Ionicons name="search" size={48} color={Colors.smoke} />
+          <Text style={styles.emptyText}>Search for a club</Text>
+          <Text style={styles.emptySubtext}>
+            Start typing to find the club you're performing at
+          </Text>
+        </View>
       ) : (
         <FlatList
           data={filteredClubs}
           keyExtractor={(c) => c.id}
+          keyboardShouldPersistTaps="handled"
           contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={
@@ -255,7 +264,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 16,
     fontWeight: "900",
-    color: Colors.platinum,
+    color: Colors.gold,
     letterSpacing: 3,
   },
   infoBanner: {
@@ -302,7 +311,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    backgroundColor: Colors.bgCard,
+    backgroundColor: Colors.bgSecondary,
     borderRadius: 14,
     padding: 16,
     marginBottom: 10,
@@ -357,9 +366,22 @@ const styles = StyleSheet.create({
     paddingTop: 60,
     gap: 12,
   },
+  emptyCenter: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 12,
+    marginTop: -60,
+  },
   emptyText: {
     fontSize: 15,
     color: Colors.smoke,
+  },
+  emptySubtext: {
+    fontSize: 13,
+    color: Colors.smoke,
+    opacity: 0.6,
+    textAlign: "center",
   },
   footer: {
     position: "absolute",

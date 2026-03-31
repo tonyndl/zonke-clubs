@@ -36,5 +36,9 @@ defmodule Backend.Intentions.Intention do
     |> validate_inclusion(:activity_type, @activity_types)
     |> assoc_constraint(:user)
     |> assoc_constraint(:club)
+    |> unique_constraint([:user_id, :club_id, :planned_date],
+      name: :intentions_user_id_club_id_planned_date_index,
+      message: "you already have an intention for this club on this date"
+    )
   end
 end

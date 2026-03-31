@@ -46,7 +46,7 @@ const DATE_FILTERS: { key: DateFilter; label: string }[] = [
   { key: "all", label: "All Days" },
   { key: "tonight", label: "Tonight" },
   { key: "tomorrow", label: "Tomorrow" },
-  { key: "later", label: "Coming Up" },
+  // { key: "later", label: "Coming Up" },
 ];
 
 export function ClubMeetupSection({
