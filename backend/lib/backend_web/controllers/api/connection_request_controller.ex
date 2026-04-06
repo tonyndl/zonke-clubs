@@ -72,6 +72,18 @@ defmodule BackendWeb.API.ConnectionRequestController do
   end
 
   @doc """
+  Batch delete connection requests.
+  Deletes requests where the user is either sender or receiver.
+  """
+  def batch_delete(conn, %{"ids" => ids}, session) do
+    with {:ok, count} <- Connections.delete_requests(ids, session.id) do
+      conn
+      |> put_status(:ok)
+      |> render(:batch_delete, deleted: count)
+    end
+  end
+
+  @doc """
   Cancel a connection request.
   Requires authentication and user must be the sender.
   """

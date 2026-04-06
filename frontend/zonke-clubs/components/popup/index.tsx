@@ -372,6 +372,8 @@ export const PopupMenu = ({
                   const lowerLabel = label.toLowerCase();
                   if (lowerLabel.includes("edit"))
                     return { name: "create-outline", color: Colors.gold };
+                  if (lowerLabel.includes("clear"))
+                    return { name: "trash-outline", color: "#FF3B30" };
                   if (
                     lowerLabel.includes("delete") ||
                     lowerLabel.includes("remove")

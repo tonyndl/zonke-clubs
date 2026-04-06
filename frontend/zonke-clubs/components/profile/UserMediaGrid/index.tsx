@@ -98,9 +98,14 @@ export function UserMediaGrid({
                 <Ionicons name="images" size={22} color={Colors.gold} />
                 <Text style={styles.sectionTitle}>My Club Vibes</Text>
               </View>
-              <PressableScale style={styles.addMediaButton} onPress={onAddPost}>
-                <Ionicons name="add" size={24} color={Colors.gold} />
-              </PressableScale>
+              {onAddPost && (
+                <PressableScale
+                  style={styles.addMediaButton}
+                  onPress={onAddPost}
+                >
+                  <Ionicons name="add" size={24} color={Colors.gold} />
+                </PressableScale>
+              )}
             </View>
 
             {/* Tab Bar */}
@@ -208,9 +213,11 @@ export function UserMediaGrid({
               Share your club moments to build your vibe collection
             </Text>
 
-            <Pressable style={styles.addPostBtn} onPress={onAddPost}>
-              <Text style={styles.addPostBtnText}>Add Post</Text>
-            </Pressable>
+            {onAddPost && (
+              <Pressable style={styles.addPostBtn} onPress={onAddPost}>
+                <Text style={styles.addPostBtnText}>Add Post</Text>
+              </Pressable>
+            )}
           </View>
         )}
       </Animated.View>

@@ -54,6 +54,17 @@ defmodule BackendWeb.Admin.AdminController do
   end
 
   @doc """
+  Delete admin account (requires password confirmation).
+  """
+  def delete_account(conn, params, session) do
+    with {:ok, _admin} <- Admins.delete_account(session, params) do
+      conn
+      |> put_status(:ok)
+      |> render(:password_changed, message: "Account deleted successfully")
+    end
+  end
+
+  @doc """
   Get dashboard statistics for the admin's club.
   """
   def dashboard_stats(conn, _params, session) do

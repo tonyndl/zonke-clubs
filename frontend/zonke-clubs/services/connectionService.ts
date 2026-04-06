@@ -108,6 +108,17 @@ class ConnectionService {
   }
 
   /**
+   * Batch delete connection requests (requires authentication)
+   */
+  deleteRequests(ids: string[]): Promise<{ deleted: number }> {
+    return api.post<{ deleted: number }>(
+      "/connection-requests/batch-delete",
+      { ids },
+      true,
+    );
+  }
+
+  /**
    * Disconnect from a user using thread_id (requires authentication)
    */
   disconnectByThread(

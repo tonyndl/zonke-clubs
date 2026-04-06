@@ -80,39 +80,62 @@ defmodule Backend.Strobe do
   # ── Club admin approval management ───────────────────────────────────────────
 
   @doc "Admin approves a DJ's pending request"
-  def approve_dj(club_id, dj_user_id, session) do
+  def approve_dj(club_id, dj_user_id, _session) do
     expires_at =
       DateTime.utc_now()
       |> DateTime.add(24 * 3600, :second)
       |> DateTime.truncate(:second)
 
-    case Repo.get_by(DJApproval, club_id: club_id, dj_user_id: dj_user_id) do
-      nil ->
-        # Create new approved record (admin-initiated)
-        %DJApproval{}
-        |> DJApproval.changeset(%{
-          dj_user_id: dj_user_id,
-          club_id: club_id,
-          status: "approved",
-          expires_at: expires_at
-        })
-        |> Repo.insert()
+    result =
+      case Repo.get_by(DJApproval, club_id: club_id, dj_user_id: dj_user_id) do
+        nil ->
+          %DJApproval{}
+          |> DJApproval.changeset(%{
+            dj_user_id: dj_user_id,
+            club_id: club_id,
+            status: "approved",
+            expires_at: expires_at
+          })
+          |> Repo.insert()
 
-      existing ->
-        existing
-        |> DJApproval.changeset(%{
-          status: "approved",
-          expires_at: expires_at
+        existing ->
+          existing
+          |> DJApproval.changeset(%{
+            status: "approved",
+            expires_at: expires_at
+          })
+          |> Repo.update()
+      end
+
+    case result do
+      {:ok, approval} ->
+        BackendWeb.Endpoint.broadcast("user:#{dj_user_id}", "dj_request_approved", %{
+          club_id: club_id
         })
-        |> Repo.update()
+        {:ok, approval}
+
+      error ->
+        error
     end
   end
 
-  @doc "Revoke a DJ's approval"
+  @doc "Revoke/deny a DJ's approval"
   def revoke_approval(club_id, dj_user_id, _session) do
     case Repo.get_by(DJApproval, club_id: club_id, dj_user_id: dj_user_id) do
-      nil -> {:error, :not_found}
-      approval -> Repo.delete(approval)
+      nil ->
+        {:error, :not_found}
+
+      approval ->
+        case Repo.delete(approval) do
+          {:ok, _} ->
+            BackendWeb.Endpoint.broadcast("user:#{dj_user_id}", "dj_request_denied", %{
+              club_id: club_id
+            })
+            {:ok, :deleted}
+
+          error ->
+            error
+        end
     end
   end
 
@@ -207,8 +230,10 @@ defmodule Backend.Strobe do
 
   @doc "List all active strobe sessions across all clubs"
   def list_active_sessions do
+    expiry = DateTime.utc_now() |> DateTime.add(-6 * 3600, :second)
+
     StrobeSession
-    |> where([s], s.status == "active")
+    |> where([s], s.status == "active" and s.started_at >= ^expiry)
     |> preload(:club)
     |> Repo.all()
   end
@@ -226,8 +251,10 @@ defmodule Backend.Strobe do
 
   @doc "Get DJ's active sessions"
   def list_dj_sessions(session) do
+    expiry = DateTime.utc_now() |> DateTime.add(-6 * 3600, :second)
+
     StrobeSession
-    |> where([s], s.dj_user_id == ^session.id and s.status == "active")
+    |> where([s], s.dj_user_id == ^session.id and s.status == "active" and s.started_at >= ^expiry)
     |> order_by([s], desc: s.started_at)
     |> Repo.all()
   end

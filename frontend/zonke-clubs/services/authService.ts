@@ -52,6 +52,7 @@ export interface User {
     longitude: number;
   };
   onboarding_complete?: boolean;
+  spending_visible?: boolean;
 }
 
 export interface RegisterData {

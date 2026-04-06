@@ -53,7 +53,12 @@ config :ex_aws,
 config :backend, Oban,
   engine: Oban.Engines.Basic,
   repo: Backend.Repo,
-  queues: [push_notifications: 10]
+  queues: [push_notifications: 10, scheduled_tasks: 1],
+  plugins: [
+    {Oban.Plugins.Cron, crontab: [
+      {"0 2 * * *", Backend.Workers.ExpiredRequestsCleanupWorker}
+    ]}
+  ]
 
 # Import environment specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.

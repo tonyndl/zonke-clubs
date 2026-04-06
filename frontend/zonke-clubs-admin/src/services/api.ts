@@ -145,6 +145,25 @@ class ApiService {
     });
   }
 
+  updateProfile(data: { name?: string; email?: string }) {
+    return this.client.put("/admin/profile", data).then((res) => res.data);
+  }
+
+  changePassword(currentPassword: string, newPassword: string) {
+    return this.client
+      .put("/admin/profile/password", {
+        current_password: currentPassword,
+        new_password: newPassword,
+      })
+      .then((res) => res.data);
+  }
+
+  deleteAccount(password: string) {
+    return this.client
+      .delete("/admin/profile", { data: { password } })
+      .then((res) => res.data);
+  }
+
   // Club endpoints
   getMyClub() {
     return this.client.get("/clubs/my-club").then((response) => response.data);

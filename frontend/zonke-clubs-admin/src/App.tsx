@@ -23,6 +23,7 @@ import { Permissions } from "./pages/Settings/Permissions";
 import { BlockedUsers } from "./pages/Settings/BlockedUsers";
 import { Guidelines } from "./pages/Settings/Guidelines";
 import { Subscription } from "./pages/Settings/Subscription";
+import { Account } from "./pages/Settings/Account";
 import { Strobe } from "./pages/Strobe/Strobe";
 import { Auth } from "./pages/Auth";
 import { Setup } from "./pages/Setup";
@@ -112,6 +113,7 @@ function AppRoutes() {
         <Route path="settings/blocked-users" element={<BlockedUsers />} />
         <Route path="settings/guidelines" element={<Guidelines />} />
         <Route path="settings/subscription" element={<Subscription />} />
+        <Route path="settings/account" element={<Account />} />
         <Route path="strobe" element={<Strobe />} />
       </Route>
     </Routes>

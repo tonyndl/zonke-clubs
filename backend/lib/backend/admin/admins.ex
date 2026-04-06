@@ -55,6 +55,17 @@ defmodule Backend.Admin.Admins do
   end
 
   @doc """
+  Deletes an admin account after verifying the password.
+  """
+  def delete_account(%Admin{} = admin, %{"password" => password}) do
+    with :ok <- verify_password(admin, password) do
+      Repo.delete(admin)
+    end
+  end
+
+  def delete_account(_admin, _params), do: {:error, :invalid_params}
+
+  @doc """
   Checks if an admin account is active.
   Returns :ok if active, {:error, :account_inactive} if not.
   """

@@ -10,6 +10,7 @@ import {
 } from "react-icons/ri";
 import { apiService } from "../../../services/api";
 import { useToast } from "../../../components/Toast";
+import { TimePicker } from "../../../components/TimePicker";
 import {
   SettingsContainer,
   PageHeader,
@@ -326,41 +327,15 @@ export const OpeningHours: React.FC = () => {
               <TimeInputs>
                 {schedule[day].isOpen ? (
                   <>
-                    <TimeSelectWrapper>
-                      <TimeClockIcon>
-                        {React.createElement(RiTimeLine as React.ComponentType)}
-                      </TimeClockIcon>
-                      <TimeSelect
-                        value={schedule[day].open}
-                        onChange={(e) =>
-                          handleTimeChange(day, "open", e.target.value)
-                        }
-                      >
-                        {TIME_OPTIONS.map((t) => (
-                          <option key={t} value={t}>
-                            {formatTimeLabel(t)}
-                          </option>
-                        ))}
-                      </TimeSelect>
-                    </TimeSelectWrapper>
+                    <TimePicker
+                      value={schedule[day].open}
+                      onChange={(time) => handleTimeChange(day, "open", time)}
+                    />
                     <TimeSeparator>to</TimeSeparator>
-                    <TimeSelectWrapper>
-                      <TimeClockIcon>
-                        {React.createElement(RiTimeLine as React.ComponentType)}
-                      </TimeClockIcon>
-                      <TimeSelect
-                        value={schedule[day].close}
-                        onChange={(e) =>
-                          handleTimeChange(day, "close", e.target.value)
-                        }
-                      >
-                        {TIME_OPTIONS.map((t) => (
-                          <option key={t} value={t}>
-                            {formatTimeLabel(t)}
-                          </option>
-                        ))}
-                      </TimeSelect>
-                    </TimeSelectWrapper>
+                    <TimePicker
+                      value={schedule[day].close}
+                      onChange={(time) => handleTimeChange(day, "close", time)}
+                    />
                   </>
                 ) : (
                   <ClosedLabel>Closed</ClosedLabel>

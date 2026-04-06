@@ -11,6 +11,10 @@ defmodule BackendWeb.API.ConnectionRequestJSON do
     %{request: data(request)}
   end
 
+  def batch_delete(%{deleted: count}) do
+    %{deleted: count}
+  end
+
   defp data(request) do
     %{
       id: request.id,

@@ -272,6 +272,7 @@ export const StatCard = styled(Card)`
   padding: ${theme.spacing.xl};
   position: relative;
   overflow: hidden;
+  cursor: pointer;
   transition: all ${theme.transitions.normal};
   background: linear-gradient(
     135deg,
@@ -780,10 +781,10 @@ export const SpenderItem = styled.div<{ rank: number }>`
     ${(props) =>
       props.rank === 1 ? theme.colors.primary : theme.colors.border};
   border-radius: ${theme.borderRadius["2xl"]};
-  padding: ${theme.spacing.md};
+  padding: ${theme.spacing.lg} ${theme.spacing.xl};
   display: grid;
-  grid-template-columns: auto 1fr 260px auto;
-  gap: ${theme.spacing.md};
+  grid-template-columns: auto 1.5fr 1fr auto auto;
+  gap: ${theme.spacing.xl};
   align-items: center;
   transition: all ${theme.transitions.normal};
   position: relative;

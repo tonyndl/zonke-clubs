@@ -113,13 +113,6 @@ export const Content: React.FC = () => {
     doFetch(1, "pending", "");
     fetchStats();
 
-    // Connect to channel for real-time updates
-    const token = localStorage.getItem("auth_token");
-    const adminInfo = apiService.getAdminInfo();
-    if (token && adminInfo?.id) {
-      adminSocketService.connect(token, adminInfo.id);
-    }
-
     const unsubSubmitted = adminSocketService.on("post_submitted", () => {
       fetchStats();
       if (filterRef.current === "pending") {

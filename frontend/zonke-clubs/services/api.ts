@@ -363,19 +363,20 @@ class ApiService {
           // Forbidden - don't clear token, just throw error
           throw new Error("Forbidden");
         }
-        if (!response.ok) {
-          handleServerError(response.status);
-          return response
-            .json()
-            .then((error) => {
-              throw new Error(error.error || "Request failed");
-            })
-            .catch(() => {
-              throw new Error("Request failed");
-            });
-        }
         if (response.status === 204) {
           return undefined as T;
+        }
+        if (!response.ok) {
+          handleServerError(response.status);
+          return response.text().then((text) => {
+            try {
+              const error = JSON.parse(text);
+              throw new Error(error.error || "Request failed");
+            } catch (e) {
+              if (e instanceof Error && e.message !== "Request failed") throw e;
+              throw new Error(`Request failed (${response.status})`);
+            }
+          });
         }
         return response.json();
       })

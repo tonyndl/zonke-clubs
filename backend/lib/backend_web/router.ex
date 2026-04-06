@@ -46,6 +46,7 @@ defmodule BackendWeb.Router do
     get "/connection-requests/received", ConnectionRequestController, :received
     get "/connection-requests/sent", ConnectionRequestController, :sent
     get "/connection-requests/thread/:thread_id", ConnectionRequestController, :get_by_thread
+    post "/connection-requests/batch-delete", ConnectionRequestController, :batch_delete
     post "/connection-requests", ConnectionRequestController, :create
     put "/connection-requests/:id/accept", ConnectionRequestController, :accept
     put "/connection-requests/:id/decline", ConnectionRequestController, :decline
@@ -174,6 +175,7 @@ defmodule BackendWeb.Router do
     get "/profile", AdminController, :show
     put "/profile", AdminController, :update
     put "/profile/password", AdminController, :change_password
+    delete "/profile", AdminController, :delete_account
 
     # Dashboard statistics
     get "/dashboard/stats", AdminController, :dashboard_stats

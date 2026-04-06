@@ -317,98 +317,39 @@ export const Spending: React.FC = () => {
                     />
                     <UserInfo>
                       <Username>{record.username}</Username>
-                      {/* <UserId>#: +27 026 8889</UserId> */}
-                      {/* <NightTag type={nightType}>
-                        {nightType === 'bottle' ? '🍾 Bottle Service' : nightType === 'vip' ? '⭐ VIP Night' : '🎉 Night Out'}
-                      </NightTag> */}
                     </UserInfo>
                   </UserSection>
 
-                  <NightSpendSection isTop={isTopSpender}>
-                    <NightLabel>One Night Spend</NightLabel>
-                    <NightAmount isTop={isTopSpender}>
-                      {formatCurrency(record.amount)}
-                    </NightAmount>
-                    <NightDate>
-                      {(() => {
-                        const [year, month, day] = record.visit_date
-                          .split("-")
-                          .map(Number);
-                        const date = new Date(year, month - 1, day);
-                        return date.toLocaleDateString("en-US", {
-                          month: "short",
-                          day: "numeric",
-                          year: "numeric",
-                        });
-                      })()}
-                    </NightDate>
-                  </NightSpendSection>
+                  <NightAmount isTop={isTopSpender}>
+                    {formatCurrency(record.amount)}
+                  </NightAmount>
 
-                  <StatsGrid>
-                    <MiniStat>
-                      <MiniStatLabel>Position</MiniStatLabel>
-                      <RankPosition
-                        direction={
-                          record.positionChange === "new"
-                            ? "new"
-                            : record.positionChange > 0
-                              ? "up"
-                              : record.positionChange < 0
-                                ? "down"
-                                : "same"
-                        }
-                      >
-                        {record.positionChange === "new" && <>⭐ New</>}
-                        {typeof record.positionChange === "number" &&
-                          record.positionChange > 0 && (
-                            <>
-                              {React.createElement(
-                                HiArrowUp as React.ComponentType,
-                              )}
-                              +{record.positionChange}
-                            </>
-                          )}
-                        {typeof record.positionChange === "number" &&
-                          record.positionChange < 0 && (
-                            <>
-                              {React.createElement(
-                                HiArrowDown as React.ComponentType,
-                              )}
-                              {record.positionChange}
-                            </>
-                          )}
-                        {record.positionChange === 0 && (
-                          <>
-                            {React.createElement(
-                              HiMinus as React.ComponentType,
-                            )}
-                            Same
-                          </>
-                        )}
-                      </RankPosition>
-                    </MiniStat>
+                  <NightDate>
+                    {(() => {
+                      const [year, month, day] = record.visit_date
+                        .split("-")
+                        .map(Number);
+                      const date = new Date(year, month - 1, day);
+                      return date.toLocaleDateString("en-US", {
+                        month: "short",
+                        day: "numeric",
+                        year: "numeric",
+                      });
+                    })()}
+                  </NightDate>
 
-                    <MiniStat>
-                      <MiniStatLabel>On Chart</MiniStatLabel>
-                      <MiniStatValue highlight>
-                        {record.timeUnit === "new" ? (
-                          <>⭐ New</>
-                        ) : (
-                          <>
-                            {record.timeOnChart}{" "}
-                            {record.timeOnChart === 1
-                              ? record.timeUnit?.slice(0, -1)
-                              : record.timeUnit}
-                          </>
-                        )}
-                      </MiniStatValue>
-                    </MiniStat>
-
-                    {/* <MiniStat>
-                      <MiniStatLabel>Total Visits</MiniStatLabel>
-                      <MiniStatValue>{record.visitCount}</MiniStatValue>
-                    </MiniStat> */}
-                  </StatsGrid>
+                  <MiniStatValue highlight>
+                    {record.timeUnit === "new" ? (
+                      <>⭐ New</>
+                    ) : (
+                      <>
+                        {record.timeOnChart}{" "}
+                        {record.timeOnChart === 1
+                          ? record.timeUnit?.slice(0, -1)
+                          : record.timeUnit}
+                      </>
+                    )}
+                  </MiniStatValue>
                 </RecordCard>
               );
             })}

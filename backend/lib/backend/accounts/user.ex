@@ -31,6 +31,7 @@ defmodule Backend.Accounts.User do
     field :avatar_url, :string
     field :location, :map
     field :onboarding_complete, :boolean, default: false
+    field :spending_visible, :boolean, default: true
 
     # Device location (real-time proximity tracking for strobe invites)
     field :device_lat, :float
@@ -67,7 +68,7 @@ defmodule Backend.Accounts.User do
   """
   def profile_changeset(user, attrs) do
     user
-    |> cast(attrs, [:bio, :vibes, :favorite_drinks, :avatar_url, :location, :onboarding_complete])
+    |> cast(attrs, [:bio, :vibes, :favorite_drinks, :avatar_url, :location, :onboarding_complete, :spending_visible])
     |> validate_length(:bio, max: 500)
     |> validate_location()
   end
