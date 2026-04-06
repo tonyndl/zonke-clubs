@@ -564,19 +564,21 @@ export default function JoinStrobeScreen() {
 
         <View style={styles.header}>
           <Pressable onPress={() => router.back()} style={styles.backBtn}>
-            <Ionicons name="arrow-back" size={24} color={Colors.platinum} />
+            <Ionicons name="arrow-back" size={24} color={Colors.gold} />
           </Pressable>
           <Text style={styles.headerTitle}>STROBE SYNC</Text>
           <View style={{ width: 40 }} />
         </View>
 
-        <View style={styles.pickerHeader}>
-          <Ionicons name="flash" size={28} color={Colors.accent} />
-          <Text style={styles.pickerTitle}>Active Strobes</Text>
-          <Text style={styles.pickerSub}>
-            Select a club to sync your flashlight to the DJ's beat
-          </Text>
-        </View>
+        {activeSessions.length > 0 && (
+          <View style={styles.pickerHeader}>
+            <Ionicons name="flash" size={28} color={Colors.accent} />
+            <Text style={styles.pickerTitle}>Active Strobes</Text>
+            <Text style={styles.pickerSub}>
+              Select a club to sync your flashlight to the DJ's beat
+            </Text>
+          </View>
+        )}
 
         {loadingSessions ? (
           <ActivityIndicator
@@ -832,7 +834,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: "900",
-    color: Colors.platinum,
+    color: Colors.gold,
     letterSpacing: 3,
   },
   // Picker styles

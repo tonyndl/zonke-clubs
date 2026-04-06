@@ -111,6 +111,38 @@ export const djSchema = z.object({
   name: z.string().min(1, "DJ name is required"),
 });
 
+export const accountProfileSchema = z.object({
+  email: z
+    .string()
+    .min(1, "Email is required")
+    .email("Please enter a valid email"),
+  name: z
+    .string()
+    .min(1, "Name is required")
+    .min(2, "Name must be at least 2 characters"),
+});
+
+export const changePasswordSchema = z
+  .object({
+    currentPassword: z.string().min(1, "Current password is required"),
+    newPassword: z
+      .string()
+      .min(8, "New password must be at least 8 characters"),
+    confirmPassword: z.string().min(1, "Please confirm your new password"),
+  })
+  .refine((data) => data.newPassword === data.confirmPassword, {
+    message: "Passwords do not match",
+    path: ["confirmPassword"],
+  });
+
+export const phoneNumberSchema = z
+  .string()
+  .min(1, "Phone number is required")
+  .regex(
+    /^\+?[\d\s\-()]{7,20}$/,
+    "Enter a valid phone number (e.g. +27 78 022 3232)",
+  );
+
 export const spendingRecordSchema = z.object({
   amount: z
     .string()

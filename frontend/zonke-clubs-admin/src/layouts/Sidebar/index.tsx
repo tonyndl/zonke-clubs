@@ -11,6 +11,7 @@ import {
   RiFlashlightLine,
   RiLogoutBoxRLine,
   RiArrowLeftSLine,
+  RiUserSettingsLine,
 } from "react-icons/ri";
 import type { IconType } from "react-icons";
 import {
@@ -160,6 +161,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
             to="/settings/dj-schedule"
             icon={RiMusic2Line}
             label="DJ Schedule"
+            collapsed={collapsed}
+          />
+          <NavItem
+            to="/settings/account"
+            icon={RiUserSettingsLine}
+            label="Account"
             collapsed={collapsed}
           />
         </NavSection>

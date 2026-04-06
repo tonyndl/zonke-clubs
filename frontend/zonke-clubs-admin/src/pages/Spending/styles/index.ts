@@ -189,10 +189,10 @@ export const RecordCard = styled.div<{ rank: number }>`
     ${(props) =>
       props.rank === 1 ? theme.colors.primary : theme.colors.border};
   border-radius: ${theme.borderRadius["2xl"]};
-  padding: ${theme.spacing.md};
+  padding: ${theme.spacing.lg} ${theme.spacing.xl};
   display: grid;
-  grid-template-columns: auto 1fr 260px auto;
-  gap: ${theme.spacing.md};
+  grid-template-columns: auto 1.5fr 1fr auto auto;
+  gap: ${theme.spacing.xl};
   align-items: center;
   transition: all ${theme.transitions.normal};
   position: relative;
@@ -239,8 +239,12 @@ export const RecordCard = styled.div<{ rank: number }>`
   }
 
   @media (max-width: ${theme.breakpoints.desktop}) {
-    grid-template-columns: 1fr;
+    grid-template-columns: auto 1fr;
     gap: ${theme.spacing.md};
+
+    & > *:nth-child(n + 3) {
+      grid-column: 2;
+    }
   }
 `;
 
@@ -385,7 +389,7 @@ export const NightAmount = styled.div<{ isTop?: boolean }>`
   font-size: ${(props) =>
     props.isTop
       ? theme.typography.fontSize["3xl"]
-      : theme.typography.fontSize["2xl"]};
+      : theme.typography.fontSize["xl"]};
   font-weight: ${theme.typography.fontWeight.extrabold};
   background: ${(props) =>
     props.isTop
@@ -394,29 +398,24 @@ export const NightAmount = styled.div<{ isTop?: boolean }>`
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
-  position: relative;
-  z-index: 1;
-  text-shadow: ${(props) =>
-    props.isTop ? "0 0 30px rgba(57, 243, 255, 0.5)" : "none"};
   letter-spacing: -0.5px;
-  min-height: 40px;
   display: flex;
   align-items: center;
+  white-space: nowrap;
 `;
 
 export const NightDate = styled.div`
-  font-size: ${theme.typography.fontSize.xs};
-  color: ${theme.colors.primary};
-  font-weight: ${theme.typography.fontWeight.semibold};
-  position: relative;
-  z-index: 1;
+  font-size: ${theme.typography.fontSize.sm};
+  color: ${theme.colors.textSecondary};
+  font-weight: ${theme.typography.fontWeight.medium};
   display: flex;
   align-items: center;
   gap: ${theme.spacing.xs};
+  white-space: nowrap;
 
   &::before {
     content: "📅";
-    font-size: 10px;
+    font-size: 12px;
   }
 `;
 

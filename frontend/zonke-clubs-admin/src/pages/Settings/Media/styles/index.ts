@@ -620,55 +620,120 @@ export const LightboxClose = styled.button`
   }
 `;
 
-export const LightboxMedia = styled.div`
-  max-width: min(90vw, 960px);
-  max-height: 80vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: ${theme.borderRadius.xl};
+export const LightboxCard = styled.div`
+  max-height: 90vh;
+  border-radius: ${theme.borderRadius["2xl"]};
   overflow: hidden;
+  background: ${theme.colors.backgroundCard};
+  border: 1px solid ${theme.colors.border};
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.6);
+  display: inline-flex;
+  flex-direction: column;
+`;
+
+export const LightboxMedia = styled.div`
+  flex: 1;
+  min-height: 0;
+  display: flex;
 `;
 
 export const LightboxImage = styled.img`
-  max-width: 100%;
-  max-height: 80vh;
+  max-width: 90vw;
+  max-height: calc(90vh - 70px);
   object-fit: contain;
-  border-radius: ${theme.borderRadius.xl};
   display: block;
 `;
 
 export const LightboxVideo = styled.video`
-  max-width: 100%;
-  max-height: 80vh;
-  border-radius: ${theme.borderRadius.xl};
+  max-width: 90vw;
+  max-height: calc(90vh - 70px);
   display: block;
   outline: none;
 `;
 
 export const LightboxInfo = styled.div`
-  max-width: min(90vw, 960px);
-  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: ${theme.spacing.lg};
+  padding: ${theme.spacing.lg} ${theme.spacing.xl};
+  border-top: 1px solid ${theme.colors.border};
+  flex-shrink: 0;
+`;
+
+export const LightboxInfoLeft = styled.div`
   display: flex;
   flex-direction: column;
-  gap: ${theme.spacing.xs};
-  padding: ${theme.spacing.sm} ${theme.spacing.md};
-  background: rgba(15, 25, 35, 0.6);
-  border-radius: ${theme.borderRadius.lg};
-  border: 1px solid rgba(57, 243, 255, 0.1);
+  gap: 4px;
+  min-width: 0;
+  flex: 1;
 `;
 
 export const LightboxCaption = styled.p`
   font-size: ${theme.typography.fontSize.base};
-  font-weight: ${theme.typography.fontWeight.medium};
+  font-weight: ${theme.typography.fontWeight.semibold};
   color: ${theme.colors.textPrimary};
   margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 `;
 
-export const LightboxMeta = styled.p`
+export const LightboxMeta = styled.div`
   font-size: ${theme.typography.fontSize.sm};
   color: ${theme.colors.textSecondary};
   margin: 0;
   display: flex;
   align-items: center;
+  gap: ${theme.spacing.sm};
+`;
+
+export const LightboxLikes = styled.span`
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #ff4458;
+  font-weight: ${theme.typography.fontWeight.semibold};
+
+  svg {
+    width: 14px;
+    height: 14px;
+  }
+`;
+
+export const LightboxActions = styled.div`
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing.sm};
+  flex-shrink: 0;
+`;
+
+export const LightboxActionBtn = styled.button<{ danger?: boolean }>`
+  width: 38px;
+  height: 38px;
+  border-radius: ${theme.borderRadius.lg};
+  border: 1px solid
+    ${(props) =>
+      props.danger ? "rgba(239, 68, 68, 0.3)" : theme.colors.border};
+  background: ${(props) =>
+    props.danger ? "rgba(239, 68, 68, 0.1)" : "rgba(57, 243, 255, 0.06)"};
+  color: ${(props) => (props.danger ? "#ef4444" : theme.colors.textSecondary)};
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all ${theme.transitions.fast};
+
+  svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  &:hover {
+    background: ${(props) =>
+      props.danger ? "rgba(239, 68, 68, 0.2)" : "rgba(57, 243, 255, 0.15)"};
+    color: ${(props) => (props.danger ? "#ef4444" : theme.colors.primary)};
+    border-color: ${(props) =>
+      props.danger ? "#ef4444" : theme.colors.primary};
+  }
 `;

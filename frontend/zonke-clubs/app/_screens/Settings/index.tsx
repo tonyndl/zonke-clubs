@@ -1,9 +1,8 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
   TextInput,
   TouchableOpacity,
   Modal,
@@ -11,6 +10,7 @@ import {
   ActivityIndicator,
   Alert,
   Linking,
+  Platform,
 } from "react-native";
 import { Toast } from "@/components/ui/Toast";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
@@ -31,6 +31,7 @@ import * as Notifications from "expo-notifications";
 import * as Location from "expo-location";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
+import { AppState } from "react-native";
 import { Colors } from "@/constants/ui";
 import { PressableScale } from "@/components/ui/PressableScale";
 import { TextStroke } from "../Login/utils";
@@ -84,71 +85,87 @@ export default function SettingsScreen() {
   // Preferences state
   const [pushNotifications, setPushNotifications] = useState(false);
   const [locationServices, setLocationServices] = useState(false);
+  const [spendingVisible, setSpendingVisible] = useState(
+    user?.spending_visible !== false,
+  );
 
-  useEffect(() => {
-    Promise.all([
-      AsyncStorage.getItem(PUSH_TOKEN_KEY),
-      Location.getForegroundPermissionsAsync(),
-    ]).then(([storedToken, locStatus]) => {
-      setPushNotifications(!!storedToken);
+  // Read the actual OS permission state
+  const checkPermissions = useCallback(() => {
+    Notifications.getPermissionsAsync().then((notifStatus) => {
+      let enabled = notifStatus.status === "granted";
+      if (
+        Platform.OS === "android" &&
+        notifStatus.android &&
+        notifStatus.android.importance === 0
+      ) {
+        enabled = false;
+      }
+      setPushNotifications(enabled);
+
+      // Keep push token in sync with OS state
+      if (enabled) {
+        AsyncStorage.getItem(PUSH_TOKEN_KEY).then((token) => {
+          if (!token) {
+            registerForPushNotifications().then((newToken) => {
+              if (newToken) {
+                registerTokenWithBackend(newToken);
+                AsyncStorage.setItem(PUSH_TOKEN_KEY, newToken);
+              }
+            });
+          }
+        });
+      } else {
+        AsyncStorage.getItem(PUSH_TOKEN_KEY).then((token) => {
+          if (token) {
+            unregisterToken(token);
+            AsyncStorage.removeItem(PUSH_TOKEN_KEY);
+          }
+        });
+      }
+    });
+
+    Location.getForegroundPermissionsAsync().then((locStatus) => {
       setLocationServices(locStatus.status === "granted");
     });
   }, []);
 
-  const handlePushToggle = (val: boolean) => {
-    if (val) {
-      registerForPushNotifications().then((token) => {
-        if (!token) {
-          Alert.alert(
-            "Permission Denied",
-            "Please enable notifications in your device settings.",
-            [
-              { text: "Cancel", style: "cancel" },
-              { text: "Open Settings", onPress: () => Linking.openSettings() },
-            ],
-          );
-          return;
-        }
-        setPushNotifications(true);
-        registerTokenWithBackend(token);
-        AsyncStorage.setItem(PUSH_TOKEN_KEY, token);
-      });
-    } else {
-      AsyncStorage.getItem(PUSH_TOKEN_KEY).then((token) => {
-        if (token) unregisterToken(token);
-        AsyncStorage.removeItem(PUSH_TOKEN_KEY);
-      });
-      setPushNotifications(false);
-    }
+  // Check on mount
+  useEffect(() => {
+    checkPermissions();
+  }, []);
+
+  // Re-check when app returns from device settings
+  useEffect(() => {
+    const sub = AppState.addEventListener("change", (state) => {
+      if (state === "active") checkPermissions();
+    });
+    return () => sub.remove();
+  }, [checkPermissions]);
+
+  const handlePushToggle = () => {
+    Linking.openSettings();
   };
 
-  const handleLocationToggle = (val: boolean) => {
-    if (val) {
-      Location.requestForegroundPermissionsAsync().then(({ status }) => {
-        if (status === "granted") {
-          setLocationServices(true);
-        } else {
-          Alert.alert(
-            "Permission Denied",
-            "Please enable location access in your device settings.",
-            [
-              { text: "Cancel", style: "cancel" },
-              { text: "Open Settings", onPress: () => Linking.openSettings() },
-            ],
-          );
-        }
+  const handleLocationToggle = () => {
+    Linking.openSettings();
+  };
+
+  const handleSpendingVisibleToggle = (val: boolean) => {
+    setSpendingVisible(val);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    authService
+      .updateProfile({ spending_visible: val } as any)
+      .then(() => refreshUser())
+      .then(() => {
+        showToast(
+          val ? "Spending is now visible to others" : "Spending is now private",
+          "success",
+        );
+      })
+      .catch(() => {
+        setSpendingVisible(!val);
+        showToast("Failed to update setting", "error");
       });
-    } else {
-      setLocationServices(false);
-      Alert.alert(
-        "Location Services",
-        "To fully disable location access, turn it off in your device settings.",
-        [
-          { text: "OK", style: "cancel" },
-          { text: "Open Settings", onPress: () => Linking.openSettings() },
-        ],
-      );
-    }
   };
 
   const hasAccountChanges = () => {
@@ -250,6 +267,13 @@ export default function SettingsScreen() {
       });
   };
 
+  const [permissionModal, setPermissionModal] = useState<{
+    visible: boolean;
+    title: string;
+    message: string;
+    showOpenSettings: boolean;
+  }>({ visible: false, title: "", message: "", showOpenSettings: false });
+
   const [logoutModalVisible, setLogoutModalVisible] = useState(false);
 
   const handleLogout = () => {
@@ -292,7 +316,9 @@ export default function SettingsScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
-      <Stack.Screen options={{ headerShown: false }} />
+      <Stack.Screen
+        options={{ headerShown: false, statusBarBackgroundColor: Colors.bg }}
+      />
       <KeyboardAwareScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
@@ -628,6 +654,21 @@ export default function SettingsScreen() {
                 thumbColor={Colors.white}
               />
             </View>
+
+            <View style={styles.divider} />
+
+            <View style={styles.settingRow}>
+              <View style={styles.settingLeft}>
+                <Ionicons name="wallet" size={20} color={Colors.primaryBlue} />
+                <Text style={styles.settingText}>Spending Visible</Text>
+              </View>
+              <Switch
+                value={spendingVisible}
+                onValueChange={handleSpendingVisibleToggle}
+                trackColor={{ false: Colors.bgCard, true: Colors.gold }}
+                thumbColor={Colors.white}
+              />
+            </View>
           </View>
         </Animated.View>
 
@@ -858,6 +899,69 @@ export default function SettingsScreen() {
               >
                 <Text style={styles.modalLogoutText}>Logout</Text>
               </PressableScale>
+            </View>
+          </Animated.View>
+        </Animated.View>
+      </Modal>
+
+      {/* Permission / info modal */}
+      <Modal
+        visible={permissionModal.visible}
+        transparent
+        animationType="none"
+        onRequestClose={() =>
+          setPermissionModal((p) => ({ ...p, visible: false }))
+        }
+      >
+        <Animated.View
+          entering={FadeIn.duration(200)}
+          exiting={FadeOut.duration(150)}
+          style={styles.modalOverlay}
+        >
+          <Animated.View
+            entering={ZoomIn.duration(250).springify()}
+            exiting={ZoomOut.duration(150)}
+            style={styles.modalCard}
+          >
+            <View style={styles.modalIconWrap}>
+              <LinearGradient
+                colors={["rgba(57,243,255,0.2)", "rgba(200,107,255,0.2)"]}
+                style={styles.modalIconGradient}
+              >
+                <Ionicons
+                  name="information-circle-outline"
+                  size={28}
+                  color={Colors.primaryBlue}
+                />
+              </LinearGradient>
+            </View>
+            <Text style={styles.modalTitle}>{permissionModal.title}</Text>
+            <Text style={styles.modalMessage}>{permissionModal.message}</Text>
+            <View style={styles.modalButtons}>
+              <PressableScale
+                onPress={() =>
+                  setPermissionModal((p) => ({ ...p, visible: false }))
+                }
+                style={styles.modalCancelButton}
+              >
+                <Text style={styles.modalCancelText}>OK</Text>
+              </PressableScale>
+              {permissionModal.showOpenSettings && (
+                <PressableScale
+                  onPress={() => {
+                    setPermissionModal((p) => ({ ...p, visible: false }));
+                    Linking.openSettings();
+                  }}
+                  style={[
+                    styles.modalLogoutButton,
+                    { backgroundColor: Colors.gold },
+                  ]}
+                >
+                  <Text style={[styles.modalLogoutText, { color: Colors.bg }]}>
+                    Open Settings
+                  </Text>
+                </PressableScale>
+              )}
             </View>
           </Animated.View>
         </Animated.View>

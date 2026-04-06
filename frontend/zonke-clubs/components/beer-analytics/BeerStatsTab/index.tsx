@@ -13,19 +13,26 @@ import { styles } from "./styles";
 interface Props {
   userId: string;
   isOwnProfile: boolean;
+  spendingVisible?: boolean;
 }
 
-export function BeerStatsTab({ userId, isOwnProfile }: Props) {
+export function BeerStatsTab({
+  userId,
+  isOwnProfile,
+  spendingVisible = false,
+}: Props) {
   const [stats, setStats] = useState<SpendingStats | null>(null);
   const [history, setHistory] = useState<SpendingRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const canView = isOwnProfile || spendingVisible;
+
   useEffect(() => {
-    if (isOwnProfile) {
+    if (canView) {
       loadSpendingData();
     }
-  }, [userId, isOwnProfile]);
+  }, [userId, canView]);
 
   const loadSpendingData = () => {
     setLoading(true);
@@ -48,7 +55,7 @@ export function BeerStatsTab({ userId, isOwnProfile }: Props) {
       });
   };
 
-  if (!isOwnProfile) {
+  if (!canView) {
     return (
       <View style={styles.emptyContainer}>
         <Ionicons name="lock-closed" size={48} color={Colors.lightGrey} />

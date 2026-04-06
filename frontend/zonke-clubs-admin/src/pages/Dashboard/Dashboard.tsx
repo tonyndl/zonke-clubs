@@ -226,7 +226,7 @@ export const Dashboard: React.FC = () => {
       {/* </HeroSection> */}
 
       <MainStatsGrid>
-        <StatCard>
+        <StatCard style={{ cursor: "default" }}>
           <StatHeader>
             <StatIcon>
               {React.createElement(HiHeart as React.ComponentType)}
@@ -238,7 +238,7 @@ export const Dashboard: React.FC = () => {
           <StatLabel>Club Favorites</StatLabel>
         </StatCard>
 
-        <StatCard>
+        <StatCard onClick={() => navigate("/events")}>
           <StatHeader>
             <StatIcon>
               {React.createElement(HiCalendarDays as React.ComponentType)}
@@ -250,7 +250,7 @@ export const Dashboard: React.FC = () => {
           <StatLabel>Upcoming Events</StatLabel>
         </StatCard>
 
-        <StatCard>
+        <StatCard onClick={() => navigate("/content")}>
           <StatHeader>
             <StatIcon>
               {React.createElement(HiUserGroup as React.ComponentType)}
@@ -262,7 +262,7 @@ export const Dashboard: React.FC = () => {
           <StatLabel>Total Posts</StatLabel>
         </StatCard>
 
-        <StatCard>
+        <StatCard onClick={() => navigate("/content")}>
           <StatHeader>
             <StatIcon>
               {React.createElement(HiHashtag as React.ComponentType)}
@@ -378,71 +378,28 @@ export const Dashboard: React.FC = () => {
                   </UserInfo>
                 </UserSection>
 
-                <NightSpendSection isTop={isTopSpender}>
-                  <NightLabel>One Night Spend</NightLabel>
-                  <NightAmount isTop={isTopSpender}>
-                    {formatCurrency(spender.amount)}
-                  </NightAmount>
-                  <NightDate>
-                    {(() => {
-                      const [year, month, day] = spender.visit_date
-                        .split("-")
-                        .map(Number);
-                      const date = new Date(year, month - 1, day);
-                      return date.toLocaleDateString("en-US", {
-                        month: "short",
-                        day: "numeric",
-                        year: "numeric",
-                      });
-                    })()}
-                  </NightDate>
-                </NightSpendSection>
+                <NightAmount isTop={isTopSpender}>
+                  {formatCurrency(spender.amount)}
+                </NightAmount>
 
-                <StatsGrid>
-                  <MiniStat>
-                    <MiniStatLabel>Position</MiniStatLabel>
-                    <RankPosition
-                      direction={
-                        spender.positionChange > 0
-                          ? "up"
-                          : spender.positionChange < 0
-                            ? "down"
-                            : "same"
-                      }
-                    >
-                      {spender.positionChange > 0 && (
-                        <>
-                          {React.createElement(
-                            HiArrowUp as React.ComponentType,
-                          )}
-                          +{spender.positionChange}
-                        </>
-                      )}
-                      {spender.positionChange < 0 && (
-                        <>
-                          {React.createElement(
-                            HiArrowDown as React.ComponentType,
-                          )}
-                          {spender.positionChange}
-                        </>
-                      )}
-                      {spender.positionChange === 0 && (
-                        <>
-                          {React.createElement(HiMinus as React.ComponentType)}
-                          Same
-                        </>
-                      )}
-                    </RankPosition>
-                  </MiniStat>
+                <NightDate>
+                  {(() => {
+                    const [year, month, day] = spender.visit_date
+                      .split("-")
+                      .map(Number);
+                    const date = new Date(year, month - 1, day);
+                    return date.toLocaleDateString("en-US", {
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                    });
+                  })()}
+                </NightDate>
 
-                  <MiniStat>
-                    <MiniStatLabel>On Chart</MiniStatLabel>
-                    <MiniStatValue highlight>
-                      {spender.weeksOnChart}{" "}
-                      {spender.weeksOnChart === 1 ? "week" : "weeks"}
-                    </MiniStatValue>
-                  </MiniStat>
-                </StatsGrid>
+                <MiniStatValue highlight>
+                  {spender.weeksOnChart}{" "}
+                  {spender.weeksOnChart === 1 ? "week" : "weeks"}
+                </MiniStatValue>
               </SpenderItem>
             );
           })}
@@ -454,8 +411,6 @@ export const Dashboard: React.FC = () => {
           style={{
             marginTop: theme.spacing.xl,
             padding: theme.spacing.xl,
-            background:
-              "linear-gradient(135deg, rgba(57, 243, 255, 0.08) 0%, rgba(138, 43, 226, 0.05) 100%)",
             border: "2px solid rgba(57, 243, 255, 0.2)",
             borderRadius: theme.borderRadius.xl,
             textAlign: "center",
@@ -494,9 +449,9 @@ export const Dashboard: React.FC = () => {
               width: "100%",
               fontSize: theme.typography.fontSize.lg,
               padding: `${theme.spacing.lg} ${theme.spacing.xl}`,
-              background:
-                "linear-gradient(135deg, rgba(57, 243, 255, 0.1) 0%, rgba(138, 43, 226, 0.05) 100%)",
-              borderWidth: "2px",
+              // background:
+              //   "linear-gradient(135deg, rgba(57, 243, 255, 0.1) 0%, rgba(138, 43, 226, 0.05) 100%)",
+              // borderWidth: "2px",
               fontWeight: theme.typography.fontWeight.bold,
             }}
             onClick={() => navigate("/spending")}

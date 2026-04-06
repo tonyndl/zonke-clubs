@@ -19,6 +19,7 @@ defmodule BackendWeb.API.UserJSON do
       avatar_url: user.avatar_url,
       location: user.location,
       onboarding_complete: user.onboarding_complete,
+      spending_visible: user.spending_visible,
       inserted_at: user.inserted_at,
       updated_at: user.updated_at
     }

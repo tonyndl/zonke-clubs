@@ -2,7 +2,7 @@ import styled from "styled-components";
 import { theme } from "../../../styles/theme";
 
 export const StrobeContainer = styled.div`
-  max-width: 900px;
+  width: 100%;
 `;
 
 export const PageHeader = styled.div`
@@ -60,6 +60,7 @@ export const SectionTitle = styled.h2`
   display: flex;
   align-items: center;
   gap: ${theme.spacing.sm};
+  margin-top: 30px;
 `;
 
 export const Badge = styled.span<{ variant: "pending" | "approved" }>`

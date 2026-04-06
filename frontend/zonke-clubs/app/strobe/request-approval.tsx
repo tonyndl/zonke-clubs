@@ -35,8 +35,50 @@ export default function RequestApprovalScreen() {
   useEffect(() => {
     isMountedRef.current = true;
     loadClubs();
+
+    const handleApproved = (payload: any) => {
+      if (!isMountedRef.current || !payload?.club_id) return;
+      setPendingClubIds((prev) => {
+        const next = new Set(prev);
+        next.delete(payload.club_id);
+        return next;
+      });
+      setRequested((prev) => {
+        const next = new Set(prev);
+        next.delete(payload.club_id);
+        return next;
+      });
+      setApprovedClubIds((prev) => new Set([...prev, payload.club_id]));
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    };
+
+    const handleDenied = (payload: any) => {
+      if (!isMountedRef.current || !payload?.club_id) return;
+      setPendingClubIds((prev) => {
+        const next = new Set(prev);
+        next.delete(payload.club_id);
+        return next;
+      });
+      setRequested((prev) => {
+        const next = new Set(prev);
+        next.delete(payload.club_id);
+        return next;
+      });
+      setApprovedClubIds((prev) => {
+        const next = new Set(prev);
+        next.delete(payload.club_id);
+        return next;
+      });
+    };
+
+    const { websocketService } = require("@/services/websocketService");
+    websocketService.on("dj_request_approved", handleApproved);
+    websocketService.on("dj_request_denied", handleDenied);
+
     return () => {
       isMountedRef.current = false;
+      websocketService.off("dj_request_approved", handleApproved);
+      websocketService.off("dj_request_denied", handleDenied);
     };
   }, []);
 

@@ -14,7 +14,8 @@ export const styles = StyleSheet.create({
   },
   backButton: {
     position: "absolute",
-    left: 12,
+    left: 0,
+    top: 4,
     width: 40,
     height: 40,
     borderRadius: 20,

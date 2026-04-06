@@ -1,5 +1,9 @@
 import React, { useState, useEffect } from "react";
-import { clubInfoSchema, parseZodErrors } from "../../../utils/validation";
+import {
+  clubInfoSchema,
+  phoneNumberSchema,
+  parseZodErrors,
+} from "../../../utils/validation";
 import { CardTitle } from "../../../components/Card";
 import { PrimaryButton, OutlineButton } from "../../../components/Buttons";
 import { theme } from "../../../styles/theme";
@@ -37,6 +41,7 @@ import {
 export const ClubInfo: React.FC = () => {
   const toast = useToast();
   const [newReservationNumber, setNewReservationNumber] = useState("");
+  const [phoneError, setPhoneError] = useState("");
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [editingValue, setEditingValue] = useState("");
   const [deleteConfirmIndex, setDeleteConfirmIndex] = useState<number | null>(
@@ -211,7 +216,12 @@ export const ClubInfo: React.FC = () => {
 
   const addReservationNumber = () => {
     const trimmed = newReservationNumber.trim();
-    if (!trimmed) return;
+    const result = phoneNumberSchema.safeParse(trimmed);
+    if (!result.success) {
+      setPhoneError(result.error.issues[0].message);
+      return;
+    }
+    setPhoneError("");
     setFormData({
       ...formData,
       table_reservation_numbers: [
@@ -441,7 +451,10 @@ export const ClubInfo: React.FC = () => {
                 <Input
                   type="tel"
                   value={newReservationNumber}
-                  onChange={(e) => setNewReservationNumber(e.target.value)}
+                  onChange={(e) => {
+                    setNewReservationNumber(e.target.value);
+                    setPhoneError("");
+                  }}
                   onKeyDown={(e) =>
                     e.key === "Enter" &&
                     (e.preventDefault(), addReservationNumber())
@@ -452,19 +465,25 @@ export const ClubInfo: React.FC = () => {
                 <button
                   type="button"
                   onClick={addReservationNumber}
+                  disabled={!newReservationNumber.trim()}
                   style={{
                     display: "flex",
                     alignItems: "center",
                     gap: 4,
                     padding: `${theme.spacing.sm} ${theme.spacing.md}`,
-                    background: theme.colors.primary,
+                    background: newReservationNumber.trim()
+                      ? theme.colors.primary
+                      : theme.colors.border,
                     color: "#000",
                     border: "none",
                     borderRadius: theme.borderRadius.lg,
                     fontWeight: 600,
-                    cursor: "pointer",
+                    cursor: newReservationNumber.trim()
+                      ? "pointer"
+                      : "not-allowed",
                     fontSize: theme.typography.fontSize.sm,
                     whiteSpace: "nowrap",
+                    opacity: newReservationNumber.trim() ? 1 : 0.5,
                   }}
                 >
                   {React.createElement(
@@ -474,6 +493,16 @@ export const ClubInfo: React.FC = () => {
                   Add
                 </button>
               </div>
+              {phoneError && (
+                <span
+                  style={{
+                    color: theme.colors.error,
+                    fontSize: theme.typography.fontSize.sm,
+                  }}
+                >
+                  {phoneError}
+                </span>
+              )}
 
               {/* Pills */}
               {formData.table_reservation_numbers.length > 0 && (

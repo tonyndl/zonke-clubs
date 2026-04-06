@@ -16,6 +16,9 @@ defmodule BackendWeb.UserSocket do
           {:ok, %{user_id: user_id}} ->
             {:ok, assign(socket, :user_id, user_id)}
 
+          {:ok, %{admin_id: admin_id}} ->
+            {:ok, assign(socket, :user_id, admin_id)}
+
           {:error, _reason} ->
             :error
         end

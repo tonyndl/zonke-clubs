@@ -532,11 +532,7 @@ export const PostActions = styled.div`
 export const EmptyState = styled.div`
   text-align: center;
   padding: ${theme.spacing["3xl"]} ${theme.spacing["2xl"]};
-  background: linear-gradient(
-    135deg,
-    rgba(15, 25, 35, 0.4) 0%,
-    rgba(15, 25, 35, 0.2) 100%
-  );
+  background: ${theme.colors.cardBackground};
   border-radius: ${theme.borderRadius.xl};
   border: 1px solid rgba(57, 243, 255, 0.1);
 

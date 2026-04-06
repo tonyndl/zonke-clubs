@@ -199,6 +199,20 @@ defmodule Backend.Connections do
   end
 
   @doc """
+  Delete multiple connection requests by IDs.
+  Only deletes requests where the user is either sender or receiver.
+  """
+  def delete_requests(ids, user_id) do
+    {count, _} =
+      ConnectionRequest
+      |> where([r], r.id in ^ids)
+      |> where([r], r.sender_id == ^user_id or r.receiver_id == ^user_id)
+      |> Repo.delete_all()
+
+    {:ok, count}
+  end
+
+  @doc """
   Check if user is authorized to perform action on request.
   Sender can cancel, receiver can accept/decline.
   """

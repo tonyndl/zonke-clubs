@@ -41,6 +41,7 @@ import { authService } from "@/services/authService";
 import { websocketService } from "@/services/websocketService";
 import { connectionService } from "@/services/connectionService";
 import { Toast } from "@/components/ui/Toast";
+import { PopupMenu } from "@/components/popup";
 
 export default function ChatScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -52,7 +53,6 @@ export default function ChatScreen() {
   const [otherUser, setOtherUser] = useState<any>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
-  const [showMenu, setShowMenu] = useState(false);
   const [isDisconnected, setIsDisconnected] = useState(false);
   const [disconnectedByMe, setDisconnectedByMe] = useState(false);
   const [toastVisible, setToastVisible] = useState(false);
@@ -415,7 +415,6 @@ export default function ChatScreen() {
 
   const handleClearChat = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setShowMenu(false);
 
     setConfirmModal({
       visible: true,
@@ -445,7 +444,6 @@ export default function ChatScreen() {
 
   const handleDisconnect = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setShowMenu(false);
 
     if (!otherUser) return;
 
@@ -687,7 +685,7 @@ export default function ChatScreen() {
             onPress={() => router.back()}
             style={styles.backButton}
           >
-            <Ionicons name="chevron-back" size={24} color={Colors.platinum} />
+            <Ionicons name="chevron-back" size={24} color={Colors.gold} />
           </PressableScale>
 
           <View style={styles.headerCenter}>
@@ -718,61 +716,17 @@ export default function ChatScreen() {
             </View>
           </View>
 
-          <PressableScale
-            style={styles.headerAction}
-            onPress={() => {
-              if (!otherUser || !threadId) return;
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              setShowMenu(true);
+          <PopupMenu
+            options={["Clear chat"]}
+            onSelect={(value) => {
+              if (value === "Clear chat") handleClearChat();
             }}
+            menuWidth={170}
+            style={styles.headerAction}
           >
-            <Ionicons
-              name="ellipsis-vertical"
-              size={24}
-              color={Colors.platinum}
-            />
-          </PressableScale>
+            <Ionicons name="ellipsis-vertical" size={24} color={Colors.gold} />
+          </PopupMenu>
         </View>
-
-        {/* Menu Modal */}
-        <Modal
-          visible={showMenu}
-          transparent
-          animationType="fade"
-          onRequestClose={() => setShowMenu(false)}
-        >
-          <PressableScale
-            style={styles.modalOverlay}
-            onPress={() => setShowMenu(false)}
-          >
-            <View style={styles.menuContainer}>
-              <PressableScale style={styles.menuItem} onPress={handleClearChat}>
-                <Ionicons
-                  name="trash-outline"
-                  size={20}
-                  color={Colors.platinum}
-                />
-                <Text style={styles.menuItemText}>Clear Chat</Text>
-              </PressableScale>
-
-              {/* <View style={styles.menuDivider} />
-
-              <PressableScale
-                style={styles.menuItem}
-                onPress={handleDisconnect}
-              >
-                <Ionicons
-                  name="close-circle-outline"
-                  size={20}
-                  color="#EF4444"
-                />
-                <Text style={[styles.menuItemText, { color: "#EF4444" }]}>
-                  Disconnect
-                </Text>
-              </PressableScale> */}
-            </View>
-          </PressableScale>
-        </Modal>
 
         {/* Messages and Input Container with Keyboard Avoiding */}
         <KeyboardAvoidingView

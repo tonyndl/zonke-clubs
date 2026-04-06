@@ -6,6 +6,8 @@ import {
   RefreshControl,
   Image,
   TouchableOpacity,
+  Alert,
+  Pressable,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useFocusEffect } from "expo-router";
@@ -48,6 +50,10 @@ export default function RequestsScreen() {
   const [toastType, setToastType] = useState<"success" | "error" | "info">(
     "success",
   );
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [menuVisible, setMenuVisible] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const loadRequests = () => {
     return Promise.all([
@@ -228,7 +234,115 @@ export default function RequestsScreen() {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       setActiveTab(tab);
       setStatusFilter("all");
+      exitSelectionMode();
     }
+  };
+
+  const exitSelectionMode = () => {
+    setSelectionMode(false);
+    setSelectedIds(new Set());
+  };
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      if (next.size === 0) setSelectionMode(false);
+      return next;
+    });
+  };
+
+  const handleLongPress = (id: string) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setSelectionMode(true);
+    setSelectedIds(new Set([id]));
+  };
+
+  const handleDeleteSelected = () => {
+    const count = selectedIds.size;
+    if (count === 0) return;
+    Alert.alert(
+      "Delete Requests",
+      `Delete ${count} request${count > 1 ? "s" : ""}? This will remove them for both sides.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: () => {
+            setDeleting(true);
+            const ids = Array.from(selectedIds);
+            connectionService
+              .deleteRequests(ids)
+              .then(() => {
+                const idSet = new Set(ids);
+                setReceivedRequests((prev) =>
+                  prev.filter((r) => !idSet.has(r.id)),
+                );
+                setSentRequests((prev) => prev.filter((r) => !idSet.has(r.id)));
+                setToastMessage(
+                  `Deleted ${count} request${count > 1 ? "s" : ""}`,
+                );
+                setToastType("info");
+                setToastVisible(true);
+                exitSelectionMode();
+              })
+              .catch(() => {
+                setToastMessage("Failed to delete requests");
+                setToastType("error");
+                setToastVisible(true);
+              })
+              .finally(() => setDeleting(false));
+          },
+        },
+      ],
+    );
+  };
+
+  const handleDeleteAll = () => {
+    setMenuVisible(false);
+    const current = filteredRequests;
+    if (current.length === 0) return;
+    Alert.alert(
+      "Delete All",
+      `Delete all ${current.length} request${current.length > 1 ? "s" : ""} in this view? This will remove them for both sides.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete All",
+          style: "destructive",
+          onPress: () => {
+            setDeleting(true);
+            const ids = current.map((r) => r.id);
+            connectionService
+              .deleteRequests(ids)
+              .then(() => {
+                const idSet = new Set(ids);
+                setReceivedRequests((prev) =>
+                  prev.filter((r) => !idSet.has(r.id)),
+                );
+                setSentRequests((prev) => prev.filter((r) => !idSet.has(r.id)));
+                setToastMessage(
+                  `Deleted ${ids.length} request${ids.length > 1 ? "s" : ""}`,
+                );
+                setToastType("info");
+                setToastVisible(true);
+                exitSelectionMode();
+              })
+              .catch(() => {
+                setToastMessage("Failed to delete requests");
+                setToastType("error");
+                setToastVisible(true);
+              })
+              .finally(() => setDeleting(false));
+          },
+        },
+      ],
+    );
   };
 
   const formatTimeAgo = (dateString: string): string => {
@@ -284,53 +398,73 @@ export default function RequestsScreen() {
     const user = isSent ? request.receiver : request.sender;
     const displayName = user.username;
 
+    const isSelected = selectedIds.has(request.id);
+
     return (
       <Animated.View
         key={request.id}
         entering={FadeInDown.delay(index * 50).springify()}
         layout={Layout.springify()}
-        style={styles.requestCard}
+        style={[
+          styles.requestCard,
+          isSelected && {
+            borderColor: Colors.gold,
+            borderWidth: 2,
+          },
+        ]}
       >
         <TouchableOpacity
           onPress={() => {
+            if (selectionMode) {
+              toggleSelect(request.id);
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              return;
+            }
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-            const requestData = encodeURIComponent(
-              JSON.stringify({
-                id: request.id,
-                status: request.status,
-                threadId: request.threadId,
-              }),
-            );
-            router.push(
-              `/(tabs)/profile?userId=${user.id}&requestData=${requestData}` as any,
-            );
+            router.push(`/profile/${user.id}` as any);
           }}
+          onLongPress={() => handleLongPress(request.id)}
           style={styles.cardGradient}
         >
-          {/* Status badge */}
+          {/* Selection checkbox + Status badge row */}
           <View
-            style={[
-              styles.statusBadge,
-              isAccepted
-                ? styles.statusBadgeAccepted
-                : styles.statusBadgePending,
-            ]}
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "space-between",
+            }}
           >
-            <Ionicons
-              name={isAccepted ? "checkmark-circle" : "time-outline"}
-              size={12}
-              color={isAccepted ? "#10B981" : Colors.gold}
-            />
-            <Text
+            <View
               style={[
-                styles.statusBadgeText,
+                styles.statusBadge,
                 isAccepted
-                  ? styles.statusBadgeTextAccepted
-                  : styles.statusBadgeTextPending,
+                  ? styles.statusBadgeAccepted
+                  : styles.statusBadgePending,
               ]}
             >
-              {isAccepted ? "Approved" : "Pending"}
-            </Text>
+              <Ionicons
+                name={isAccepted ? "checkmark-circle" : "time-outline"}
+                size={12}
+                color={isAccepted ? "#10B981" : Colors.gold}
+              />
+              <Text
+                style={[
+                  styles.statusBadgeText,
+                  isAccepted
+                    ? styles.statusBadgeTextAccepted
+                    : styles.statusBadgeTextPending,
+                ]}
+              >
+                {isAccepted ? "Approved" : "Pending"}
+              </Text>
+            </View>
+            {selectionMode && (
+              <Ionicons
+                name={isSelected ? "checkmark-circle" : "ellipse-outline"}
+                size={24}
+                color={isSelected ? Colors.gold : Colors.smoke}
+              />
+            )}
           </View>
 
           {/* User Info */}
@@ -381,10 +515,64 @@ export default function RequestsScreen() {
             </Text>
           )}
 
-          {/* Actions */}
-          <View style={styles.actions}>
-            {!isSent ? (
-              isAccepted ? (
+          {/* Actions - hidden in selection mode */}
+          {!selectionMode && (
+            <View style={styles.actions}>
+              {!isSent ? (
+                isAccepted ? (
+                  <PressableScale
+                    style={[styles.button, styles.chatNowButton]}
+                    onPress={() => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      const chatId = request.threadId || user.id;
+                      router.push(`/chat/${chatId}`);
+                    }}
+                  >
+                    <View style={styles.chatNowGradient}>
+                      <Ionicons
+                        name="chatbubble"
+                        size={20}
+                        color={Colors.white}
+                      />
+                      <Text style={styles.chatNowText}>Chat Now</Text>
+                    </View>
+                  </PressableScale>
+                ) : (
+                  <>
+                    <PressableScale
+                      style={[styles.button, styles.declineButton]}
+                      onPress={() => handleDecline(request.id)}
+                      disabled={isDeclining || isAccepting}
+                    >
+                      <Ionicons
+                        name="close"
+                        size={20}
+                        color={Colors.lightGrey}
+                      />
+                      <Text style={styles.declineText}>
+                        {isDeclining ? "Declining..." : "Decline"}
+                      </Text>
+                    </PressableScale>
+
+                    <PressableScale
+                      style={[styles.button, styles.acceptButtonContainer]}
+                      onPress={() => handleAccept(request.id)}
+                      disabled={isAccepting || isDeclining}
+                    >
+                      <View style={styles.acceptGradient} pointerEvents="none">
+                        <Ionicons
+                          name="checkmark"
+                          size={20}
+                          color={Colors.bg}
+                        />
+                        <Text style={styles.acceptText}>
+                          {isAccepting ? "Accepting..." : "Accept"}
+                        </Text>
+                      </View>
+                    </PressableScale>
+                  </>
+                )
+              ) : isAccepted ? (
                 <PressableScale
                   style={[styles.button, styles.chatNowButton]}
                   onPress={() => {
@@ -403,63 +591,23 @@ export default function RequestsScreen() {
                   </View>
                 </PressableScale>
               ) : (
-                <>
-                  <PressableScale
-                    style={[styles.button, styles.declineButton]}
-                    onPress={() => handleDecline(request.id)}
-                    disabled={isDeclining || isAccepting}
-                  >
-                    <Ionicons name="close" size={20} color={Colors.lightGrey} />
-                    <Text style={styles.declineText}>
-                      {isDeclining ? "Declining..." : "Decline"}
-                    </Text>
-                  </PressableScale>
-
-                  <PressableScale
-                    style={[styles.button, styles.acceptButtonContainer]}
-                    onPress={() => handleAccept(request.id)}
-                    disabled={isAccepting || isDeclining}
-                  >
-                    <View style={styles.acceptGradient} pointerEvents="none">
-                      <Ionicons name="checkmark" size={20} color={Colors.bg} />
-                      <Text style={styles.acceptText}>
-                        {isAccepting ? "Accepting..." : "Accept"}
-                      </Text>
-                    </View>
-                  </PressableScale>
-                </>
-              )
-            ) : isAccepted ? (
-              <PressableScale
-                style={[styles.button, styles.chatNowButton]}
-                onPress={() => {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  const chatId = request.threadId || user.id;
-                  router.push(`/chat/${chatId}`);
-                }}
-              >
-                <View style={styles.chatNowGradient}>
-                  <Ionicons name="chatbubble" size={20} color={Colors.white} />
-                  <Text style={styles.chatNowText}>Chat Now</Text>
-                </View>
-              </PressableScale>
-            ) : (
-              <PressableScale
-                style={[styles.button, styles.cancelButton]}
-                onPress={() => handleCancel(request.id)}
-                disabled={isCanceling}
-              >
-                <Ionicons
-                  name="close-circle-outline"
-                  size={18}
-                  color={Colors.lightGrey}
-                />
-                <Text style={styles.cancelText}>
-                  {isCanceling ? "Canceling..." : "Cancel Request"}
-                </Text>
-              </PressableScale>
-            )}
-          </View>
+                <PressableScale
+                  style={[styles.button, styles.cancelButton]}
+                  onPress={() => handleCancel(request.id)}
+                  disabled={isCanceling}
+                >
+                  <Ionicons
+                    name="close-circle-outline"
+                    size={18}
+                    color={Colors.lightGrey}
+                  />
+                  <Text style={styles.cancelText}>
+                    {isCanceling ? "Canceling..." : "Cancel Request"}
+                  </Text>
+                </PressableScale>
+              )}
+            </View>
+          )}
         </TouchableOpacity>
       </Animated.View>
     );
@@ -624,6 +772,96 @@ export default function RequestsScreen() {
               {sortOrder === "newest" ? "New" : "Old"}
             </Text>
           </PressableScale>
+
+          {/* 3-dot menu */}
+          <View>
+            <TouchableOpacity
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                setMenuVisible((v) => !v);
+              }}
+              hitSlop={8}
+              style={{ padding: 4 }}
+            >
+              <Ionicons
+                name="ellipsis-vertical"
+                size={18}
+                color={Colors.smoke}
+              />
+            </TouchableOpacity>
+            {menuVisible && (
+              <View
+                style={{
+                  position: "absolute",
+                  top: 32,
+                  right: 0,
+                  backgroundColor: Colors.bgCard,
+                  borderRadius: 12,
+                  borderWidth: 1,
+                  borderColor: "rgba(57, 243, 255, 0.2)",
+                  paddingVertical: 4,
+                  minWidth: 140,
+                  zIndex: 100,
+                  elevation: 10,
+                  shadowColor: "#000",
+                  shadowOffset: { width: 0, height: 4 },
+                  shadowOpacity: 0.3,
+                  shadowRadius: 8,
+                }}
+              >
+                <TouchableOpacity
+                  onPress={() => {
+                    setMenuVisible(false);
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    setSelectionMode(true);
+                  }}
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: 10,
+                    paddingVertical: 10,
+                    paddingHorizontal: 14,
+                  }}
+                >
+                  <Ionicons
+                    name="checkmark-circle-outline"
+                    size={18}
+                    color={Colors.platinum}
+                  />
+                  <Text
+                    style={{
+                      color: Colors.platinum,
+                      fontSize: 14,
+                      fontWeight: "600",
+                    }}
+                  >
+                    Select
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={handleDeleteAll}
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: 10,
+                    paddingVertical: 10,
+                    paddingHorizontal: 14,
+                  }}
+                >
+                  <Ionicons name="trash-outline" size={18} color="#EF4444" />
+                  <Text
+                    style={{
+                      color: "#EF4444",
+                      fontSize: 14,
+                      fontWeight: "600",
+                    }}
+                  >
+                    Delete All
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
         </View>
       )}
 
@@ -654,6 +892,67 @@ export default function RequestsScreen() {
           )
         )}
       </ScrollView>
+
+      {/* Selection mode bottom bar */}
+      {selectionMode && (
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+            paddingHorizontal: 20,
+            paddingVertical: 12,
+            backgroundColor: Colors.bgCard,
+            borderTopWidth: 1,
+            borderTopColor: "rgba(57, 243, 255, 0.15)",
+          }}
+        >
+          <TouchableOpacity onPress={exitSelectionMode}>
+            <Text
+              style={{ color: Colors.smoke, fontSize: 15, fontWeight: "600" }}
+            >
+              Cancel
+            </Text>
+          </TouchableOpacity>
+
+          <Text
+            style={{ color: Colors.platinum, fontSize: 14, fontWeight: "600" }}
+          >
+            {selectedIds.size} selected
+          </Text>
+
+          <TouchableOpacity
+            onPress={handleDeleteSelected}
+            disabled={selectedIds.size === 0 || deleting}
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 6,
+              backgroundColor:
+                selectedIds.size > 0 ? "#EF4444" : Colors.bgSecondary,
+              paddingVertical: 8,
+              paddingHorizontal: 14,
+              borderRadius: 10,
+              opacity: selectedIds.size === 0 ? 0.5 : 1,
+            }}
+          >
+            <Ionicons name="trash-outline" size={16} color={Colors.white} />
+            <Text
+              style={{ color: Colors.white, fontSize: 14, fontWeight: "600" }}
+            >
+              {deleting ? "Deleting..." : "Delete"}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* Dismiss menu overlay */}
+      {menuVisible && (
+        <Pressable
+          style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}
+          onPress={() => setMenuVisible(false)}
+        />
+      )}
 
       {/* Toast Notification */}
       <Toast

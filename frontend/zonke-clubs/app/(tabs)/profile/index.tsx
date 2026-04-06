@@ -1240,7 +1240,7 @@ export default function ProfileScreen() {
               }}
               style={styles.backButton}
             >
-              <Ionicons name="chevron-back" size={28} color={Colors.white} />
+              <Ionicons name="chevron-back" size={28} color={Colors.gold} />
             </PressableScale>
           )}
           <TextStroke stroke={0.6} color={Colors.secondaryBlue}>
@@ -1851,7 +1851,11 @@ export default function ProfileScreen() {
 
         {/* Beer Stats Tab Content */}
         {activeTab === "beer-stats" && (
-          <BeerStatsTab userId={viewingUserId} isOwnProfile={isOwnProfile} />
+          <BeerStatsTab
+            userId={viewingUserId}
+            isOwnProfile={isOwnProfile}
+            spendingVisible={viewingUser?.spending_visible !== false}
+          />
         )}
 
         <View />

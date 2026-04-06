@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useMemo } from "react";
 import {
   View,
   Dimensions,
@@ -7,6 +7,8 @@ import {
   Pressable,
   TouchableWithoutFeedback,
   Text,
+  PanResponder,
+  StyleSheet,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { useRouter, useLocalSearchParams } from "expo-router";
@@ -93,6 +95,143 @@ const LED_THEMES: Record<LEDStyle, LEDTheme> = {
   },
 };
 
+// Emoji detection
+const EMOJI_REGEX = /(\p{Emoji_Presentation}|\p{Extended_Pictographic})/gu;
+
+function extractEmojis(text: string): string[] {
+  return [...text.matchAll(EMOJI_REGEX)].map((m) => m[0]);
+}
+
+const EMOJI_DISPLAY_SIZE = 80;
+
+interface DraggableEmojiProps {
+  emoji: string;
+  id: string;
+  initialX: number;
+  initialY: number;
+  size: number;
+  onDuplicate: (emoji: string) => void;
+  onRemove: (id: string) => void;
+}
+
+function DraggableEmoji({
+  emoji,
+  id,
+  initialX,
+  initialY,
+  size,
+  onDuplicate,
+  onRemove,
+}: DraggableEmojiProps) {
+  const pan = useRef(
+    new Animated.ValueXY({ x: initialX, y: initialY }),
+  ).current;
+  const scaleAnim = useRef(new Animated.Value(0)).current;
+  const offset = useRef({ x: initialX, y: initialY });
+  const currentScale = useRef(1);
+  const initialPinchDistance = useRef(0);
+  const pinchScaleStart = useRef(1);
+  const tapCount = useRef(0);
+  const tapTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    Animated.spring(scaleAnim, {
+      toValue: 1,
+      friction: 5,
+      tension: 100,
+      useNativeDriver: false,
+    }).start();
+    return () => {
+      if (tapTimer.current) clearTimeout(tapTimer.current);
+    };
+  }, []);
+
+  const getDistance = (touches: any[]) => {
+    const dx = touches[0].pageX - touches[1].pageX;
+    const dy = touches[0].pageY - touches[1].pageY;
+    return Math.sqrt(dx * dx + dy * dy);
+  };
+
+  const handleTap = () => {
+    tapCount.current += 1;
+
+    if (tapCount.current === 3) {
+      if (tapTimer.current) clearTimeout(tapTimer.current);
+      tapCount.current = 0;
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+      onRemove(id);
+      return;
+    }
+
+    if (tapTimer.current) clearTimeout(tapTimer.current);
+    tapTimer.current = setTimeout(() => {
+      if (tapCount.current === 2) {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        onDuplicate(emoji);
+      }
+      tapCount.current = 0;
+    }, 300);
+  };
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderGrant: () => {
+        pan.setOffset(offset.current);
+        pan.setValue({ x: 0, y: 0 });
+      },
+      onPanResponderMove: (evt, gesture) => {
+        const touches = evt.nativeEvent.touches;
+        if (touches && touches.length >= 2) {
+          const distance = getDistance(touches);
+          if (initialPinchDistance.current === 0) {
+            initialPinchDistance.current = distance;
+            pinchScaleStart.current = currentScale.current;
+          } else {
+            const newScale =
+              pinchScaleStart.current *
+              (distance / initialPinchDistance.current);
+            const clamped = Math.max(0.3, Math.min(5, newScale));
+            currentScale.current = clamped;
+            scaleAnim.setValue(clamped);
+          }
+        } else {
+          pan.x.setValue(gesture.dx);
+          pan.y.setValue(gesture.dy);
+        }
+      },
+      onPanResponderRelease: (_, gesture) => {
+        initialPinchDistance.current = 0;
+        const wasTap = Math.abs(gesture.dx) < 5 && Math.abs(gesture.dy) < 5;
+        if (wasTap) handleTap();
+        offset.current = {
+          x: offset.current.x + gesture.dx,
+          y: offset.current.y + gesture.dy,
+        };
+        pan.flattenOffset();
+      },
+    }),
+  ).current;
+
+  return (
+    <Animated.View
+      style={{
+        position: "absolute",
+        transform: [
+          { translateX: pan.x },
+          { translateY: pan.y },
+          { scale: scaleAnim },
+          { rotate: "90deg" },
+        ],
+      }}
+      {...panResponder.panHandlers}
+    >
+      <Text style={{ fontSize: size }}>{emoji}</Text>
+    </Animated.View>
+  );
+}
+
 export function LEDFullscreenView({
   text,
   style = "neon",
@@ -130,6 +269,20 @@ export function LEDFullscreenView({
   );
   const [lineHeightMult, setLineHeightMult] = useState(1.3);
   const [textBlockHeight, setTextBlockHeight] = useState<number | null>(null);
+
+  const [emojiMode, setEmojiMode] = useState(false);
+  const [detachedEmojis, setDetachedEmojis] = useState<
+    Array<{ id: string; emoji: string; x: number; y: number }>
+  >([]);
+  const emojiIdCounter = useRef(0);
+
+  const emojisInText = useMemo(() => extractEmojis(baseText), [baseText]);
+  const hasEmojis = emojisInText.length > 0;
+  const textWithoutEmojis = useMemo(
+    () => displayText.replace(EMOJI_REGEX, ""),
+    [displayText],
+  );
+  const activeDisplayText = emojiMode ? textWithoutEmojis : displayText;
 
   // Reference font size used for static measurement
   const STATIC_REF_FONT = 100;
@@ -237,7 +390,7 @@ export function LEDFullscreenView({
     if (animationMode === "scroll") {
       setMeasuredTextWidth(null);
     }
-  }, [displayText, fontSize, animationMode, fontFamily]);
+  }, [activeDisplayText, fontSize, animationMode, fontFamily]);
 
   // Reset static measurement and line height when text/font/mode changes
   useEffect(() => {
@@ -246,7 +399,7 @@ export function LEDFullscreenView({
       setLineHeightMult(1.3);
       setTextBlockHeight(null);
     }
-  }, [displayText, animationMode, fontFamily]);
+  }, [activeDisplayText, animationMode, fontFamily]);
 
   // Detect overflow and reduce line height until it fits
   useEffect(() => {
@@ -341,6 +494,44 @@ export function LEDFullscreenView({
     lastTap.current = now;
   };
 
+  const enterEmojiMode = () => {
+    if (!hasEmojis) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+    const centerX = SCREEN_WIDTH / 2 - EMOJI_DISPLAY_SIZE / 2;
+    const centerY = SCREEN_HEIGHT / 2 - EMOJI_DISPLAY_SIZE / 2;
+
+    const positions = emojisInText.map((emoji, i) => {
+      emojiIdCounter.current += 1;
+      return {
+        id: String(emojiIdCounter.current),
+        emoji,
+        x: centerX + (i - (emojisInText.length - 1) / 2) * 50,
+        y: centerY + (i - (emojisInText.length - 1) / 2) * 50,
+      };
+    });
+
+    setDetachedEmojis(positions);
+    setEmojiMode(true);
+  };
+
+  const handleDuplicateEmoji = (emoji: string) => {
+    emojiIdCounter.current += 1;
+    setDetachedEmojis((prev) => [
+      ...prev,
+      {
+        id: String(emojiIdCounter.current),
+        emoji,
+        x: SCREEN_WIDTH / 2 - EMOJI_DISPLAY_SIZE / 2,
+        y: SCREEN_HEIGHT / 2 - EMOJI_DISPLAY_SIZE / 2,
+      },
+    ]);
+  };
+
+  const handleRemoveEmoji = (id: string) => {
+    setDetachedEmojis((prev) => prev.filter((e) => e.id !== id));
+  };
+
   // ── Font size calculation ────────────────────────────────────────────────
   // Scroll mode: large font (rotated text scrolls vertically)
   // Static mode: measurement-based — render at STATIC_REF_FONT, measure true width,
@@ -365,7 +556,7 @@ export function LEDFullscreenView({
     const availW = SCREEN_HEIGHT * 0.94; // container width before rotation
     const availH = SCREEN_WIDTH * 0.93; // container height before rotation
     const LINE_HEIGHT_RATIO = 1.15;
-    const charCount = displayText.length;
+    const charCount = activeDisplayText.length;
 
     let low = 20,
       high = 600,
@@ -439,131 +630,151 @@ export function LEDFullscreenView({
     >
       <StatusBar style="light" hidden />
 
-      <TouchableWithoutFeedback onPress={handleDoubleTap}>
-        <View style={[styles.ledContainer, { backgroundColor: bgColor }]}>
-          {/* Hidden off-screen node used only to measure the true rendered text width */}
-          {animationMode === "scroll" && measuredTextWidth === null && (
-            <View
-              style={{ position: "absolute", opacity: 0, width: 99999 }}
-              pointerEvents="none"
-            >
-              <Text
-                numberOfLines={1}
-                onLayout={(e) => {
-                  const width = e.nativeEvent.layout.width;
-                  console.log("LED text measured width:", width);
-                  console.log("Device screen height:", SCREEN_HEIGHT);
-                  console.log(
-                    "Phrase total length (chars):",
-                    displayText.length,
-                  );
-                  setMeasuredTextWidth(width);
-                }}
-                style={{
-                  fontSize: actualFontSize,
-                  letterSpacing: 1,
-                  ...(fontFamily === "monospace"
-                    ? { fontWeight: "900" as const }
-                    : {}),
-                  fontFamily,
-                  alignSelf: "flex-start",
-                }}
-              >
-                {displayText}
-              </Text>
-            </View>
-          )}
+      <View style={[styles.ledContainer, { backgroundColor: bgColor }]}>
+        {/* Background touch handler */}
+        <TouchableWithoutFeedback
+          onPress={handleDoubleTap}
+          onLongPress={hasEmojis && !emojiMode ? enterEmojiMode : undefined}
+        >
+          <View style={StyleSheet.absoluteFillObject} />
+        </TouchableWithoutFeedback>
 
-          {/* Hidden node to measure true single-line text width for static mode */}
-          {animationMode !== "scroll" && staticMeasuredWidth === null && (
-            <View
-              style={{ position: "absolute", opacity: 0, width: 99999 }}
-              pointerEvents="none"
-            >
-              <Text
-                numberOfLines={1}
-                onLayout={(e) =>
-                  setStaticMeasuredWidth(e.nativeEvent.layout.width)
-                }
-                style={{
-                  fontSize: STATIC_REF_FONT,
-                  fontFamily,
-                  fontWeight: fontFamily === "monospace" ? "900" : "normal",
-                  letterSpacing: 1,
-                  alignSelf: "center",
-                }}
-              >
-                {displayText}
-              </Text>
-            </View>
-          )}
+        {/* Floating emoji layer (behind text) */}
+        {emojiMode &&
+          detachedEmojis.map((e) => (
+            <DraggableEmoji
+              key={e.id}
+              id={e.id}
+              emoji={e.emoji}
+              initialX={e.x}
+              initialY={e.y}
+              size={EMOJI_DISPLAY_SIZE}
+              onDuplicate={handleDuplicateEmoji}
+              onRemove={handleRemoveEmoji}
+            />
+          ))}
 
-          {/* Visible animated text — hidden until measurement is ready in scroll mode */}
-          {(animationMode === "scroll"
-            ? measuredTextWidth !== null
-            : staticMeasuredWidth !== null) &&
-            (() => {
-              const lineHeight = actualFontSize * lineHeightMult;
-              const textNode =
-                currentFontStyle === "outline" || hollowStroke ? (
-                  <TextStroke color={textColor as string} stroke={3}>
-                    <Text
-                      style={{
-                        width: textWidth,
-                        fontSize: actualFontSize,
-                        lineHeight,
-                        color: bgColor,
-                        letterSpacing: 1,
-                        ...(fontFamily === "monospace"
-                          ? { fontWeight: "900" as const }
-                          : {}),
-                        fontFamily,
-                        textAlign: "center",
-                      }}
-                    >
-                      {displayText}
-                    </Text>
-                  </TextStroke>
-                ) : (
+        {/* Hidden off-screen node used only to measure the true rendered text width */}
+        {animationMode === "scroll" && measuredTextWidth === null && (
+          <View
+            style={{ position: "absolute", opacity: 0, width: 99999 }}
+            pointerEvents="none"
+          >
+            <Text
+              numberOfLines={1}
+              onLayout={(e) => {
+                const width = e.nativeEvent.layout.width;
+                console.log("LED text measured width:", width);
+                console.log("Device screen height:", SCREEN_HEIGHT);
+                console.log(
+                  "Phrase total length (chars):",
+                  activeDisplayText.length,
+                );
+                setMeasuredTextWidth(width);
+              }}
+              style={{
+                fontSize: actualFontSize,
+                letterSpacing: 1,
+                ...(fontFamily === "monospace"
+                  ? { fontWeight: "900" as const }
+                  : {}),
+                fontFamily,
+                alignSelf: "flex-start",
+              }}
+            >
+              {activeDisplayText}
+            </Text>
+          </View>
+        )}
+
+        {/* Hidden node to measure true single-line text width for static mode */}
+        {animationMode !== "scroll" && staticMeasuredWidth === null && (
+          <View
+            style={{ position: "absolute", opacity: 0, width: 99999 }}
+            pointerEvents="none"
+          >
+            <Text
+              numberOfLines={1}
+              onLayout={(e) =>
+                setStaticMeasuredWidth(e.nativeEvent.layout.width)
+              }
+              style={{
+                fontSize: STATIC_REF_FONT,
+                fontFamily,
+                fontWeight: fontFamily === "monospace" ? "900" : "normal",
+                letterSpacing: 1,
+                alignSelf: "center",
+              }}
+            >
+              {activeDisplayText}
+            </Text>
+          </View>
+        )}
+
+        {/* Visible animated text — hidden until measurement is ready in scroll mode */}
+        {(animationMode === "scroll"
+          ? measuredTextWidth !== null
+          : staticMeasuredWidth !== null) &&
+          (() => {
+            const lineHeight = actualFontSize * lineHeightMult;
+            const textNode =
+              currentFontStyle === "outline" || hollowStroke ? (
+                <TextStroke color={textColor as string} stroke={3}>
                   <Text
                     style={{
                       width: textWidth,
                       fontSize: actualFontSize,
                       lineHeight,
-                      ...fontStyleProps,
-                      fontFamily,
-                      fontWeight: fontFamily === "monospace" ? "400" : "normal",
+                      color: bgColor,
                       letterSpacing: 1,
+                      ...(fontFamily === "monospace"
+                        ? { fontWeight: "900" as const }
+                        : {}),
+                      fontFamily,
                       textAlign: "center",
                     }}
                   >
-                    {displayText}
+                    {activeDisplayText}
                   </Text>
-                );
-
-              return (
-                <Animated.View
+                </TextStroke>
+              ) : (
+                <Text
                   style={{
-                    position: "absolute",
-                    // For scroll: vertically center the element so rotation pivot = screen center
-                    // and translateY animation is symmetric around 0.
-                    ...(animationMode === "scroll"
-                      ? { top: (SCREEN_HEIGHT - lineHeight) / 2 }
-                      : {}),
-                    transform: textTransform,
-                  }}
-                  onLayout={(e) => {
-                    if (animationMode !== "scroll") {
-                      setTextBlockHeight(e.nativeEvent.layout.height);
-                    }
+                    width: textWidth,
+                    fontSize: actualFontSize,
+                    lineHeight,
+                    ...fontStyleProps,
+                    fontFamily,
+                    fontWeight: fontFamily === "monospace" ? "400" : "normal",
+                    letterSpacing: 1,
+                    textAlign: "center",
                   }}
                 >
-                  {textNode}
-                </Animated.View>
+                  {activeDisplayText}
+                </Text>
               );
-            })()}
-        </View>
-      </TouchableWithoutFeedback>
+
+            return (
+              <Animated.View
+                style={{
+                  position: "absolute",
+                  ...(animationMode === "scroll"
+                    ? { top: (SCREEN_HEIGHT - lineHeight) / 2 }
+                    : {}),
+                  transform: textTransform,
+                }}
+                pointerEvents="none"
+                onLayout={(e) => {
+                  if (animationMode !== "scroll") {
+                    setTextBlockHeight(e.nativeEvent.layout.height);
+                  }
+                }}
+              >
+                {textNode}
+              </Animated.View>
+            );
+          })()}
+      </View>
 
       {/* Back button - appears on single tap */}
       {showBackButton && (

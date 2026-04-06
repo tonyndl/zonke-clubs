@@ -70,13 +70,18 @@ import {
   DeleteConfirmText,
   DangerButton,
   LightboxOverlay,
+  LightboxCard,
   LightboxMedia,
   LightboxImage,
   LightboxVideo,
   LightboxClose,
   LightboxInfo,
+  LightboxInfoLeft,
   LightboxCaption,
   LightboxMeta,
+  LightboxLikes,
+  LightboxActions,
+  LightboxActionBtn,
 } from "./styles";
 
 interface SelectedFileType {
@@ -116,18 +121,25 @@ export const Media: React.FC = () => {
   const [editCaption, setEditCaption] = useState("");
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [previewPost, setPreviewPost] = useState<any | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const POSTS_PER_PAGE = 8;
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    loadPosts();
+    loadPosts(1);
   }, []);
 
-  const loadPosts = () => {
+  const loadPosts = (page: number) => {
     setLoading(true);
     apiService
-      .getPosts(1, 100, "approved", "club")
+      .getPosts(page, POSTS_PER_PAGE, "approved", "club")
       .then((response) => {
         setPosts(response.posts || []);
+        setTotalPages(response.total_pages || 1);
+        setTotalCount(response.total_count || 0);
+        setCurrentPage(response.page || page);
       })
       .catch((error) => {
         console.error("Failed to load media:", error);
@@ -238,7 +250,7 @@ export const Media: React.FC = () => {
         setSelectedFiles([]);
         setCaption("");
         setUploadProgress(0);
-        loadPosts();
+        loadPosts(1);
         toast.success("Media uploaded successfully!");
       })
       .catch((error) => {
@@ -257,8 +269,8 @@ export const Media: React.FC = () => {
     apiService
       .deleteClubPost(postId)
       .then(() => {
-        setPosts((prev) => prev.filter((p) => p.id !== postId));
         toast.success("Post deleted successfully.");
+        loadPosts(currentPage);
       })
       .catch((error) => {
         console.error("Delete failed:", error);
@@ -513,43 +525,67 @@ export const Media: React.FC = () => {
                 <LightboxClose onClick={() => setPreviewPost(null)}>
                   {React.createElement(RiCloseLine as React.ComponentType)}
                 </LightboxClose>
-                <LightboxMedia onClick={(e) => e.stopPropagation()}>
-                  {isVid ? (
-                    <LightboxVideo
-                      src={asset.url}
-                      controls
-                      autoPlay
-                      playsInline
-                    />
-                  ) : (
-                    <LightboxImage
-                      src={asset.url}
-                      alt={previewPost.caption || "Club media"}
-                    />
-                  )}
-                </LightboxMedia>
-                {(previewPost.caption || previewPost.inserted_at) && (
-                  <LightboxInfo onClick={(e) => e.stopPropagation()}>
-                    {previewPost.caption && (
-                      <LightboxCaption>{previewPost.caption}</LightboxCaption>
+                <LightboxCard onClick={(e) => e.stopPropagation()}>
+                  <LightboxMedia>
+                    {isVid ? (
+                      <LightboxVideo
+                        src={asset.url}
+                        controls
+                        autoPlay
+                        playsInline
+                      />
+                    ) : (
+                      <LightboxImage
+                        src={asset.url}
+                        alt={previewPost.caption || "Club media"}
+                      />
                     )}
-                    <LightboxMeta>
-                      {formatDate(previewPost.inserted_at)}
-                      {previewPost.assets?.length > 1 &&
-                        ` · ${previewPost.assets.length} items`}
-                      {previewPost.like_count > 0 && (
-                        <span
-                          style={{
-                            marginLeft: theme.spacing.md,
-                            color: "#ff4458",
-                          }}
-                        >
-                          ♥ {previewPost.like_count}
-                        </span>
+                  </LightboxMedia>
+                  <LightboxInfo>
+                    <LightboxInfoLeft>
+                      {previewPost.caption && (
+                        <LightboxCaption>{previewPost.caption}</LightboxCaption>
                       )}
-                    </LightboxMeta>
+                      <LightboxMeta>
+                        <span>{formatDate(previewPost.inserted_at)}</span>
+                        {previewPost.assets?.length > 1 && (
+                          <span>· {previewPost.assets.length} items</span>
+                        )}
+                        {previewPost.like_count > 0 && (
+                          <LightboxLikes>
+                            {React.createElement(
+                              RiHeartFill as React.ComponentType,
+                            )}
+                            {previewPost.like_count}
+                          </LightboxLikes>
+                        )}
+                      </LightboxMeta>
+                    </LightboxInfoLeft>
+                    <LightboxActions>
+                      <LightboxActionBtn
+                        onClick={() => {
+                          setPreviewPost(null);
+                          openEditCaption(previewPost);
+                        }}
+                        title="Edit caption"
+                      >
+                        {React.createElement(RiEditLine as React.ComponentType)}
+                      </LightboxActionBtn>
+                      <LightboxActionBtn
+                        danger
+                        onClick={() => {
+                          setPreviewPost(null);
+                          setConfirmDeleteId(previewPost.id);
+                        }}
+                        title="Delete post"
+                      >
+                        {React.createElement(
+                          RiDeleteBinLine as React.ComponentType,
+                        )}
+                      </LightboxActionBtn>
+                    </LightboxActions>
                   </LightboxInfo>
-                )}
+                </LightboxCard>
               </LightboxOverlay>
             );
           })()}
@@ -572,7 +608,8 @@ export const Media: React.FC = () => {
                   color: theme.colors.textSecondary,
                 }}
               >
-                ({posts.length} {posts.length === 1 ? "item" : "items"})
+                ({totalCount || posts.length}{" "}
+                {(totalCount || posts.length) === 1 ? "item" : "items"})
               </span>
             )}
           </CardTitle>
@@ -582,81 +619,174 @@ export const Media: React.FC = () => {
               <CardDescription>Loading media...</CardDescription>
             </EmptyState>
           ) : posts.length > 0 ? (
-            <GalleryGrid>
-              {posts.map((post) => {
-                const firstAsset = post.assets?.[0];
-                if (!firstAsset) return null;
+            <>
+              <GalleryGrid>
+                {posts.map((post) => {
+                  const firstAsset = post.assets?.[0];
+                  if (!firstAsset) return null;
 
-                const isVideo = firstAsset.type === "video";
+                  const isVideo = firstAsset.type === "video";
 
-                return (
-                  <MediaCard key={post.id} onClick={() => setPreviewPost(post)}>
-                    <MediaPreview>
-                      {isVideo ? (
-                        <MediaVideo src={firstAsset.url} playsInline muted />
-                      ) : (
-                        <MediaImage
-                          src={firstAsset.url}
-                          alt={post.caption || "Club media"}
-                        />
-                      )}
-
-                      {post.like_count > 0 && (
-                        <LikeBadge>
-                          {React.createElement(
-                            RiHeartFill as React.ComponentType,
-                          )}
-                          <LikeCount>{post.like_count}</LikeCount>
-                        </LikeBadge>
-                      )}
-
-                      <MediaOverlay>
-                        <MediaOverlayIcon>
-                          {React.createElement(
-                            isVideo
-                              ? (RiPlayCircleLine as React.ComponentType)
-                              : (RiEyeLine as React.ComponentType),
-                          )}
-                        </MediaOverlayIcon>
-                        {post.caption && (
-                          <MediaCaption>{post.caption}</MediaCaption>
+                  return (
+                    <MediaCard
+                      key={post.id}
+                      onClick={() => setPreviewPost(post)}
+                    >
+                      <MediaPreview>
+                        {isVideo ? (
+                          <MediaVideo src={firstAsset.url} playsInline muted />
+                        ) : (
+                          <MediaImage
+                            src={firstAsset.url}
+                            alt={post.caption || "Club media"}
+                          />
                         )}
-                        <MediaDate>
-                          {formatDate(post.inserted_at)}
-                          {post.assets?.length > 1 &&
-                            ` · ${post.assets.length} items`}
-                        </MediaDate>
-                        <MediaActionBar>
-                          <MediaActionBtn
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              openEditCaption(post);
-                            }}
-                            title="Edit caption"
-                          >
+
+                        {post.like_count > 0 && (
+                          <LikeBadge>
                             {React.createElement(
-                              RiEditLine as React.ComponentType,
+                              RiHeartFill as React.ComponentType,
                             )}
-                          </MediaActionBtn>
-                          <MediaActionBtn
-                            danger
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setConfirmDeleteId(post.id);
-                            }}
-                            title="Delete post"
-                          >
+                            <LikeCount>{post.like_count}</LikeCount>
+                          </LikeBadge>
+                        )}
+
+                        <MediaOverlay>
+                          <MediaOverlayIcon>
                             {React.createElement(
-                              RiDeleteBinLine as React.ComponentType,
+                              isVideo
+                                ? (RiPlayCircleLine as React.ComponentType)
+                                : (RiEyeLine as React.ComponentType),
                             )}
-                          </MediaActionBtn>
-                        </MediaActionBar>
-                      </MediaOverlay>
-                    </MediaPreview>
-                  </MediaCard>
-                );
-              })}
-            </GalleryGrid>
+                          </MediaOverlayIcon>
+                          {post.caption && (
+                            <MediaCaption>{post.caption}</MediaCaption>
+                          )}
+                          <MediaDate>
+                            {formatDate(post.inserted_at)}
+                            {post.assets?.length > 1 &&
+                              ` · ${post.assets.length} items`}
+                          </MediaDate>
+                          <MediaActionBar>
+                            <MediaActionBtn
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openEditCaption(post);
+                              }}
+                              title="Edit caption"
+                            >
+                              {React.createElement(
+                                RiEditLine as React.ComponentType,
+                              )}
+                            </MediaActionBtn>
+                            <MediaActionBtn
+                              danger
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setConfirmDeleteId(post.id);
+                              }}
+                              title="Delete post"
+                            >
+                              {React.createElement(
+                                RiDeleteBinLine as React.ComponentType,
+                              )}
+                            </MediaActionBtn>
+                          </MediaActionBar>
+                        </MediaOverlay>
+                      </MediaPreview>
+                    </MediaCard>
+                  );
+                })}
+              </GalleryGrid>
+              {totalPages > 1 && (
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: theme.spacing.sm,
+                    marginTop: theme.spacing.xl,
+                  }}
+                >
+                  <button
+                    onClick={() => loadPosts(currentPage - 1)}
+                    disabled={currentPage === 1 || loading}
+                    style={{
+                      padding: `${theme.spacing.sm} ${theme.spacing.md}`,
+                      background:
+                        currentPage === 1
+                          ? "transparent"
+                          : "rgba(57, 243, 255, 0.08)",
+                      border: `1px solid ${currentPage === 1 ? theme.colors.border : theme.colors.primary}`,
+                      borderRadius: theme.borderRadius.lg,
+                      color:
+                        currentPage === 1
+                          ? theme.colors.textSecondary
+                          : theme.colors.primary,
+                      cursor: currentPage === 1 ? "not-allowed" : "pointer",
+                      fontSize: theme.typography.fontSize.sm,
+                      fontWeight: 600,
+                    }}
+                  >
+                    Previous
+                  </button>
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map(
+                    (page) => (
+                      <button
+                        key={page}
+                        onClick={() => loadPosts(page)}
+                        disabled={loading}
+                        style={{
+                          width: 36,
+                          height: 36,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          background:
+                            page === currentPage
+                              ? theme.colors.primary
+                              : "transparent",
+                          border: `1px solid ${page === currentPage ? theme.colors.primary : theme.colors.border}`,
+                          borderRadius: theme.borderRadius.lg,
+                          color:
+                            page === currentPage
+                              ? theme.colors.background
+                              : theme.colors.textSecondary,
+                          cursor: "pointer",
+                          fontSize: theme.typography.fontSize.sm,
+                          fontWeight: 700,
+                        }}
+                      >
+                        {page}
+                      </button>
+                    ),
+                  )}
+                  <button
+                    onClick={() => loadPosts(currentPage + 1)}
+                    disabled={currentPage === totalPages || loading}
+                    style={{
+                      padding: `${theme.spacing.sm} ${theme.spacing.md}`,
+                      background:
+                        currentPage === totalPages
+                          ? "transparent"
+                          : "rgba(57, 243, 255, 0.08)",
+                      border: `1px solid ${currentPage === totalPages ? theme.colors.border : theme.colors.primary}`,
+                      borderRadius: theme.borderRadius.lg,
+                      color:
+                        currentPage === totalPages
+                          ? theme.colors.textSecondary
+                          : theme.colors.primary,
+                      cursor:
+                        currentPage === totalPages ? "not-allowed" : "pointer",
+                      fontSize: theme.typography.fontSize.sm,
+                      fontWeight: 600,
+                    }}
+                  >
+                    Next
+                  </button>
+                </div>
+              )}
+            </>
           ) : (
             <EmptyState>
               {React.createElement(RiImageAddLine as React.ComponentType)}

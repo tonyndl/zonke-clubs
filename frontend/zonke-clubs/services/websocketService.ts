@@ -88,6 +88,14 @@ class WebSocketService {
             this.emit("connection_disconnected", payload);
           });
 
+          this.userChannel.on("dj_request_approved", (payload: any) => {
+            this.emit("dj_request_approved", payload);
+          });
+
+          this.userChannel.on("dj_request_denied", (payload: any) => {
+            this.emit("dj_request_denied", payload);
+          });
+
           // Join the channel
           return new Promise((resolve, reject) => {
             this.userChannel
