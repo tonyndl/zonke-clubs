@@ -2,11 +2,25 @@ defmodule BackendWeb.StrobeChannel do
   use BackendWeb, :channel
 
   alias Backend.Strobe
+  alias BackendWeb.Presence
 
   @impl true
   def join("strobe:" <> club_id, _payload, socket) do
     # Any authenticated user can join to listen
+    send(self(), :after_join)
     {:ok, assign(socket, :club_id, club_id)}
+  end
+
+  @impl true
+  def handle_info(:after_join, socket) do
+    {:ok, _} =
+      Presence.track(socket, socket.assigns.user_id, %{
+        online_at: System.system_time(:second)
+      })
+
+    # Send initial presence state to the newly joined client
+    push(socket, "presence_state", Presence.list(socket))
+    {:noreply, socket}
   end
 
   # ── DJ sends strobe start ─────────────────────────────────────────────────────

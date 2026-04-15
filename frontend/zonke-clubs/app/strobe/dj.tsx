@@ -5,9 +5,10 @@ import {
   StyleSheet,
   ScrollView,
   Pressable,
-  Alert,
   ActivityIndicator,
+  Modal,
 } from "react-native";
+import { BlurView } from "expo-blur";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, useFocusEffect } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -51,13 +52,95 @@ const EFFECTS: {
 
 const BPM = 120; // fixed internally, not exposed to DJ
 
+// Visual preview that flashes a lightning bolt according to the effect's pattern.
+// Matches the look of the Strobe Sync (join) screen — dark circle with cyan border,
+// flashing to white in sync with the selected effect.
+function StrobePreview({
+  effect,
+  bpm,
+  customOnMs,
+  customOffMs,
+}: {
+  effect: StrobeEffect;
+  bpm: number;
+  customOnMs?: number;
+  customOffMs?: number;
+}) {
+  const [flashing, setFlashing] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    const pattern = getEffectPattern(effect, bpm, customOnMs, customOffMs);
+    let stepIdx = 0;
+    let cancelled = false;
+
+    const tick = () => {
+      if (cancelled) return;
+      const [onMs, offMs] = pattern[stepIdx % pattern.length];
+      stepIdx++;
+
+      setFlashing(true);
+      timerRef.current = setTimeout(() => {
+        if (cancelled) return;
+        setFlashing(false);
+        timerRef.current = setTimeout(tick, offMs);
+      }, onMs);
+    };
+
+    tick();
+
+    return () => {
+      cancelled = true;
+      if (timerRef.current) clearTimeout(timerRef.current);
+      setFlashing(false);
+    };
+  }, [effect, bpm, customOnMs, customOffMs]);
+
+  return (
+    <View
+      style={[
+        previewStyles.iconWrap,
+        previewStyles.iconWrapActive,
+        flashing && previewStyles.iconWrapFlash,
+      ]}
+    >
+      <Ionicons
+        name="flash"
+        size={64}
+        color={flashing ? "#FFFFFF" : Colors.accent}
+      />
+    </View>
+  );
+}
+
+const previewStyles = StyleSheet.create({
+  iconWrap: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: Colors.bgCard,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 2,
+    borderColor: "rgba(255,255,255,0.1)",
+  },
+  iconWrapActive: {
+    borderColor: Colors.accent,
+    backgroundColor: "rgba(57,243,255,0.1)",
+  },
+  iconWrapFlash: {
+    borderColor: "#FFFFFF",
+    backgroundColor: "rgba(255,255,255,0.85)",
+  },
+});
+
 export default function DJStrobeScreen() {
   const router = useRouter();
 
   const [approvals, setApprovals] = useState<StrobeApproval[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedClub, setSelectedClub] = useState<StrobeApproval | null>(null);
-  const [effect, setEffect] = useState<StrobeEffect>("kick");
+  const [effect, setEffect] = useState<StrobeEffect>("pulse");
   const [isRunning, setIsRunning] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [torchOn, setTorchOn] = useState(false);
@@ -73,6 +156,15 @@ export default function DJStrobeScreen() {
   const tapOffSamplesRef = useRef<number[]>([]);
 
   const [cameraPermission, requestCameraPermission] = useCameraPermissions();
+  const [confirmModal, setConfirmModal] = useState<{
+    visible: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+    confirmLabel?: string;
+    confirmColor?: string;
+    options?: Array<{ label: string; onSelect: () => void }>;
+  }>({ visible: false, title: "", message: "", onConfirm: () => {} });
 
   const beatTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const patternIndexRef = useRef(0);
@@ -85,12 +177,52 @@ export default function DJStrobeScreen() {
     }, []),
   );
 
+  // Refs that handlers can read without triggering effect re-runs
+  const selectedClubRef = useRef<StrobeApproval | null>(null);
+  const isRunningRef = useRef(false);
+
+  useEffect(() => {
+    selectedClubRef.current = selectedClub;
+  }, [selectedClub]);
+
+  useEffect(() => {
+    isRunningRef.current = isRunning;
+  }, [isRunning]);
+
   useEffect(() => {
     isMountedRef.current = true;
+
+    const handleApproved = () => {
+      if (!isMountedRef.current) return;
+      loadApprovals();
+    };
+
+    const handleDenied = (payload: any) => {
+      if (!isMountedRef.current || !payload?.club_id) return;
+
+      // If the currently selected club was revoked, clear it and stop the strobe
+      if (selectedClubRef.current?.club_id === payload.club_id) {
+        if (isRunningRef.current) {
+          stopBeatTimer();
+          strobeChannel.leave();
+        }
+        setSelectedClub(null);
+      }
+
+      // Remove the revoked approval from the list immediately
+      setApprovals((prev) => prev.filter((a) => a.club_id !== payload.club_id));
+    };
+
+    const { websocketService } = require("@/services/websocketService");
+    websocketService.on("dj_request_approved", handleApproved);
+    websocketService.on("dj_request_denied", handleDenied);
+
     return () => {
       isMountedRef.current = false;
+      websocketService.off("dj_request_approved", handleApproved);
+      websocketService.off("dj_request_denied", handleDenied);
       stopBeatTimer();
-      if (selectedClub) {
+      if (selectedClubRef.current) {
         strobeChannel.leave();
       }
     };
@@ -123,18 +255,59 @@ export default function DJStrobeScreen() {
     setSelectedClub(approval);
   };
 
-  const startStrobe = () => {
-    if (!selectedClub) {
-      Alert.alert(
-        "Select a club",
-        "Please select which club you're performing at.",
-      );
+  const revokeOwnApproval = (approval: StrobeApproval) => {
+    if (isRunning) {
+      setConfirmModal({
+        visible: true,
+        title: "Stop strobe first",
+        message: "Please end the strobe before revoking your approval.",
+        onConfirm: () => {},
+      });
+      return;
+    }
+
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setConfirmModal({
+      visible: true,
+      title: "Revoke approval",
+      message: `Remove your strobe approval at ${approval.club?.name ?? "this club"}? You'll need to request again to perform here.`,
+      onConfirm: () => {
+        strobeService
+          .cancelRequest(approval.club_id)
+          .then(() => {
+            setApprovals((prev) => prev.filter((a) => a.id !== approval.id));
+            if (selectedClub?.id === approval.id) setSelectedClub(null);
+          })
+          .catch((err) => {
+            console.error("Failed to revoke approval", err);
+          });
+      },
+    });
+  };
+
+  const startStrobe = (overrideClub?: StrobeApproval) => {
+    const club = overrideClub ?? selectedClub;
+    if (!club) {
+      setConfirmModal({
+        visible: true,
+        title: "Select a club",
+        message: "Choose which club you're performing at.",
+        onConfirm: () => {},
+        options: approvedApprovals.map((a) => ({
+          label: a.club?.name ?? "Club",
+          onSelect: () => {
+            setSelectedClub(a);
+            setConfirmModal((prev) => ({ ...prev, visible: false }));
+            setTimeout(() => startStrobe(a), 100);
+          },
+        })),
+      });
       return;
     }
 
     if (!cameraPermission?.granted) {
       requestCameraPermission().then((result) => {
-        if (result.granted) startStrobe();
+        if (result.granted) startStrobe(club);
       });
       return;
     }
@@ -142,7 +315,7 @@ export default function DJStrobeScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
 
     strobeChannel
-      .join(selectedClub.club_id)
+      .join(club.club_id)
       .then(() =>
         strobeChannel.startStrobe(
           BPM,
@@ -160,8 +333,8 @@ export default function DJStrobeScreen() {
         router.replace({
           pathname: "/strobe/join" as any,
           params: {
-            clubId: selectedClub.club_id,
-            clubName: selectedClub.club?.name ?? "",
+            clubId: club.club_id,
+            clubName: club.club?.name ?? "",
             autoJoin: "1",
             sessionId: info.session_id,
             bpm: String(info.bpm),
@@ -178,10 +351,13 @@ export default function DJStrobeScreen() {
       })
       .catch((err) => {
         console.error("Failed to start strobe", err);
-        Alert.alert(
-          "Error",
-          "Could not start strobe. Make sure you have an active approval.",
-        );
+        setConfirmModal({
+          visible: true,
+          title: "Error",
+          message:
+            "Could not start strobe. Make sure you have an active approval.",
+          onConfirm: () => {},
+        });
       });
   };
 
@@ -370,7 +546,7 @@ export default function DJStrobeScreen() {
           <Text style={styles.headerTitle}>DJ STROBE</Text>
           <View style={{ width: 40 }} />
         </View>
-        <ActivityIndicator color={Colors.accent} style={{ marginTop: 60 }} />
+        <ActivityIndicator color={Colors.accent} style={{ flex: 1 }} />
       </SafeAreaView>
     );
   }
@@ -482,6 +658,16 @@ export default function DJStrobeScreen() {
                       color={Colors.accent}
                     />
                   )}
+                  <Pressable
+                    onPress={(e) => {
+                      e.stopPropagation();
+                      revokeOwnApproval(a);
+                    }}
+                    hitSlop={10}
+                    style={{ padding: 4 }}
+                  >
+                    <Ionicons name="trash-outline" size={18} color="#EF4444" />
+                  </Pressable>
                 </View>
               </Pressable>
             ))}
@@ -646,6 +832,23 @@ export default function DJStrobeScreen() {
                 </View>
               )}
             </View>
+
+            {/* Live Visual Preview — fills remaining space, centered */}
+            <View
+              style={{
+                flex: 1,
+                justifyContent: "center",
+                alignItems: "center",
+                minHeight: 180,
+              }}
+            >
+              <StrobePreview
+                effect={effect}
+                bpm={BPM}
+                customOnMs={effect === "custom" ? customOnMs : undefined}
+                customOffMs={effect === "custom" ? customOffMs : undefined}
+              />
+            </View>
           </>
         )}
       </ScrollView>
@@ -680,7 +883,7 @@ export default function DJStrobeScreen() {
               styles.mainBtn,
               isRunning ? styles.mainBtnStop : styles.mainBtnStart,
             ]}
-            onPress={isRunning ? stopStrobe : startStrobe}
+            onPress={isRunning ? stopStrobe : () => startStrobe()}
           >
             <Ionicons
               name={isRunning ? "stop" : "flash"}
@@ -693,6 +896,177 @@ export default function DJStrobeScreen() {
           </Pressable>
         </View>
       )}
+
+      {/* Themed Confirmation Modal */}
+      <Modal
+        visible={confirmModal.visible}
+        transparent
+        animationType="fade"
+        onRequestClose={() =>
+          setConfirmModal((prev) => ({ ...prev, visible: false }))
+        }
+      >
+        <BlurView intensity={60} tint="dark" style={{ flex: 1 }}>
+          <Pressable
+            style={{
+              flex: 1,
+              justifyContent: "center",
+              alignItems: "center",
+              padding: 32,
+            }}
+            onPress={() =>
+              setConfirmModal((prev) => ({ ...prev, visible: false }))
+            }
+          >
+            <Pressable
+              onPress={() => {}}
+              style={{
+                backgroundColor: Colors.bgCard,
+                borderRadius: 20,
+                padding: 24,
+                width: "100%",
+                borderWidth: 1,
+                borderColor: "rgba(57, 243, 255, 0.15)",
+              }}
+            >
+              <Text
+                style={{
+                  fontSize: 18,
+                  fontWeight: "700",
+                  color: Colors.platinum,
+                  marginBottom: 10,
+                }}
+              >
+                {confirmModal.title}
+              </Text>
+              <Text
+                style={{
+                  fontSize: 14,
+                  color: Colors.smoke,
+                  lineHeight: 20,
+                  marginBottom: 20,
+                }}
+              >
+                {confirmModal.message}
+              </Text>
+
+              {confirmModal.options && confirmModal.options.length > 0 ? (
+                <>
+                  <View style={{ gap: 8, marginBottom: 16 }}>
+                    {confirmModal.options.map((opt, idx) => (
+                      <Pressable
+                        key={`${opt.label}-${idx}`}
+                        onPress={opt.onSelect}
+                        style={{
+                          paddingVertical: 14,
+                          paddingHorizontal: 16,
+                          borderRadius: 14,
+                          backgroundColor: Colors.bgSecondary,
+                          borderWidth: 1,
+                          borderColor: "rgba(57, 243, 255, 0.2)",
+                          flexDirection: "row",
+                          alignItems: "center",
+                          gap: 12,
+                        }}
+                      >
+                        <Ionicons
+                          name="location"
+                          size={18}
+                          color={Colors.gold}
+                        />
+                        <Text
+                          style={{
+                            fontSize: 15,
+                            fontWeight: "600",
+                            color: Colors.platinum,
+                            flex: 1,
+                          }}
+                        >
+                          {opt.label}
+                        </Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                  <Pressable
+                    onPress={() =>
+                      setConfirmModal((prev) => ({ ...prev, visible: false }))
+                    }
+                    style={{
+                      paddingVertical: 12,
+                      borderRadius: 14,
+                      backgroundColor: "rgba(239, 68, 68, 0.12)",
+                      alignItems: "center",
+                      borderWidth: 1,
+                      borderColor: "rgba(239, 68, 68, 0.4)",
+                    }}
+                  >
+                    <Text
+                      style={{
+                        fontSize: 15,
+                        fontWeight: "600",
+                        color: "#EF4444",
+                      }}
+                    >
+                      Cancel
+                    </Text>
+                  </Pressable>
+                </>
+              ) : (
+                <View style={{ flexDirection: "row", gap: 10 }}>
+                  <Pressable
+                    onPress={() =>
+                      setConfirmModal((prev) => ({ ...prev, visible: false }))
+                    }
+                    style={{
+                      flex: 1,
+                      paddingVertical: 12,
+                      borderRadius: 14,
+                      backgroundColor: Colors.bgSecondary,
+                      alignItems: "center",
+                      borderWidth: 1,
+                      borderColor: "rgba(255,255,255,0.1)",
+                    }}
+                  >
+                    <Text
+                      style={{
+                        fontSize: 15,
+                        fontWeight: "600",
+                        color: Colors.lightGrey,
+                      }}
+                    >
+                      Cancel
+                    </Text>
+                  </Pressable>
+                  <Pressable
+                    onPress={() => {
+                      const action = confirmModal.onConfirm;
+                      setConfirmModal((prev) => ({ ...prev, visible: false }));
+                      action();
+                    }}
+                    style={{
+                      flex: 1,
+                      paddingVertical: 12,
+                      borderRadius: 14,
+                      backgroundColor: confirmModal.confirmColor || "#EF4444",
+                      alignItems: "center",
+                    }}
+                  >
+                    <Text
+                      style={{
+                        fontSize: 15,
+                        fontWeight: "700",
+                        color: Colors.white,
+                      }}
+                    >
+                      {confirmModal.confirmLabel || "Revoke"}
+                    </Text>
+                  </Pressable>
+                </View>
+              )}
+            </Pressable>
+          </Pressable>
+        </BlurView>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -714,6 +1088,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingHorizontal: 16,
     paddingVertical: 12,
+    marginBottom: 20,
   },
   backBtn: {
     width: 40,

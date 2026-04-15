@@ -26,7 +26,7 @@ interface Props {
   posts: ClubPost[];
   onPostPress: (postIndex: number) => void;
   onAddPost?: () => void;
-  clubNames?: Record<string, string>; // Map club IDs to names
+  title?: string;
 }
 
 type TabType = "all" | "photos" | "videos";
@@ -35,7 +35,7 @@ export function UserMediaGrid({
   posts = [],
   onPostPress,
   onAddPost,
-  clubNames = {},
+  title = "My Club Vibes",
 }: Props) {
   const [activeTab, setActiveTab] = useState<TabType>("all");
   const [containerMinHeight, setContainerMinHeight] = useState<
@@ -96,7 +96,7 @@ export function UserMediaGrid({
             <View style={styles.feedHeader}>
               <View style={styles.sectionHeaderLeft}>
                 <Ionicons name="images" size={22} color={Colors.gold} />
-                <Text style={styles.sectionTitle}>My Club Vibes</Text>
+                <Text style={styles.sectionTitle}>{title}</Text>
               </View>
               {onAddPost && (
                 <PressableScale
@@ -179,7 +179,7 @@ export function UserMediaGrid({
                 <PostGridItem
                   key={post.id}
                   post={post}
-                  clubName={clubNames[post.clubId]}
+                  clubName={post.clubName}
                   onPress={() => onPostPress(originalIndex)}
                   index={index}
                   itemWidth={itemWidth}

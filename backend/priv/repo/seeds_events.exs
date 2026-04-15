@@ -364,6 +364,227 @@ events_data = [
     vip_entry_price: "800.00",
     dj_lineup: [],
     status: "draft"
+  },
+  # Extra events – brings total to 50 (5 pages at 10 per page)
+  %{
+    title: "Afro House Saturdays",
+    description: "Deep, hypnotic Afro House from dusk till dawn. Our curated resident selectors keep the energy high all night long.",
+    date: future_date.(17),
+    start_time: "21:00",
+    end_time: "06:00",
+    general_entry_price: "120.00",
+    vip_entry_price: "340.00",
+    dj_lineup: [],
+    status: "published"
+  },
+  %{
+    title: "Rooftop Sundowner Vol. 3",
+    description: "Third edition of our sell-out sundowner series. Premium drinks, panoramic views, and the finest deep house selectors.",
+    date: future_date.(19),
+    start_time: "16:00",
+    end_time: "23:00",
+    general_entry_price: "100.00",
+    vip_entry_price: "260.00",
+    dj_lineup: [],
+    status: "published"
+  },
+  %{
+    title: "Kwaito Klassics",
+    description: "Celebrating the golden era of South African kwaito. All the classics plus live performances from kwaito legends.",
+    date: future_date.(21),
+    start_time: "20:00",
+    end_time: "04:00",
+    general_entry_price: "80.00",
+    vip_entry_price: "200.00",
+    dj_lineup: [],
+    status: "published"
+  },
+  %{
+    title: "Neon Rave Night",
+    description: "UV paint stations, neon body art, and the hardest techno lineup of the year. Dress to glow.",
+    date: future_date.(23),
+    start_time: "22:00",
+    end_time: "07:00",
+    general_entry_price: "160.00",
+    vip_entry_price: "420.00",
+    dj_lineup: [],
+    status: "published"
+  },
+  %{
+    title: "Gospel & Brunch Sunday",
+    description: "Start your Sunday right. Live gospel choir, bottomless brunch, and a smooth afternoon DJ set transitioning into evening vibes.",
+    date: future_date.(24),
+    start_time: "11:00",
+    end_time: "18:00",
+    general_entry_price: "200.00",
+    vip_entry_price: "380.00",
+    dj_lineup: [],
+    status: "published"
+  },
+  %{
+    title: "Open Decks Night",
+    description: "Calling all aspiring DJs. Sign up to play a 30-minute set in front of a live crowd. No experience required – just good vibes.",
+    date: future_date.(26),
+    start_time: "19:00",
+    end_time: "02:00",
+    general_entry_price: "40.00",
+    vip_entry_price: "120.00",
+    dj_lineup: [],
+    status: "published"
+  },
+  %{
+    title: "Latin Fiesta Night",
+    description: "Salsa, bachata, merengue and reggaeton take over. Dance lessons from 8 PM, followed by a full-on Latin party till closing.",
+    date: future_date.(27),
+    start_time: "19:00",
+    end_time: "03:00",
+    general_entry_price: "90.00",
+    vip_entry_price: "240.00",
+    dj_lineup: [],
+    status: "published"
+  },
+  %{
+    title: "After Work Fridays",
+    description: "Unwind straight from the office. Happy hour drinks till 8 PM, live acoustic set, then transitioning into a full club night.",
+    date: future_date.(29),
+    start_time: "17:00",
+    end_time: "02:00",
+    general_entry_price: "60.00",
+    vip_entry_price: "180.00",
+    dj_lineup: [],
+    status: "published"
+  },
+  %{
+    title: "Slow Jams & R&B Night",
+    description: "Neo soul, classic R&B, and smooth slow jams all night. The perfect soundtrack for the vibes. Dress: semi-formal.",
+    date: future_date.(30),
+    start_time: "20:00",
+    end_time: "03:00",
+    general_entry_price: "100.00",
+    vip_entry_price: "280.00",
+    dj_lineup: [],
+    status: "published"
+  },
+  %{
+    title: "Trap & Drill Saturdays",
+    description: "The hardest trap and UK drill bangers on the biggest sound system in the city. No filter, all heat.",
+    date: future_date.(31),
+    start_time: "22:00",
+    end_time: "05:00",
+    general_entry_price: "110.00",
+    vip_entry_price: "300.00",
+    dj_lineup: [],
+    status: "published"
+  },
+  %{
+    title: "Jazz Under the Stars",
+    description: "An open-air jazz evening on the terrace. Local jazz fusion trio, wine pairing menu, and a relaxed outdoor atmosphere.",
+    date: future_date.(90),
+    start_time: "18:00",
+    end_time: "23:00",
+    general_entry_price: "180.00",
+    vip_entry_price: "420.00",
+    dj_lineup: [],
+    status: "draft"
+  },
+  %{
+    title: "VIP Masquerade Dinner",
+    description: "An intimate masquerade dinner for 60 guests only. Five-course meal, live string quartet, exclusive reveal at midnight.",
+    date: future_date.(95),
+    start_time: "19:00",
+    end_time: "01:00",
+    general_entry_price: "450.00",
+    vip_entry_price: "900.00",
+    dj_lineup: [],
+    status: "draft"
+  },
+  %{
+    title: "Spring Bloom Opening",
+    description: "Welcome the new season with a floral themed event. Garden décor, floral cocktails, and a lineup that blooms all night.",
+    date: future_date.(110),
+    start_time: "18:00",
+    end_time: "02:00",
+    general_entry_price: "130.00",
+    vip_entry_price: "360.00",
+    dj_lineup: [],
+    status: "draft"
+  },
+  %{
+    title: "Sunset Couples Cruise",
+    description: "Board the venue's private boat for a sunset cruise with cocktails and a live DJ. Limited to 40 couples.",
+    date: future_date.(120),
+    start_time: "17:00",
+    end_time: "22:00",
+    general_entry_price: "350.00",
+    vip_entry_price: "600.00",
+    dj_lineup: [],
+    status: "draft"
+  },
+  %{
+    title: "Warehouse Rave Series",
+    description: "Raw, stripped-back warehouse rave. Industrial décor, smoke machines, and the most underground techno selectors in SA.",
+    date: future_date.(130),
+    start_time: "23:00",
+    end_time: "08:00",
+    general_entry_price: "190.00",
+    vip_entry_price: "480.00",
+    dj_lineup: [],
+    status: "draft"
+  },
+  %{
+    title: "Picnic & Jazz Afternoon",
+    description: "Grab a blanket and enjoy a sunny afternoon picnic with live jazz and a curated cocktail bar. Family-friendly until 6 PM.",
+    date: future_date.(140),
+    start_time: "13:00",
+    end_time: "21:00",
+    general_entry_price: "120.00",
+    vip_entry_price: "280.00",
+    dj_lineup: [],
+    status: "draft"
+  },
+  %{
+    title: "Black Friday Night Market",
+    description: "The biggest Black Friday party in the city. DJ battles, fashion pop-ups, food trucks, and insane drink specials.",
+    date: future_date.(150),
+    start_time: "18:00",
+    end_time: "05:00",
+    general_entry_price: "100.00",
+    vip_entry_price: "300.00",
+    dj_lineup: [],
+    status: "draft"
+  },
+  %{
+    title: "Festive Season Kick-Off",
+    description: "The official start of the festive season. Secret Santa activation, holiday cocktails, and a night to remember.",
+    date: future_date.(200),
+    start_time: "20:00",
+    end_time: "04:00",
+    general_entry_price: "140.00",
+    vip_entry_price: "380.00",
+    dj_lineup: [],
+    status: "draft"
+  },
+  %{
+    title: "International Women's Day Gala",
+    description: "An elegant gala to honour women. Red carpet entrance, live afro-soul performances, and an empowerment keynote at 9 PM.",
+    date: future_date.(210),
+    start_time: "18:00",
+    end_time: "00:00",
+    general_entry_price: "220.00",
+    vip_entry_price: "550.00",
+    dj_lineup: [],
+    status: "draft"
+  },
+  %{
+    title: "Outdoor Cinema Night",
+    description: "Classic films on a giant outdoor screen with surround sound, bean bags, cocktail bar, and midnight DJ set.",
+    date: future_date.(220),
+    start_time: "19:00",
+    end_time: "02:00",
+    general_entry_price: "160.00",
+    vip_entry_price: "400.00",
+    dj_lineup: [],
+    status: "draft"
   }
 ]
 
@@ -399,6 +620,6 @@ IO.puts("""
    Published : #{published}
    Draft     : #{draft}
 
-With page_size=10 you should see 3 pages of events.
+With page_size=12 you should see 5 pages of events (12, 12, 12, 12, 2).
 Run: mix run priv/repo/seeds_events.exs
 """)

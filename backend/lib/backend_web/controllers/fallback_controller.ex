@@ -56,7 +56,7 @@ defmodule BackendWeb.FallbackController do
   # Handle invalid password (for password change)
   def call(conn, {:error, :invalid_password}) do
     conn
-    |> put_status(:unauthorized)
+    |> put_status(:unprocessable_entity)
     |> json(%{error: "Current password is incorrect"})
   end
 

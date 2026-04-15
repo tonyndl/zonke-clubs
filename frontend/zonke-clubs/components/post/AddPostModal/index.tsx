@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -30,6 +30,8 @@ import { Modal } from "../../modal";
 import { VideoTrimmerModal } from "../VideoTrimmerModal";
 import { trimVideo } from "@/utils/videoProcessor";
 import postsService from "@/services/postsService";
+import { clubsService, Club as ApiClub } from "@/services/clubsService";
+import { useDebounce } from "@/hooks/useDebounce";
 import { styles } from "./styles";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
@@ -53,7 +55,6 @@ interface Props {
   preselectedClubId?: string;
   clubName?: string;
   showClubSelector?: boolean;
-  availableClubs?: Array<{ id: string; name: string; image: string }>;
 }
 
 export function AddPostModal({
@@ -63,16 +64,44 @@ export function AddPostModal({
   preselectedClubId,
   clubName,
   showClubSelector = false,
-  availableClubs = [],
 }: Props) {
   const [mediaItems, setMediaItems] = useState<MediaItem[]>([]);
   const [description, setDescription] = useState("");
   const [selectedClubId, setSelectedClubId] = useState<string | undefined>(
     preselectedClubId,
   );
+  const [selectedClubData, setSelectedClubData] = useState<{
+    id: string;
+    name: string;
+    image: string;
+  } | null>(null);
   const [isPosting, setIsPosting] = useState(false);
   const [clubSearchQuery, setClubSearchQuery] = useState("");
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [clubSearchResults, setClubSearchResults] = useState<
+    Array<{ id: string; name: string; image: string }>
+  >([]);
+  const debouncedClubSearch = useDebounce(clubSearchQuery, 300);
+
+  // Fetch clubs from API when search query changes
+  useEffect(() => {
+    if (!debouncedClubSearch.trim()) {
+      setClubSearchResults([]);
+      return;
+    }
+    clubsService
+      .getClubs(false, 1, 20, debouncedClubSearch)
+      .then(({ clubs }) =>
+        setClubSearchResults(
+          clubs.map((c: ApiClub, i: number) => ({
+            id: c.id,
+            name: c.name,
+            image: `https://i.pravatar.cc/150?img=${(i % 70) + 1}`,
+          })),
+        ),
+      )
+      .catch(() => setClubSearchResults([]));
+  }, [debouncedClubSearch]);
 
   // Video trimming state
   const [showVideoTrimmer, setShowVideoTrimmer] = useState(false);
@@ -91,9 +120,11 @@ export function AddPostModal({
       setMediaItems([]);
       setDescription("");
       setSelectedClubId(preselectedClubId);
+      setSelectedClubData(null);
       setIsPosting(false);
       setClubSearchQuery("");
       setShowSuggestions(false);
+      setClubSearchResults([]);
       setShowVideoTrimmer(false);
       setVideoToTrim(null);
       setVideoToTrimIndex(-1);
@@ -104,15 +135,6 @@ export function AddPostModal({
     }
   }, [visible, preselectedClubId]);
 
-  // Filter clubs based on search query
-  const filteredClubs = React.useMemo(() => {
-    if (!clubSearchQuery.trim()) return [];
-    const query = clubSearchQuery.toLowerCase();
-    return availableClubs
-      .filter((club) => club.name.toLowerCase().includes(query))
-      .slice(0, 5); // Show max 5 suggestions
-  }, [clubSearchQuery, availableClubs]);
-
   const handleClubSearch = (text: string) => {
     setClubSearchQuery(text);
     setShowSuggestions(text.trim().length > 0);
@@ -120,14 +142,18 @@ export function AddPostModal({
 
   const selectClub = (club: { id: string; name: string; image: string }) => {
     setSelectedClubId(club.id);
+    setSelectedClubData(club);
     setClubSearchQuery("");
     setShowSuggestions(false);
+    setClubSearchResults([]);
   };
 
   const clearClubSelection = () => {
     setSelectedClubId(undefined);
+    setSelectedClubData(null);
     setClubSearchQuery("");
     setShowSuggestions(false);
+    setClubSearchResults([]);
   };
 
   const requestPermissions = async () => {
@@ -455,7 +481,7 @@ export function AddPostModal({
     });
   };
 
-  const selectedClub = availableClubs.find((c) => c.id === selectedClubId);
+  const selectedClub = selectedClubData;
 
   if (!visible) return null;
 
@@ -466,8 +492,8 @@ export function AddPostModal({
           <View style={styles.container}>
             {/* Header */}
             <View style={styles.header}>
-              <PressableScale onPress={onClose}>
-                <Ionicons name="close" size={28} color={Colors.platinum} />
+              <PressableScale onPress={onClose} style={styles.closeBtn}>
+                <Ionicons name="close" size={28} color={Colors.gold} />
               </PressableScale>
               <Text style={styles.headerTitle}>Create Post</Text>
               <PressableScale
@@ -504,110 +530,105 @@ export function AddPostModal({
                   </View>
                 </View>
 
-                {/* Selected Club Display */}
-                {selectedClubId && selectedClub ? (
+                {/* Selected Club Pill */}
+                {selectedClubId && selectedClub && (
                   <Animated.View
                     entering={ZoomIn.springify()}
-                    style={styles.selectedClubBar}
+                    style={styles.selectedClubPillRow}
                   >
-                    <Image
-                      source={{ uri: selectedClub.image }}
-                      style={styles.selectedClubBarImage}
-                    />
-                    <View style={styles.selectedClubBarInfo}>
-                      <Text style={styles.selectedClubBarHash}>#</Text>
-                      <Text style={styles.selectedClubBarName}>
+                    <View style={styles.selectedClubPill}>
+                      <Text style={styles.selectedClubPillHash}>#</Text>
+                      <Text
+                        style={styles.selectedClubPillName}
+                        numberOfLines={1}
+                      >
                         {selectedClub.name}
                       </Text>
+                      <PressableScale
+                        onPress={clearClubSelection}
+                        style={styles.removeClubButton}
+                      >
+                        <Ionicons
+                          name="close-circle"
+                          size={16}
+                          color={Colors.gold}
+                        />
+                      </PressableScale>
                     </View>
-                    <PressableScale
-                      onPress={clearClubSelection}
-                      style={styles.removeClubButton}
-                    >
+                  </Animated.View>
+                )}
+
+                {/* Search Input */}
+                <View style={styles.searchInputContainer}>
+                  <Ionicons
+                    name="search"
+                    size={18}
+                    color={Colors.smoke}
+                    style={styles.searchIcon}
+                  />
+                  <TextInput
+                    style={styles.searchInput}
+                    placeholder="Search for a club..."
+                    placeholderTextColor={Colors.smoke}
+                    value={clubSearchQuery}
+                    onChangeText={handleClubSearch}
+                    onFocus={() =>
+                      setShowSuggestions(clubSearchQuery.trim().length > 0)
+                    }
+                  />
+                  {clubSearchQuery.length > 0 && (
+                    <PressableScale onPress={() => handleClubSearch("")}>
                       <Ionicons
                         name="close-circle"
-                        size={22}
-                        color={Colors.gold}
-                      />
-                    </PressableScale>
-                  </Animated.View>
-                ) : (
-                  <>
-                    {/* Search Input */}
-                    <View style={styles.searchInputContainer}>
-                      <Ionicons
-                        name="search"
                         size={18}
                         color={Colors.smoke}
-                        style={styles.searchIcon}
                       />
-                      <TextInput
-                        style={styles.searchInput}
-                        placeholder="Search for a club..."
-                        placeholderTextColor={Colors.smoke}
-                        value={clubSearchQuery}
-                        onChangeText={handleClubSearch}
-                        onFocus={() =>
-                          setShowSuggestions(clubSearchQuery.trim().length > 0)
-                        }
-                      />
-                      {clubSearchQuery.length > 0 && (
-                        <PressableScale onPress={() => handleClubSearch("")}>
-                          <Ionicons
-                            name="close-circle"
-                            size={18}
-                            color={Colors.smoke}
-                          />
-                        </PressableScale>
-                      )}
-                    </View>
+                    </PressableScale>
+                  )}
+                </View>
 
-                    {/* Autocomplete Suggestions */}
-                    {showSuggestions && filteredClubs.length > 0 && (
-                      <Animated.View
-                        entering={FadeIn}
-                        style={styles.suggestionsContainer}
+                {/* Autocomplete Suggestions */}
+                {showSuggestions && clubSearchResults.length > 0 && (
+                  <Animated.View
+                    entering={FadeIn}
+                    style={styles.suggestionsContainer}
+                  >
+                    {clubSearchResults.map((club) => (
+                      <PressableScale
+                        key={club.id}
+                        onPress={() => selectClub(club)}
+                        style={styles.suggestionItem}
                       >
-                        {filteredClubs.map((club) => (
-                          <PressableScale
-                            key={club.id}
-                            onPress={() => selectClub(club)}
-                            style={styles.suggestionItem}
-                          >
-                            <Image
-                              source={{ uri: club.image }}
-                              style={styles.suggestionImage}
-                            />
-                            <View style={styles.suggestionInfo}>
-                              <Text style={styles.suggestionHash}>#</Text>
-                              <Text style={styles.suggestionName}>
-                                {club.name}
-                              </Text>
-                            </View>
-                            <Ionicons
-                              name="arrow-forward"
-                              size={16}
-                              color={Colors.gold}
-                            />
-                          </PressableScale>
-                        ))}
-                      </Animated.View>
-                    )}
-
-                    {showSuggestions &&
-                      clubSearchQuery.trim().length > 0 &&
-                      filteredClubs.length === 0 && (
-                        <Animated.View
-                          entering={FadeIn}
-                          style={styles.noResultsContainer}
-                        >
-                          <Text style={styles.noResultsText}>
-                            No clubs found matching "{clubSearchQuery}"
-                          </Text>
-                        </Animated.View>
-                      )}
-                  </>
+                        <Image
+                          source={{ uri: club.image }}
+                          style={styles.suggestionImage}
+                        />
+                        <View style={styles.suggestionInfo}>
+                          <Text style={styles.suggestionHash}>#</Text>
+                          <Text style={styles.suggestionName}>{club.name}</Text>
+                        </View>
+                        <Ionicons
+                          name="arrow-forward"
+                          size={16}
+                          color={Colors.gold}
+                        />
+                      </PressableScale>
+                    ))}
+                  </Animated.View>
                 )}
+
+                {showSuggestions &&
+                  clubSearchQuery.trim().length > 0 &&
+                  clubSearchResults.length === 0 && (
+                    <Animated.View
+                      entering={FadeIn}
+                      style={styles.noResultsContainer}
+                    >
+                      <Text style={styles.noResultsText}>
+                        No clubs found matching "{clubSearchQuery}"
+                      </Text>
+                    </Animated.View>
+                  )}
               </Animated.View>
 
               {/* Media Picker Actions */}

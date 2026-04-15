@@ -49,10 +49,10 @@ defmodule Backend.Strobe do
     end
   end
 
-  @doc "Cancel a pending approval request"
+  @doc "Cancel any approval (pending or approved) - DJ-initiated"
   def cancel_request(club_id, session) do
     DJApproval
-    |> where([a], a.club_id == ^club_id and a.dj_user_id == ^session.id and a.status == "pending")
+    |> where([a], a.club_id == ^club_id and a.dj_user_id == ^session.id)
     |> Repo.delete_all()
 
     BackendWeb.Endpoint.broadcast("strobe:#{club_id}", "dj_request_cancelled", %{

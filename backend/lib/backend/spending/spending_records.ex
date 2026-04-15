@@ -403,6 +403,45 @@ defmodule Backend.Spending.SpendingRecords do
   end
 
   @doc """
+  Gets the user's leaderboard rankings at clubs where they are in the top 10.
+  Returns a list of %{club_id, club_name, rank, best_amount}.
+  """
+  def get_user_rankings(user_id) do
+    # Get all clubs the user has spending records at
+    club_ids =
+      from(s in SpendingRecord,
+        where: s.user_id == ^user_id,
+        select: s.club_id,
+        distinct: true
+      )
+      |> Repo.all()
+
+    # For each club, get the leaderboard and find the user's rank
+    club_ids
+    |> Enum.map(fn club_id ->
+      leaderboard = get_leaderboard(club_id, limit: 10, time_period: :all)
+
+      leaderboard
+      |> Enum.find(fn entry -> entry.user_id == user_id end)
+      |> case do
+        nil ->
+          nil
+
+        entry ->
+          club = Repo.get(Backend.Clubs.Club, club_id)
+          %{
+            club_id: club_id,
+            club_name: if(club, do: club.name, else: "Unknown"),
+            rank: entry.rank,
+            best_amount: if(is_struct(entry.amount, Decimal), do: Decimal.to_float(entry.amount), else: entry.amount)
+          }
+      end
+    end)
+    |> Enum.reject(&is_nil/1)
+    |> Enum.sort_by(& &1.rank)
+  end
+
+  @doc """
   Gets spending statistics for a user at a specific club.
   """
   def get_user_club_stats(user_id, club_id) do

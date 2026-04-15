@@ -755,24 +755,6 @@ export default function RequestsScreen() {
             })}
           </ScrollView>
 
-          {/* Sort Toggle */}
-          <PressableScale
-            style={styles.sortButton}
-            onPress={() => {
-              setSortOrder((prev) => (prev === "newest" ? "oldest" : "newest"));
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-            }}
-          >
-            <Ionicons
-              name={sortOrder === "newest" ? "arrow-down" : "arrow-up"}
-              size={14}
-              color={Colors.gold}
-            />
-            <Text style={styles.sortButtonText}>
-              {sortOrder === "newest" ? "New" : "Old"}
-            </Text>
-          </PressableScale>
-
           {/* 3-dot menu */}
           <View>
             <TouchableOpacity
@@ -786,7 +768,7 @@ export default function RequestsScreen() {
               <Ionicons
                 name="ellipsis-vertical"
                 size={18}
-                color={Colors.smoke}
+                color={Colors.gold}
               />
             </TouchableOpacity>
             {menuVisible && (
@@ -809,6 +791,45 @@ export default function RequestsScreen() {
                   shadowRadius: 8,
                 }}
               >
+                {/* Sort toggle */}
+                <TouchableOpacity
+                  onPress={() => {
+                    setSortOrder((prev) =>
+                      prev === "newest" ? "oldest" : "newest",
+                    );
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    setMenuVisible(false);
+                  }}
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: 10,
+                    paddingVertical: 10,
+                    paddingHorizontal: 14,
+                  }}
+                >
+                  <Ionicons
+                    name={sortOrder === "newest" ? "arrow-down" : "arrow-up"}
+                    size={18}
+                    color={Colors.gold}
+                  />
+                  <Text
+                    style={{
+                      color: Colors.gold,
+                      fontSize: 14,
+                      fontWeight: "600",
+                    }}
+                  >
+                    {sortOrder === "newest" ? "Newest First" : "Oldest First"}
+                  </Text>
+                </TouchableOpacity>
+                <View
+                  style={{
+                    height: 1,
+                    backgroundColor: "rgba(57, 243, 255, 0.1)",
+                    marginHorizontal: 14,
+                  }}
+                />
                 <TouchableOpacity
                   onPress={() => {
                     setMenuVisible(false);

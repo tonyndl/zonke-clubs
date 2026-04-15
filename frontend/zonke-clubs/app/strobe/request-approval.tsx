@@ -17,6 +17,7 @@ import * as Haptics from "expo-haptics";
 import { Colors } from "@/constants/ui";
 import { clubsService, type Club } from "@/services/clubsService";
 import { strobeService, type StrobeApproval } from "@/services/strobeService";
+import { useDebounce } from "@/hooks/useDebounce";
 
 export default function RequestApprovalScreen() {
   const router = useRouter();
@@ -24,6 +25,7 @@ export default function RequestApprovalScreen() {
   const [clubs, setClubs] = useState<Club[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const debouncedSearch = useDebounce(search, 300);
   const [requesting, setRequesting] = useState<string | null>(null);
   const [requested, setRequested] = useState<Set<string>>(new Set());
   const [approvedClubIds, setApprovedClubIds] = useState<Set<string>>(
@@ -128,7 +130,7 @@ export default function RequestApprovalScreen() {
   };
 
   const filteredClubs = clubs.filter((c) =>
-    c.name.toLowerCase().includes(search.toLowerCase()),
+    c.name.toLowerCase().includes(debouncedSearch.toLowerCase()),
   );
 
   return (
@@ -166,7 +168,7 @@ export default function RequestApprovalScreen() {
         />
         {search.length > 0 && (
           <Pressable onPress={() => setSearch("")}>
-            <Ionicons name="close-circle" size={18} color={Colors.smoke} />
+            <Ionicons name="close-circle" size={18} color={Colors.gold} />
           </Pressable>
         )}
       </View>
@@ -174,7 +176,7 @@ export default function RequestApprovalScreen() {
       {loading ? (
         <ActivityIndicator
           color={Colors.accent}
-          style={{ marginTop: 40 }}
+          style={{ flex: 1 }}
           size="large"
         />
       ) : search.length === 0 ? (
@@ -346,6 +348,7 @@ const styles = StyleSheet.create({
     color: Colors.platinum,
   },
   list: {
+    flexGrow: 1,
     paddingHorizontal: 16,
     paddingBottom: 120,
   },
@@ -404,7 +407,9 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
   empty: {
+    flex: 1,
     alignItems: "center",
+    justifyContent: "center",
     paddingTop: 60,
     gap: 12,
   },

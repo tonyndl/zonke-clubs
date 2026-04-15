@@ -32,12 +32,28 @@ class AdminSocketService {
   }
 
   joinStrobeChannel(clubId: string) {
-    if (!this.socket) return;
+    // Retry if socket not yet created or not yet open
+    if (!this.socket || !this.socket.isConnected()) {
+      setTimeout(() => this.joinStrobeChannel(clubId), 300);
+      return;
+    }
     if (this.strobeChannel) {
       this.strobeChannel.leave();
     }
 
     this.strobeChannel = this.socket.channel(`strobe:${clubId}`, {});
+
+    // Attach listeners BEFORE joining so we don't miss broadcasts
+    this.strobeChannel.on("new_dj_request", (payload: any) => {
+      console.log("[AdminSocket] new_dj_request received", payload);
+      this.emit("new_dj_request", payload);
+    });
+
+    this.strobeChannel.on("dj_request_cancelled", (payload: any) => {
+      console.log("[AdminSocket] dj_request_cancelled received", payload);
+      this.emit("dj_request_cancelled", payload);
+    });
+
     this.strobeChannel
       .join()
       .receive("ok", () => {
@@ -46,14 +62,6 @@ class AdminSocketService {
       .receive("error", (err: any) => {
         console.error("[AdminSocket] Failed to join strobe channel", err);
       });
-
-    this.strobeChannel.on("new_dj_request", (payload: any) => {
-      this.emit("new_dj_request", payload);
-    });
-
-    this.strobeChannel.on("dj_request_cancelled", (payload: any) => {
-      this.emit("dj_request_cancelled", payload);
-    });
   }
 
   leaveStrobeChannel() {

@@ -35,7 +35,6 @@ export const FONT_FAMILIES: {
     key: "GermaniaOne_400Regular",
     wordGap: "  ",
   },
-  { name: "Bitcount Ink", key: "BitcountInk_400Regular" },
   { name: "Lemon", key: "Lemon_400Regular", wordGap: "  " },
   { name: "Eater", key: "Eater_400Regular", wordGap: "  " },
 

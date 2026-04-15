@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { eventSchema, parseZodErrors } from "../../../utils/validation";
 import { Modal } from "../Modal";
 import { PrimaryButton, OutlineButton } from "../../Buttons";
@@ -107,12 +107,39 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
 
   const toast = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [closedDays, setClosedDays] = useState<number[]>([]);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [imageUploadProgress, setImageUploadProgress] = useState(0);
   const [formData, setFormData] = useState<EventFormData>(getInitialFormData());
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [originalData, setOriginalData] =
     useState<EventFormData>(getInitialFormData());
+
+  // Fetch club opening hours to determine closed days
+  useEffect(() => {
+    if (!isOpen) return;
+    apiService
+      .getMyClub()
+      .then((club: any) => {
+        if (!club?.opening_hours) return;
+        const dayNameToIndex: Record<string, number> = {
+          Sunday: 0,
+          Monday: 1,
+          Tuesday: 2,
+          Wednesday: 3,
+          Thursday: 4,
+          Friday: 5,
+          Saturday: 6,
+        };
+        const closed: number[] = [];
+        Object.entries(dayNameToIndex).forEach(([name, idx]) => {
+          const h = club.opening_hours[name];
+          if (!h || !h.open || !h.close) closed.push(idx);
+        });
+        setClosedDays(closed);
+      })
+      .catch(() => {});
+  }, [isOpen]);
 
   // Update form data when initialData changes (for edit mode)
   React.useEffect(() => {
@@ -307,6 +334,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
             value={formData.date}
             onChange={(date) => handleChange("date", date)}
             minDate={new Date().toISOString().split("T")[0]}
+            closedDays={closedDays}
           />
           {errors.date && (
             <p

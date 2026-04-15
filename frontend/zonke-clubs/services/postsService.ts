@@ -26,6 +26,7 @@ export interface Post {
   pinned_at?: string;
   user_id: string;
   club_id: string;
+  club_name?: string;
   user: {
     id: string;
     name: string;
@@ -131,6 +132,20 @@ class PostsService {
   ): Promise<PostsResponse> {
     return api.get<PostsResponse>(
       `/posts/user/me?page=${page}&per_page=${perPage}`,
+      true,
+    );
+  }
+
+  /**
+   * Get approved posts for a specific user (visible to profile viewers)
+   */
+  async getUserPostsById(
+    userId: string,
+    page: number = 1,
+    perPage: number = 20,
+  ): Promise<PostsResponse> {
+    return api.get<PostsResponse>(
+      `/posts/user/${userId}?page=${page}&per_page=${perPage}`,
       true,
     );
   }

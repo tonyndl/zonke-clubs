@@ -117,6 +117,47 @@ export default function ViewProfileScreen() {
   useFocusEffect(
     useCallback(() => {
       if (!id) return;
+      postsService
+        .getUserPostsById(id)
+        .then((response) => {
+          const posts = response.posts.map((post) => ({
+            id: post.id,
+            clubId: post.club_id,
+            clubName: post.club_name || undefined,
+            description: post.caption || undefined,
+            likes: post.like_count || 0,
+            likeCount: post.like_count || 0,
+            isLiked: post.has_liked || false,
+            comments: 0,
+            status: post.status,
+            isClubApproved: post.is_club_approved,
+            clubApprovedAt: post.club_approved_at,
+            pinnedAt: post.pinned_at || undefined,
+            createdAt: post.inserted_at,
+            media: post.assets.map((asset) => ({
+              id: asset.id,
+              type: asset.type as "image" | "video",
+              url: asset.url,
+              thumbnailUrl: asset.type === "video" ? asset.url : undefined,
+              duration: asset.duration,
+              startTime: asset.start_time || undefined,
+              endTime: asset.end_time || undefined,
+            })),
+            user: {
+              id: post.user.id,
+              username: post.user.name,
+              avatarUrl: post.user.avatar_url || undefined,
+            },
+          }));
+          setUserPosts(posts);
+        })
+        .catch(() => {});
+    }, [id]),
+  );
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!id) return;
       Promise.all([
         connectionService.getSentRequests(),
         connectionService.getReceivedRequests(),
@@ -564,7 +605,7 @@ export default function ViewProfileScreen() {
         {activeTab === "feed" && (
           <UserMediaGrid
             posts={userPosts}
-            clubNames={clubNames}
+            title="Club Vibes"
             onPostPress={(postIndex) => {
               setFeedInitialIndex(postIndex);
               setShowFeedViewer(true);

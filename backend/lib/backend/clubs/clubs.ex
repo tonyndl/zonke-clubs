@@ -12,12 +12,21 @@ defmodule Backend.Clubs do
   Lists clubs with pagination. Returns {clubs, paginate_metadata}.
   """
   def list_clubs(params \\ %{}) do
-    page =
+    search = Map.get(params, "search") || Map.get(params, :search)
+
+    query =
       Club
       |> where([c], c.active == true)
       |> order_by([c], asc: c.name)
-      |> Repo.paginate(PaginateHelper.prep_params(params))
 
+    query =
+      if search && search != "" do
+        query |> where([c], ilike(c.name, ^"%#{search}%"))
+      else
+        query
+      end
+
+    page = query |> Repo.paginate(PaginateHelper.prep_params(params))
     {page.entries, PaginateHelper.prep_paginate(page)}
   end
 

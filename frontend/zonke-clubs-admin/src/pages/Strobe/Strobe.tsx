@@ -204,9 +204,7 @@ export const Strobe: React.FC = () => {
                   )}
                 </Avatar>
                 <DJInfo>
-                  <DJName>
-                    @{approval.dj_user?.username ?? approval.dj_user_id}
-                  </DJName>
+                  <DJName>@{approval.dj_user?.username}</DJName>
                   <Badge variant="pending">PENDING</Badge>
                 </DJInfo>
                 <Actions>
@@ -257,9 +255,7 @@ export const Strobe: React.FC = () => {
                   )}
                 </Avatar>
                 <DJInfo>
-                  <DJName>
-                    @{approval.dj_user?.username ?? approval.dj_user_id}
-                  </DJName>
+                  <DJName>@{approval.dj_user?.username}</DJName>
                   <Badge variant="approved">APPROVED</Badge>
                   {approval.expires_at && (
                     <ExpiresAt>{formatExpiry(approval.expires_at)}</ExpiresAt>

@@ -23,6 +23,14 @@ export function BeerStatsTab({
 }: Props) {
   const [stats, setStats] = useState<SpendingStats | null>(null);
   const [history, setHistory] = useState<SpendingRecord[]>([]);
+  const [rankings, setRankings] = useState<
+    Array<{
+      club_id: string;
+      club_name: string;
+      rank: number;
+      best_amount: number;
+    }>
+  >([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -40,11 +48,13 @@ export function BeerStatsTab({
 
     Promise.all([
       spendingService.getStats(),
-      spendingService.getHistory(10), // Get last 10 records
+      spendingService.getHistory(10),
+      spendingService.getRankings(),
     ])
-      .then(([statsData, historyData]) => {
+      .then(([statsData, historyData, rankingsData]) => {
         setStats(statsData);
         setHistory(historyData.spending_records);
+        setRankings(rankingsData.rankings || []);
       })
       .catch((err) => {
         console.error("[BeerStatsTab] Failed to load spending data:", err);
@@ -167,6 +177,34 @@ export function BeerStatsTab({
               </View>
             </View>
           </View>
+        </Animated.View>
+      )}
+
+      {/* Leaderboard Rankings */}
+      {rankings.length > 0 && (
+        <Animated.View
+          entering={FadeInDown.delay(225).springify()}
+          style={styles.section}
+        >
+          <Text style={styles.sectionTitle}>Leaderboard</Text>
+          {rankings.map((r, index) => (
+            <Animated.View
+              key={r.club_id}
+              entering={FadeInDown.delay(250 + index * 50).springify()}
+              style={styles.rankingCard}
+            >
+              <View style={styles.rankBadge}>
+                <Text style={styles.rankBadgeText}>#{r.rank}</Text>
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.rankingClubName}>{r.club_name}</Text>
+                <Text style={styles.rankingAmount}>
+                  Best night: R{parseFloat(String(r.best_amount)).toFixed(2)}
+                </Text>
+              </View>
+              <Ionicons name="trophy" size={20} color={Colors.gold} />
+            </Animated.View>
+          ))}
         </Animated.View>
       )}
 

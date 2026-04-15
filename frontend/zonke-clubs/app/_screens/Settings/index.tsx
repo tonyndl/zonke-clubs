@@ -405,8 +405,11 @@ export default function SettingsScreen() {
                 </PressableScale>
                 <PressableScale
                   onPress={handleSaveAccount}
-                  style={styles.saveButton}
-                  disabled={isSaving}
+                  style={[
+                    styles.saveButton,
+                    !hasAccountChanges() && { opacity: 0.6 },
+                  ]}
+                  disabled={isSaving || !hasAccountChanges()}
                 >
                   {isSaving ? (
                     <ActivityIndicator size="small" color={Colors.bg} />

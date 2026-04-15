@@ -32,7 +32,7 @@ defmodule Backend.Posts do
               where: a.post_id == parent_as(:post).id
           ),
         order_by: [desc: p.inserted_at],
-        preload: [:user, :assets]
+        preload: [:user, :assets, :club]
 
     # When fetching for moderation, exclude club's own posts (user_id = nil)
     query =
@@ -149,7 +149,7 @@ defmodule Backend.Posts do
   Gets a single post by ID with user and assets preloaded.
   """
   def get_post(id) do
-    case Repo.get(Post, id) |> Repo.preload([:user, :assets]) do
+    case Repo.get(Post, id) |> Repo.preload([:user, :assets, :club]) do
       nil -> {:error, :not_found}
       post -> {:ok, post}
     end
