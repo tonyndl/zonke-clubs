@@ -85,6 +85,19 @@ class SpendingService {
   getClubStats(clubId: string): Promise<ClubSpendingStats> {
     return api.get<ClubSpendingStats>(`/spending/club/${clubId}/stats`, true);
   }
+  /**
+   * Get current user's top 10 rankings at clubs
+   */
+  getRankings(): Promise<{
+    rankings: Array<{
+      club_id: string;
+      club_name: string;
+      rank: number;
+      best_amount: number;
+    }>;
+  }> {
+    return api.get("/spending/rankings", true);
+  }
 }
 
 export const spendingService = new SpendingService();

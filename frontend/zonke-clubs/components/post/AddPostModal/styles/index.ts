@@ -16,19 +16,27 @@ export const styles = StyleSheet.create({
   },
   header: {
     flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
+    // alignItems: "center",
+    justifyContent: "center",
     paddingHorizontal: 16,
-    paddingTop: 16,
+    // paddingTop: 16,
     paddingBottom: 16,
   },
   headerTitle: {
     fontSize: 20,
     fontWeight: "700",
-    color: Colors.platinum,
+    color: Colors.gold,
     letterSpacing: 0.5,
   },
+  closeBtn: {
+    position: "absolute",
+    left: 0,
+    // top: 6
+  },
   postButton: {
+    position: "absolute",
+    right: 0,
+    // top: 8,
     backgroundColor: Colors.gold,
     paddingHorizontal: 20,
     paddingVertical: 8,
@@ -100,6 +108,35 @@ export const styles = StyleSheet.create({
   },
   removeClubButton: {
     padding: 4,
+  },
+  selectedClubPillRow: {
+    flexDirection: "row",
+    marginBottom: 8,
+  },
+  selectedClubPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: Colors.bgSecondary,
+    borderWidth: 1,
+    borderColor: Colors.gold,
+    borderRadius: 20,
+    paddingVertical: 5,
+    paddingLeft: 10,
+    paddingRight: 6,
+    alignSelf: "flex-start",
+    maxWidth: "80%",
+  },
+  selectedClubPillHash: {
+    fontSize: 13,
+    fontWeight: "900",
+    color: Colors.gold,
+  },
+  selectedClubPillName: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: Colors.platinum,
+    flexShrink: 1,
   },
   searchInputContainer: {
     flexDirection: "row",

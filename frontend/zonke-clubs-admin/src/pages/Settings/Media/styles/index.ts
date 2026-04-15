@@ -621,7 +621,6 @@ export const LightboxClose = styled.button`
 `;
 
 export const LightboxCard = styled.div`
-  max-height: 90vh;
   border-radius: ${theme.borderRadius["2xl"]};
   overflow: hidden;
   background: ${theme.colors.backgroundCard};
@@ -629,25 +628,27 @@ export const LightboxCard = styled.div`
   box-shadow: 0 24px 80px rgba(0, 0, 0, 0.6);
   display: inline-flex;
   flex-direction: column;
+  max-width: 90vw;
 `;
 
 export const LightboxMedia = styled.div`
-  flex: 1;
-  min-height: 0;
   display: flex;
+  flex-shrink: 0;
 `;
 
 export const LightboxImage = styled.img`
+  display: block;
+  width: auto;
   max-width: 90vw;
   max-height: calc(90vh - 70px);
   object-fit: contain;
-  display: block;
 `;
 
 export const LightboxVideo = styled.video`
+  display: block;
+  width: auto;
   max-width: 90vw;
   max-height: calc(90vh - 70px);
-  display: block;
   outline: none;
 `;
 
@@ -659,6 +660,8 @@ export const LightboxInfo = styled.div`
   padding: ${theme.spacing.lg} ${theme.spacing.xl};
   border-top: 1px solid ${theme.colors.border};
   flex-shrink: 0;
+  min-width: 0;
+  overflow: hidden;
 `;
 
 export const LightboxInfoLeft = styled.div`

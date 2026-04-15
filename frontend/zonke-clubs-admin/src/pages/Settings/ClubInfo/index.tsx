@@ -471,11 +471,9 @@ export const ClubInfo: React.FC = () => {
                     alignItems: "center",
                     gap: 4,
                     padding: `${theme.spacing.sm} ${theme.spacing.md}`,
-                    background: newReservationNumber.trim()
-                      ? theme.colors.primary
-                      : theme.colors.border,
-                    color: "#000",
-                    border: "none",
+                    background: theme.gradients.primary,
+                    color: theme.colors.background,
+                    border: "1px solid transparent",
                     borderRadius: theme.borderRadius.lg,
                     fontWeight: 600,
                     cursor: newReservationNumber.trim()
@@ -483,7 +481,7 @@ export const ClubInfo: React.FC = () => {
                       : "not-allowed",
                     fontSize: theme.typography.fontSize.sm,
                     whiteSpace: "nowrap",
-                    opacity: newReservationNumber.trim() ? 1 : 0.5,
+                    opacity: newReservationNumber.trim() ? 1 : 0.4,
                   }}
                 >
                   {React.createElement(

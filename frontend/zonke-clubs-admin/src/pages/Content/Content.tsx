@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { Pagination } from "../../components/Pagination";
 import { Card, CardTitle, CardDescription } from "../../components/Card";
 import {
   PrimaryButton,
@@ -13,8 +14,6 @@ import {
   RiUserLine,
   RiTimeLine,
   RiPlayCircleFill,
-  RiArrowLeftLine,
-  RiArrowRightLine,
   RiHeartFill,
   RiSearchLine,
 } from "react-icons/ri";
@@ -68,9 +67,6 @@ import {
   StatCard,
   StatValue,
   StatLabel,
-  PaginationContainer,
-  PageButton,
-  PageInfo,
   SearchBar,
   SearchIconWrapper,
   SearchInput,
@@ -96,7 +92,7 @@ export const Content: React.FC = () => {
   const filterRef = useRef(filter);
   const searchRef = useRef(search);
   const currentPageRef = useRef(currentPage);
-  const perPage = 20;
+  const perPage = 12;
 
   // Keep refs in sync with state for use in stable callbacks
   useEffect(() => {
@@ -557,27 +553,11 @@ export const Content: React.FC = () => {
             ))}
           </PostsGrid>
 
-          {totalPages > 1 && (
-            <PaginationContainer>
-              <PageButton
-                onClick={() => handlePageChange(currentPage - 1)}
-                disabled={currentPage === 1}
-              >
-                {React.createElement(RiArrowLeftLine as React.ComponentType)}
-                Previous
-              </PageButton>
-              <PageInfo>
-                Page {currentPage} of {totalPages}
-              </PageInfo>
-              <PageButton
-                onClick={() => handlePageChange(currentPage + 1)}
-                disabled={currentPage >= totalPages}
-              >
-                Next
-                {React.createElement(RiArrowRightLine as React.ComponentType)}
-              </PageButton>
-            </PaginationContainer>
-          )}
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={handlePageChange}
+          />
         </>
       ) : (
         <EmptyState>

@@ -32,6 +32,7 @@ defmodule BackendWeb.API.PostJSON do
       status: post.status,
       user_id: post.user_id,
       club_id: post.club_id,
+      club_name: club_name(post),
       club_approved_at: post.club_approved_at,
       pinned_at: post.pinned_at,
       is_club_approved: post.status == "approved",
@@ -47,6 +48,9 @@ defmodule BackendWeb.API.PostJSON do
       media_url: post.media_url
     }
   end
+
+  defp club_name(%{club: %{name: name}}), do: name
+  defp club_name(_), do: nil
 
   defp user_data(nil), do: nil
   defp user_data(user) do

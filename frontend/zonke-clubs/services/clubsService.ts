@@ -100,9 +100,11 @@ class ClubsService {
     authenticated: boolean = false,
     page: number = 1,
     perPage: number = 10,
+    search?: string,
   ): Promise<ClubsResponse> {
+    const searchParam = search ? `&search=${encodeURIComponent(search)}` : "";
     return api.get<ClubsResponse>(
-      `/clubs?page=${page}&per_page=${perPage}`,
+      `/clubs?page=${page}&per_page=${perPage}${searchParam}`,
       authenticated,
     );
   }

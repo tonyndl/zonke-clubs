@@ -81,7 +81,7 @@ defmodule BackendWeb.API.PostController do
         order_by: [asc: fragment("? IS NULL", p.pinned_at), desc: p.pinned_at, desc: p.inserted_at],
         limit: ^per_page,
         offset: ^((page - 1) * per_page),
-        preload: [:user, :assets]
+        preload: [:user, :assets, :club]
       )
       |> Posts.enrich_posts_with_likes(session.id)
 
@@ -106,6 +106,45 @@ defmodule BackendWeb.API.PostController do
     conn
     |> put_status(:ok)
     |> render(:index, result: result)
+  end
+
+  @doc """
+  Lists approved posts for a specific user (visible to others on their profile).
+  """
+  def user_posts_by_id(conn, %{"user_id" => user_id} = params, session) do
+    page = Map.get(params, "page", "1") |> String.to_integer()
+    per_page = Map.get(params, "per_page", "20") |> String.to_integer()
+
+    posts =
+      Repo.all(
+        from p in Backend.Posts.Post,
+        where: p.user_id == ^user_id,
+        order_by: [asc: fragment("? IS NULL", p.pinned_at), desc: p.pinned_at, desc: p.inserted_at],
+        limit: ^per_page,
+        offset: ^((page - 1) * per_page),
+        preload: [:user, :assets, :club]
+      )
+      |> Posts.enrich_posts_with_likes(session.id)
+
+    total_count = Repo.one(
+      from p in Backend.Posts.Post,
+      where: p.user_id == ^user_id,
+      select: count(p.id)
+    )
+
+    total_pages = ceil(total_count / per_page)
+
+    conn
+    |> put_status(:ok)
+    |> render(:index, result: %{
+      posts: posts,
+      page: page,
+      per_page: per_page,
+      total_count: total_count,
+      total_pages: total_pages,
+      has_next: page < total_pages,
+      has_prev: page > 1
+    })
   end
 
   @doc """

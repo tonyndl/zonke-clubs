@@ -121,6 +121,14 @@ export default function ProfileSetupScreen() {
   };
 
   const handleNext = () => {
+    if (currentStep === 1 && !avatarUri) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      Alert.alert(
+        "Profile Photo Required",
+        "Please add a profile photo to continue.",
+      );
+      return;
+    }
     if (currentStep < totalSteps) {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       setCurrentStep(currentStep + 1);
@@ -137,6 +145,14 @@ export default function ProfileSetupScreen() {
   };
 
   const handleSkip = () => {
+    if (!avatarUri) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      Alert.alert(
+        "Profile Photo Required",
+        "Please add a profile photo before continuing.",
+      );
+      return;
+    }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setIsSaving(true);
 
@@ -213,8 +229,8 @@ export default function ProfileSetupScreen() {
   };
 
   const progress = (currentStep / totalSteps) * 100;
-  // Allow proceeding through all steps without requiring any data
-  const canProceed = true;
+  // Step 1 requires a profile photo before proceeding
+  const canProceed = currentStep > 1 || !!avatarUri;
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
@@ -298,7 +314,9 @@ export default function ProfileSetupScreen() {
                   <Ionicons name="pencil" size={16} color={Colors.bg} />
                 </View>
               </PressableScale>
-              <Text style={styles.avatarLabel}>Add Profile Photo</Text>
+              <Text style={styles.avatarLabel}>
+                {avatarUri ? "Change Photo" : "Add Profile Photo (Required)"}
+              </Text>
             </View>
 
             {/* Bio Section */}

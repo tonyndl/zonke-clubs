@@ -9,8 +9,9 @@ export const DatePickerContainer = styled.div`
 export const DateInput = styled.div<{ hasValue: boolean; isOpen: boolean }>`
   padding: ${theme.spacing.md};
   background: ${theme.colors.background};
-  border: 1px solid
-    ${(props) => (props.isOpen ? theme.colors.primary : theme.colors.border)};
+  // border: 1px solid
+  //   ${(props) =>
+    props.isOpen ? theme.colors.primary : theme.colors.border};
   border-radius: ${theme.borderRadius.lg};
   color: ${(props) =>
     props.hasValue ? theme.colors.textPrimary : theme.colors.textSecondary};
@@ -38,38 +39,18 @@ export const CalendarDropdown = styled.div<{
   isOpen: boolean;
   showAbove: boolean;
 }>`
-  position: absolute;
-  ${(props) =>
-    props.showAbove
-      ? `bottom: calc(100% + ${theme.spacing.sm});`
-      : `top: calc(100% + ${theme.spacing.sm});`}
-  left: 0;
-  right: 0;
+  display: ${(props) => (props.isOpen ? "block" : "none")};
+  margin-top: ${theme.spacing.sm};
   background: ${theme.colors.cardBackground};
   border: 1px solid ${theme.colors.border};
   border-radius: ${theme.borderRadius.xl};
-  box-shadow:
-    ${theme.shadows.xl},
-    0 0 40px rgba(57, 243, 255, 0.15);
-  z-index: 10000;
+  box-shadow: ${theme.shadows.xl};
   overflow: hidden;
-  opacity: ${(props) => (props.isOpen ? 1 : 0)};
-  transform: ${(props) => {
-    if (props.isOpen) {
-      return "translateY(0) scale(1)";
-    }
-    return props.showAbove
-      ? "translateY(10px) scale(0.95)"
-      : "translateY(-10px) scale(0.95)";
-  }};
-  pointer-events: ${(props) => (props.isOpen ? "all" : "none")};
-  transition: all ${theme.transitions.normal};
-  max-height: 420px;
 
   &::before {
     content: "";
     position: absolute;
-    ${(props) => (props.showAbove ? "bottom: 0;" : "top: 0;")}
+    top: 0;
     left: 0;
     right: 0;
     height: 3px;
@@ -82,7 +63,7 @@ export const CalendarHeader = styled.div`
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: ${theme.spacing.md} ${theme.spacing.lg};
+  padding: ${theme.spacing.sm} ${theme.spacing.md};
   border-bottom: 1px solid ${theme.colors.border};
   background: ${theme.colors.background};
 `;
@@ -123,18 +104,18 @@ export const NavButton = styled.button`
 `;
 
 export const CalendarGrid = styled.div`
-  padding: ${theme.spacing.md} ${theme.spacing.lg};
+  padding: ${theme.spacing.xs} ${theme.spacing.sm};
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  gap: ${theme.spacing.xs};
+  gap: 2px;
 `;
 
 export const DayLabel = styled.div`
   text-align: center;
-  font-size: ${theme.typography.fontSize.xs};
+  font-size: 11px;
   font-weight: ${theme.typography.fontWeight.semibold};
   color: ${theme.colors.textSecondary};
-  padding: ${theme.spacing.xs};
+  padding: 4px 0;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 `;
@@ -145,7 +126,7 @@ export const DayCell = styled.button<{
   isDisabled: boolean;
   isOtherMonth: boolean;
 }>`
-  aspect-ratio: 1;
+  padding: 6px 0;
   border: none;
   background: ${(props) => {
     if (props.isSelected) return theme.gradients.primary;
@@ -158,7 +139,7 @@ export const DayCell = styled.button<{
       return theme.colors.textSecondary;
     return theme.colors.textPrimary;
   }};
-  font-size: ${theme.typography.fontSize.sm};
+  font-size: 13px;
   font-weight: ${(props) =>
     props.isSelected
       ? theme.typography.fontWeight.semibold
@@ -192,7 +173,7 @@ export const DayCell = styled.button<{
 
 export const TodayButton = styled.button`
   width: 100%;
-  padding: ${theme.spacing.sm} ${theme.spacing.md};
+  padding: 6px ${theme.spacing.md};
   border: none;
   border-top: 1px solid ${theme.colors.border};
   background: ${theme.colors.background};

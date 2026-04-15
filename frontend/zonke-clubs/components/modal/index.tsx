@@ -24,6 +24,7 @@ type ModalProps = {
   bgColor?: string;
   sliding?: boolean;
   disableKeyboardAvoid?: boolean;
+  noScroll?: boolean; // when true, children manage their own scroll (use for fixed-footer layouts)
 };
 
 export const Modal = (props: ModalProps) => {
@@ -33,6 +34,7 @@ export const Modal = (props: ModalProps) => {
     bgColor,
     sliding = false,
     disableKeyboardAvoid = false,
+    noScroll = false,
   } = props;
 
   const insets = useSafeAreaInsets();
@@ -101,7 +103,6 @@ export const Modal = (props: ModalProps) => {
           <Animated.View
             style={[
               styles.modalWrapper,
-
               { transform: [{ translateY: pan.y }] },
               {
                 maxHeight: screenHeight * 0.9 - insets.top,
@@ -114,12 +115,16 @@ export const Modal = (props: ModalProps) => {
               <BarLine />
             </View>
 
-            <ScrollView
-              keyboardShouldPersistTaps="handled"
-              showsVerticalScrollIndicator={false}
-            >
-              {children}
-            </ScrollView>
+            {noScroll ? (
+              <>{children}</>
+            ) : (
+              <ScrollView
+                keyboardShouldPersistTaps="handled"
+                showsVerticalScrollIndicator={false}
+              >
+                {children}
+              </ScrollView>
+            )}
           </Animated.View>
         ) : (
           <View

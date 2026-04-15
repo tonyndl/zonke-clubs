@@ -19,6 +19,8 @@ export const styles = StyleSheet.create({
   },
   avatarWrapper: {
     borderRadius: 14,
+    backgroundColor: Colors.bg,
+    padding: 1.5,
   },
   avatar: {
     width: 26,

@@ -662,12 +662,12 @@ export const Media: React.FC = () => {
                           {post.caption && (
                             <MediaCaption>{post.caption}</MediaCaption>
                           )}
-                          <MediaDate>
+                          {/* <MediaDate>
                             {formatDate(post.inserted_at)}
                             {post.assets?.length > 1 &&
                               ` · ${post.assets.length} items`}
-                          </MediaDate>
-                          <MediaActionBar>
+                          </MediaDate> */}
+                          {/* <MediaActionBar>
                             <MediaActionBtn
                               onClick={(e) => {
                                 e.stopPropagation();
@@ -691,7 +691,7 @@ export const Media: React.FC = () => {
                                 RiDeleteBinLine as React.ComponentType,
                               )}
                             </MediaActionBtn>
-                          </MediaActionBar>
+                          </MediaActionBar> */}
                         </MediaOverlay>
                       </MediaPreview>
                     </MediaCard>

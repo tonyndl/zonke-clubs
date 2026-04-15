@@ -179,14 +179,28 @@ const VideoPlayer: React.FC<VideoPlayerProps> = memo(
           >
             <Pressable onPress={goToClub} style={styles.bottomInfo}>
               <View style={styles.clubBadge}>
-                <Ionicons name="location" size={14} color={Colors.gold} />
+                <Ionicons name="home" size={14} color={Colors.gold} />
                 <Text style={styles.clubName} numberOfLines={1}>
                   {item.clubName}
                 </Text>
               </View>
 
               {item.clubLocation && (
-                <Text style={styles.locationText}>{item.clubLocation}</Text>
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "flex-start",
+                    gap: 4,
+                  }}
+                >
+                  <Ionicons
+                    name="location"
+                    size={12}
+                    color={Colors.smoke}
+                    style={{ marginTop: 3 }}
+                  />
+                  <Text style={styles.locationText}>{item.clubLocation}</Text>
+                </View>
               )}
 
               <View style={styles.statsRow}>

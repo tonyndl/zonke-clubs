@@ -58,8 +58,130 @@ import { useAuth } from "@/contexts/AuthContext";
 import { ClubVideoFeed } from "@/components/discover/ClubVideoFeed";
 import { getAllClubVideos } from "@/data/clubVideos";
 import { Toast } from "@/components/ui/Toast";
+import { useDebounce } from "@/hooks/useDebounce";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
+
+// Dummy intentions pool — gives every club card a "people looking to meet" row
+const TODAY = new Date().toISOString().split("T")[0];
+const DUMMY_INTENTIONS: import("@/types/meetup").MeetupIntention[] = [
+  {
+    id: "d1",
+    activityType: "dancing_partner",
+    clubId: "",
+    plannedDate: TODAY,
+    active: true,
+    createdAt: TODAY,
+    user: {
+      id: "u1",
+      username: "Zara",
+      avatarUrl: "https://i.pravatar.cc/150?img=47",
+    },
+  },
+  {
+    id: "d2",
+    activityType: "drinking_buddy",
+    clubId: "",
+    plannedDate: TODAY,
+    active: true,
+    createdAt: TODAY,
+    user: {
+      id: "u2",
+      username: "Alex",
+      avatarUrl: "https://i.pravatar.cc/150?img=12",
+    },
+  },
+  {
+    id: "d3",
+    activityType: "new_friends",
+    clubId: "",
+    plannedDate: TODAY,
+    active: true,
+    createdAt: TODAY,
+    user: {
+      id: "u3",
+      username: "Mia",
+      avatarUrl: "https://i.pravatar.cc/150?img=49",
+    },
+  },
+  {
+    id: "d4",
+    activityType: "open_to_anything",
+    clubId: "",
+    plannedDate: TODAY,
+    active: true,
+    createdAt: TODAY,
+    user: {
+      id: "u4",
+      username: "Remi",
+      avatarUrl: "https://i.pravatar.cc/150?img=15",
+    },
+  },
+  {
+    id: "d5",
+    activityType: "dancing_partner",
+    clubId: "",
+    plannedDate: TODAY,
+    active: true,
+    createdAt: TODAY,
+    user: {
+      id: "u5",
+      username: "Leila",
+      avatarUrl: "https://i.pravatar.cc/150?img=44",
+    },
+  },
+  {
+    id: "d6",
+    activityType: "drinking_buddy",
+    clubId: "",
+    plannedDate: TODAY,
+    active: true,
+    createdAt: TODAY,
+    user: {
+      id: "u6",
+      username: "Jono",
+      avatarUrl: "https://i.pravatar.cc/150?img=33",
+    },
+  },
+  {
+    id: "d7",
+    activityType: "new_friends",
+    clubId: "",
+    plannedDate: TODAY,
+    active: true,
+    createdAt: TODAY,
+    user: {
+      id: "u7",
+      username: "Nina",
+      avatarUrl: "https://i.pravatar.cc/150?img=56",
+    },
+  },
+  {
+    id: "d8",
+    activityType: "open_to_anything",
+    clubId: "",
+    plannedDate: TODAY,
+    active: true,
+    createdAt: TODAY,
+    user: {
+      id: "u8",
+      username: "Sam",
+      avatarUrl: "https://i.pravatar.cc/150?img=22",
+    },
+  },
+];
+
+function getDummyIntentions(
+  index: number,
+): import("@/types/meetup").MeetupIntention[] {
+  const count = 3 + (index % 3); // 3, 4, or 5 people per club
+  const start = (index * 3) % DUMMY_INTENTIONS.length;
+  const slice: import("@/types/meetup").MeetupIntention[] = [];
+  for (let i = 0; i < count; i++) {
+    slice.push(DUMMY_INTENTIONS[(start + i) % DUMMY_INTENTIONS.length]);
+  }
+  return slice;
+}
 const EVENT_CARD_WIDTH = SCREEN_WIDTH * (SCREEN_WIDTH < 600 ? 0.65 : 0.5);
 const EVENT_CARD_HEIGHT = 200;
 const IG_IMAGE_HEIGHT = SCREEN_HEIGHT * 0.62;
@@ -574,6 +696,10 @@ export const HomeScreen = () => {
   );
   const [videoFeed, setVideoFeed] = useState<any[]>([]);
   const [videoSearchQuery, setVideoSearchQuery] = useState("");
+  const debouncedSearchQuery = useDebounce(searchQuery, 300);
+  const debouncedVideoSearchQuery = useDebounce(videoSearchQuery, 300);
+  const [searchResults, setSearchResults] = useState<Club[]>([]);
+  const [searchLoading, setSearchLoading] = useState(false);
   const [videoSearchFocused, setVideoSearchFocused] = useState(false);
   const [fullscreenIndex, setFullscreenIndex] = useState<number | null>(null);
   const [userCoords, setUserCoords] = useState<{
@@ -609,6 +735,31 @@ export const HomeScreen = () => {
       loadClubs();
     }, [user]),
   );
+
+  // When search query changes, fetch from API instead of filtering locally
+  useEffect(() => {
+    if (!debouncedSearchQuery) {
+      setSearchResults([]);
+      setSearchLoading(false);
+      return;
+    }
+    setSearchLoading(true);
+    clubsService
+      .getClubs(!!user, 1, 50, debouncedSearchQuery)
+      .then((response) => {
+        const formatted = response.clubs.map(
+          (club: ApiClub, index: number) => ({
+            id: club.id,
+            name: club.name,
+            location: club.location,
+            image: getPlaceholderImage(index),
+          }),
+        );
+        setSearchResults(formatted);
+      })
+      .catch((err) => console.error("Club search failed", err))
+      .finally(() => setSearchLoading(false));
+  }, [debouncedSearchQuery, user]);
 
   const loadClubs = () => {
     setLoading(true);
@@ -829,7 +980,7 @@ export const HomeScreen = () => {
   // ── Club card renderer ──────────────────────────────────────────────────
   const renderClub = useCallback(
     ({ item, index }: { item: Club; index: number }) => {
-      const intentions = getIntentionsForClub([]);
+      const intentions = getDummyIntentions(index);
       return (
         <View>
           <PressableScale onPress={() => openClub(item)} style={styles.card}>
@@ -895,7 +1046,6 @@ export const HomeScreen = () => {
   const filteredClubs = useMemo(
     () =>
       clubs
-        .filter((c) => c.name.toLowerCase().includes(searchQuery.toLowerCase()))
         .map((c) => ({
           ...c,
           distance:
@@ -911,13 +1061,13 @@ export const HomeScreen = () => {
           if (b.distance == null) return -1;
           return a.distance - b.distance;
         }),
-    [clubs, searchQuery, userCoords],
+    [clubs, userCoords],
   );
 
   // Reset local page when search changes
   useEffect(() => {
     setClubsPage(1);
-  }, [searchQuery]);
+  }, [debouncedSearchQuery]);
 
   const displayedClubs = useMemo(
     () => filteredClubs.slice(0, clubsPage * CLUBS_PAGE_SIZE),
@@ -928,7 +1078,7 @@ export const HomeScreen = () => {
     displayedClubs.length < filteredClubs.length || currentPage < maxPage;
 
   const handleClubsEndReached = useCallback(() => {
-    if (loadingMore || searchQuery) return;
+    if (loadingMore || debouncedSearchQuery) return;
 
     if (displayedClubs.length < filteredClubs.length) {
       setLoadingMore(true);
@@ -940,14 +1090,21 @@ export const HomeScreen = () => {
     }
 
     loadMoreClubs();
-  }, [loadingMore, searchQuery, displayedClubs.length, filteredClubs.length]);
+  }, [
+    loadingMore,
+    debouncedSearchQuery,
+    displayedClubs.length,
+    filteredClubs.length,
+  ]);
 
   const filteredVideos = videoFeed.filter(
     (video) =>
-      video.clubName.toLowerCase().includes(videoSearchQuery.toLowerCase()) ||
+      video.clubName
+        .toLowerCase()
+        .includes(debouncedVideoSearchQuery.toLowerCase()) ||
       video.clubLocation
         ?.toLowerCase()
-        .includes(videoSearchQuery.toLowerCase()),
+        .includes(debouncedVideoSearchQuery.toLowerCase()),
   );
 
   return (
@@ -1141,16 +1298,28 @@ export const HomeScreen = () => {
         viewMode === "clubs" ? (
           <FlatList
             keyboardShouldPersistTaps="handled"
-            data={displayedClubs}
+            data={debouncedSearchQuery ? searchResults : displayedClubs}
             keyExtractor={(item) => item.id}
             renderItem={renderClub}
             extraData={{ liked, userCoords }}
             contentContainerStyle={styles.listContent}
             showsVerticalScrollIndicator={false}
-            onEndReached={handleClubsEndReached}
+            onEndReached={
+              debouncedSearchQuery ? undefined : handleClubsEndReached
+            }
             onEndReachedThreshold={0.4}
             ListFooterComponent={
-              filteredClubs.length > 0 ? (
+              debouncedSearchQuery ? (
+                searchLoading ? (
+                  <ActivityIndicator
+                    size="small"
+                    color={Colors.gold}
+                    style={{ marginVertical: 16 }}
+                  />
+                ) : searchResults.length === 0 ? (
+                  <Text style={styles.clubsEndText}>No clubs found</Text>
+                ) : null
+              ) : filteredClubs.length > 0 ? (
                 loadingMore ? (
                   <ActivityIndicator
                     size="small"

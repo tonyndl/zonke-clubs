@@ -142,6 +142,7 @@ export const DJName = styled.div`
 `;
 
 export const ExpiresAt = styled.div`
+  margin-top: 5px;
   font-size: ${theme.typography.fontSize.xs};
   color: ${theme.colors.textSecondary};
 `;

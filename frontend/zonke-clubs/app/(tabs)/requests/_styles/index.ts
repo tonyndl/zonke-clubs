@@ -106,8 +106,8 @@ export const styles = StyleSheet.create({
   },
   filterPills: {
     flexDirection: "row",
-    gap: 8,
-    flex: 1,
+    width: "80%",
+    justifyContent: "space-between",
   },
   filterPill: {
     flexDirection: "row",
@@ -404,7 +404,7 @@ export const styles = StyleSheet.create({
   loadingContainer: {
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 80,
+    flex: 1,
   },
   loadingText: {
     fontSize: 15,

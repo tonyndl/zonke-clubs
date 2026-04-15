@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useDebounce } from "@/hooks/useDebounce";
 import {
   View,
   Text,
@@ -460,6 +461,7 @@ export default function ProfileScreen() {
   const [showClubModal, setShowClubModal] = useState(false);
   const [newDrink, setNewDrink] = useState("");
   const [clubSearchQuery, setClubSearchQuery] = useState("");
+  const debouncedClubSearch = useDebounce(clubSearchQuery, 300);
 
   // Tab state
   const [activeTab, setActiveTab] = useState<"info" | "feed" | "beer-stats">(
@@ -504,6 +506,10 @@ export default function ProfileScreen() {
   const [allClubs, setAllClubs] = useState<
     Array<{ id: string; name: string; image: string; location: string }>
   >([]);
+  // Full data for the user's saved favorite clubs (used for profile display, separate from search results)
+  const [favoriteClubsData, setFavoriteClubsData] = useState<
+    Array<{ id: string; name: string; image: string; location: string }>
+  >([]);
   const [loadingClubs, setLoadingClubs] = useState(true);
 
   // Map club IDs to names for display
@@ -514,15 +520,17 @@ export default function ProfileScreen() {
 
   // Load user's posts from backend
   const loadUserPosts = () => {
-    if (!isOwnProfile) return; // Only load posts for own profile
+    const fetch = isOwnProfile
+      ? postsService.getUserPosts()
+      : postsService.getUserPostsById(viewingUserId);
 
-    postsService
-      .getUserPosts()
+    fetch
       .then((response) => {
         // Convert backend posts to ClubPost format
         const posts = response.posts.map((post) => ({
           id: post.id,
           clubId: post.club_id,
+          clubName: post.club_name || undefined,
           description: post.caption || undefined,
           likes: post.like_count || 0,
           likeCount: post.like_count || 0,
@@ -756,7 +764,7 @@ export default function ProfileScreen() {
   useFocusEffect(
     React.useCallback(() => {
       loadUserPosts();
-    }, [isOwnProfile]),
+    }, [isOwnProfile, viewingUserId]),
   );
 
   // Load own meetup intentions when screen comes into focus
@@ -819,23 +827,6 @@ export default function ProfileScreen() {
   const loadClubsAndFavorites = () => {
     setLoadingClubs(true);
 
-    const clubsPromise = clubsService
-      .getClubs(false)
-      .then((response) => {
-        const formattedClubs = response.clubs.map(
-          (club: ApiClub, index: number) => ({
-            id: club.id,
-            name: club.name,
-            location: club.location.name,
-            image: getPlaceholderImage(index),
-          }),
-        );
-        setAllClubs(formattedClubs);
-      })
-      .catch((error) => {
-        console.error("[Profile] Failed to load all clubs:", error);
-      });
-
     const favoritesPromise =
       isOwnProfile && authUser
         ? clubsService
@@ -846,6 +837,15 @@ export default function ProfileScreen() {
               );
               setSelectedClubs(favoriteIds);
               setOriginalClubs(favoriteIds);
+              const favData = favoritesResponse.clubs.map(
+                (club: ApiClub, index: number) => ({
+                  id: club.id,
+                  name: club.name,
+                  location: club.location.name,
+                  image: getPlaceholderImage(index),
+                }),
+              );
+              setFavoriteClubsData(favData);
             })
             .catch((error) => {
               console.error("[Profile] Failed to load favorites:", error);
@@ -854,10 +854,32 @@ export default function ProfileScreen() {
             })
         : Promise.resolve();
 
-    Promise.all([clubsPromise, favoritesPromise]).finally(() => {
+    favoritesPromise.finally(() => {
       setLoadingClubs(false);
     });
   };
+
+  // Fetch clubs from API when user types in the club search modal
+  useEffect(() => {
+    if (!debouncedClubSearch.trim()) {
+      setAllClubs([]);
+      return;
+    }
+    clubsService
+      .getClubs(false, 1, 50, debouncedClubSearch)
+      .then((response) => {
+        const formatted = response.clubs.map(
+          (club: ApiClub, index: number) => ({
+            id: club.id,
+            name: club.name,
+            location: club.location.name,
+            image: getPlaceholderImage(index),
+          }),
+        );
+        setAllClubs(formatted);
+      })
+      .catch((err) => console.error("[Profile] Club search failed", err));
+  }, [debouncedClubSearch]);
 
   const pickImage = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -981,16 +1003,24 @@ export default function ProfileScreen() {
   };
 
   const getSelectedClubsData = () => {
-    return allClubs.filter((club) => selectedClubs.includes(club.id));
+    return favoriteClubsData.filter((club) => selectedClubs.includes(club.id));
   };
 
-  const getFilteredClubs = () => {
-    if (!clubSearchQuery.trim()) return allClubs;
-    return allClubs.filter(
-      (club) =>
-        club.name.toLowerCase().includes(clubSearchQuery.toLowerCase()) ||
-        club.location.toLowerCase().includes(clubSearchQuery.toLowerCase()),
-    );
+  const closeClubModal = () => {
+    // Merge newly selected clubs from search results into favoriteClubsData
+    setFavoriteClubsData((prev) => {
+      const existingIds = new Set(prev.map((c) => c.id));
+      const additions = allClubs.filter(
+        (c) => selectedClubs.includes(c.id) && !existingIds.has(c.id),
+      );
+      const merged = [...prev, ...additions].filter((c) =>
+        selectedClubs.includes(c.id),
+      );
+      return merged;
+    });
+    setClubSearchQuery("");
+    setAllClubs([]);
+    closeClubModal();
   };
 
   const handleAddPost = () => {
@@ -1840,12 +1870,14 @@ export default function ProfileScreen() {
         {activeTab === "feed" && (
           <UserMediaGrid
             posts={userPosts}
-            clubNames={clubNames}
+            title={isOwnProfile ? "My Club Vibes" : "Club Vibes"}
             onPostPress={(postIndex) => {
               setFeedInitialIndex(postIndex);
               setShowFeedViewer(true);
             }}
-            onAddPost={() => setShowAddPostModal(true)}
+            onAddPost={
+              isOwnProfile ? () => setShowAddPostModal(true) : undefined
+            }
           />
         )}
 
@@ -1896,79 +1928,131 @@ export default function ProfileScreen() {
       {/* Club Selection Modal - only for own profile */}
       {isOwnProfile && showClubModal && (
         <Modal
-          onDismiss={() => setShowClubModal(false)}
+          onDismiss={() => closeClubModal()}
           bgColor={Colors.bgCard}
+          sliding
+          noScroll
         >
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Select Clubs</Text>
-            <TouchableOpacity onPress={() => setShowClubModal(false)}>
-              <Ionicons name="close" size={24} color={Colors.platinum} />
-            </TouchableOpacity>
-          </View>
-          <View style={styles.searchContainer}>
-            <Ionicons name="search" size={18} color={Colors.lightGrey} />
-            <TextInput
-              style={styles.searchInput}
-              value={clubSearchQuery}
-              onChangeText={setClubSearchQuery}
-              placeholder="Search clubs..."
-              placeholderTextColor={Colors.lightGrey}
-            />
-          </View>
-          <ScrollView
-            style={{ maxHeight: 250, marginBottom: 16 }}
-            showsVerticalScrollIndicator={false}
-            keyboardShouldPersistTaps="handled"
-          >
-            {getFilteredClubs().map((club) => {
-              const isSelected = selectedClubs.includes(club.id);
-              return (
-                <PressableScale
-                  key={club.id}
-                  style={StyleSheet.flatten([
-                    styles.clubListItem,
-                    isSelected && styles.clubListItemSelected,
-                  ])}
-                  onPress={() => toggleClub(club.id)}
+          <View style={{ paddingBottom: 16 }}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Search Clubs</Text>
+              <TouchableOpacity
+                onPress={() => closeClubModal()}
+                style={styles.modalClose}
+              >
+                <Ionicons name="close" size={24} color={Colors.gold} />
+              </TouchableOpacity>
+            </View>
+            <View style={styles.searchContainer}>
+              <Ionicons name="search" size={18} color={Colors.lightGrey} />
+              <TextInput
+                style={styles.searchInput}
+                value={clubSearchQuery}
+                onChangeText={setClubSearchQuery}
+                placeholder="Search clubs..."
+                placeholderTextColor={Colors.lightGrey}
+              />
+            </View>
+            <ScrollView
+              style={{ maxHeight: 360 }}
+              contentContainerStyle={{ paddingBottom: 8 }}
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+            >
+              {!clubSearchQuery.trim() ? (
+                <View
+                  style={{
+                    flex: 1,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    paddingTop: 28,
+                    paddingBottom: 28,
+                    gap: 10,
+                  }}
                 >
-                  <Image
-                    source={{ uri: club.image }}
-                    style={styles.clubListItemImage}
+                  <Ionicons name="search" size={40} color={Colors.lightGrey} />
+                  <Text style={{ color: Colors.lightGrey, fontSize: 14 }}>
+                    Search for a club
+                  </Text>
+                </View>
+              ) : allClubs.length === 0 ? (
+                <View
+                  style={{
+                    flex: 1,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    paddingTop: 28,
+                    paddingBottom: 28,
+                    gap: 10,
+                  }}
+                >
+                  <Ionicons
+                    name="business-outline"
+                    size={40}
+                    color={Colors.lightGrey}
                   />
-                  <View style={styles.clubListItemContent}>
-                    <Text style={styles.clubListItemName}>{club.name}</Text>
-                    <View style={styles.clubListItemLocation}>
-                      <Ionicons
-                        name="location"
-                        size={12}
-                        color={Colors.lightGrey}
-                      />
-                      <Text style={styles.clubListItemLocationText}>
-                        {club.location}
-                      </Text>
-                    </View>
-                  </View>
-                  <View
+                  <Text style={{ color: Colors.lightGrey, fontSize: 14 }}>
+                    No clubs found
+                  </Text>
+                </View>
+              ) : null}
+              {allClubs.map((club) => {
+                const isSelected = selectedClubs.includes(club.id);
+                return (
+                  <PressableScale
+                    key={club.id}
                     style={StyleSheet.flatten([
-                      styles.clubListItemCheckbox,
-                      isSelected && styles.clubListItemCheckboxSelected,
+                      styles.clubListItem,
+                      isSelected && styles.clubListItemSelected,
                     ])}
+                    onPress={() => toggleClub(club.id)}
                   >
-                    {isSelected && (
-                      <Ionicons name="checkmark" size={16} color={Colors.bg} />
-                    )}
-                  </View>
-                </PressableScale>
-              );
-            })}
-          </ScrollView>
-          <PressableScale
-            style={styles.modalButton}
-            onPress={() => setShowClubModal(false)}
-          >
-            <Text style={styles.modalButtonText}>Done</Text>
-            <Ionicons name="checkmark" size={20} color={Colors.bg} />
-          </PressableScale>
+                    <Image
+                      source={{ uri: club.image }}
+                      style={styles.clubListItemImage}
+                    />
+                    <View style={styles.clubListItemContent}>
+                      <Text style={styles.clubListItemName}>{club.name}</Text>
+                      <View style={styles.clubListItemLocation}>
+                        <Ionicons
+                          name="location"
+                          size={12}
+                          color={Colors.lightGrey}
+                        />
+                        <Text style={styles.clubListItemLocationText}>
+                          {club.location}
+                        </Text>
+                      </View>
+                    </View>
+                    <View
+                      style={StyleSheet.flatten([
+                        styles.clubListItemCheckbox,
+                        isSelected && styles.clubListItemCheckboxSelected,
+                      ])}
+                    >
+                      {isSelected && (
+                        <Ionicons
+                          name="checkmark"
+                          size={16}
+                          color={Colors.bg}
+                        />
+                      )}
+                    </View>
+                  </PressableScale>
+                );
+              })}
+            </ScrollView>
+            {JSON.stringify([...selectedClubs].sort()) !==
+              JSON.stringify([...originalClubs].sort()) && (
+              <PressableScale
+                style={[styles.modalButton, { marginTop: 12 }]}
+                onPress={() => closeClubModal()}
+              >
+                <Text style={styles.modalButtonText}>Done</Text>
+                <Ionicons name="checkmark" size={20} color={Colors.bg} />
+              </PressableScale>
+            )}
+          </View>
         </Modal>
       )}
 

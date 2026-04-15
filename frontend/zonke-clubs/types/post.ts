@@ -19,6 +19,7 @@ export interface MediaAsset {
 export interface ClubPost {
   id: string;
   clubId: string;
+  clubName?: string;
   description?: string;
   media: MediaAsset[];
   likeCount: number;

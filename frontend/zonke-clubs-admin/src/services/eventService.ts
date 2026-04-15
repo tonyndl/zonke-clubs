@@ -12,7 +12,7 @@ export const eventService = {
   // Get paginated events for the current admin
   getEvents: async (
     page: number = 1,
-    perPage: number = 10,
+    perPage: number = 12,
   ): Promise<{ events: Event[]; paginate: EventsPaginate }> => {
     return apiService.get<{ events: Event[]; paginate: EventsPaginate }>(
       `/admin/events?page=${page}&per_page=${perPage}`,

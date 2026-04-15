@@ -48,6 +48,17 @@ defmodule BackendWeb.API.SpendingController do
   end
 
   @doc """
+  Gets the current user's top 10 rankings at clubs.
+  """
+  def rankings(conn, _params, session) do
+    rankings = SpendingRecords.get_user_rankings(session.id)
+
+    conn
+    |> put_status(:ok)
+    |> json(%{rankings: rankings})
+  end
+
+  @doc """
   Gets the current user's spending statistics for a specific club.
   """
   def club_stats(conn, %{"club_id" => club_id}, session) do

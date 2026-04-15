@@ -163,7 +163,7 @@ export const EventMeta = styled.div`
 
 export const MetaItem = styled.div`
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: ${theme.spacing.sm};
   font-size: ${theme.typography.fontSize.sm};
   color: ${theme.colors.textSecondary};
@@ -171,6 +171,8 @@ export const MetaItem = styled.div`
   svg {
     width: 16px;
     height: 16px;
+    flex-shrink: 0;
+    margin-top: 1px;
     color: ${theme.colors.primary};
   }
 `;

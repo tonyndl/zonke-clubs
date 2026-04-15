@@ -183,4 +183,38 @@ export const styles = StyleSheet.create({
     textAlign: "center",
     lineHeight: 20,
   },
+  rankingCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    backgroundColor: Colors.bgCard,
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: "rgba(57, 243, 255, 0.15)",
+  },
+  rankBadge: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "rgba(57, 243, 255, 0.15)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  rankBadgeText: {
+    fontSize: 14,
+    fontWeight: "800",
+    color: Colors.gold,
+  },
+  rankingClubName: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: Colors.platinum,
+  },
+  rankingAmount: {
+    fontSize: 13,
+    color: Colors.smoke,
+    marginTop: 2,
+  },
 });

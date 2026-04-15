@@ -9,7 +9,9 @@ import {
   Easing,
   FlatList,
   ActivityIndicator,
+  Modal,
 } from "react-native";
+import { BlurView } from "expo-blur";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -73,6 +75,22 @@ export default function JoinStrobeScreen() {
   const [djOverriding, setDjOverriding] = useState(false);
   const [interferMode, setInterferMode] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [connectedCount, setConnectedCount] = useState(0);
+  const [endStrobeModal, setEndStrobeModal] = useState(false);
+
+  // Register presence callback once — always reflects the strobe channel's count
+  useEffect(() => {
+    strobeChannel.onPresenceUpdate((count) => {
+      setConnectedCount(count);
+    });
+  }, []);
+
+  // True when this user is the DJ that started the active session
+  const isDJ = !!(
+    user?.id &&
+    sessionInfo?.dj_user_id &&
+    user.id === sessionInfo.dj_user_id
+  );
   const [cameraPermission, requestCameraPermission] = useCameraPermissions();
 
   const autoJoinFiredRef = useRef(false);
@@ -139,6 +157,7 @@ export default function JoinStrobeScreen() {
   // system keeps the JS thread running even when the screen turns off.
   useEffect(() => {
     if (!isActive) return;
+    if (isDJ) return; // DJ doesn't need the audience-style sync notification
 
     Notifications.setNotificationChannelAsync("strobe-active", {
       name: "Strobe Active",
@@ -168,7 +187,7 @@ export default function JoinStrobeScreen() {
         Notifications.dismissNotificationAsync(notifId).catch(() => {});
       Notifications.dismissAllNotificationsAsync().catch(() => {});
     };
-  }, [isActive]);
+  }, [isActive, isDJ]);
 
   // Load active sessions when no club pre-selected
   useFocusEffect(
@@ -426,12 +445,6 @@ export default function JoinStrobeScreen() {
 
   // ── DJ live override (only when this user is the session's DJ) ───────────────
 
-  const isDJ = !!(
-    user?.id &&
-    sessionInfo?.dj_user_id &&
-    user.id === sessionInfo.dj_user_id
-  );
-
   const handleOverrideIn = () => {
     if (!isDJ) return;
     stopBeatTimer();
@@ -644,6 +657,11 @@ export default function JoinStrobeScreen() {
       <View style={styles.header}>
         <Pressable
           onPress={() => {
+            // DJ with an active strobe must confirm before leaving (ends strobe for all)
+            if (isDJ && isActive) {
+              setEndStrobeModal(true);
+              return;
+            }
             if (joined) {
               handleLeave();
             } else if (!paramClubId) {
@@ -655,13 +673,18 @@ export default function JoinStrobeScreen() {
           }}
           style={styles.backBtn}
         >
-          <Ionicons name="arrow-back" size={24} color={Colors.platinum} />
+          <Ionicons name="arrow-back" size={24} color={Colors.gold} />
         </Pressable>
         <Text style={styles.headerTitle}>STROBE SYNC</Text>
         <View style={{ width: 40 }} />
       </View>
 
-      <View style={styles.body}>
+      <View
+        style={[
+          styles.body,
+          joined && isActive && isDJ && { paddingBottom: 180 },
+        ]}
+      >
         <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
           <Pressable
             style={[
@@ -744,54 +767,14 @@ export default function JoinStrobeScreen() {
             </View>
 
             <Text style={styles.activeText}>
-              {interferMode ? "INTERFERE MODE" : "SYNCED TO DJ"}
+              {interferMode
+                ? "INTERFERE MODE"
+                : isDJ
+                  ? `SYNCED TO ${Math.max(connectedCount - 1, 0)} ${
+                      connectedCount - 1 === 1 ? "PERSON" : "PEOPLE"
+                    }`
+                  : "SYNCED TO DJ"}
             </Text>
-
-            {/* DJ-only controls */}
-            {isDJ && (
-              <View style={styles.djControls}>
-                <View style={styles.interferRow}>
-                  <View style={styles.interferLeft}>
-                    <Ionicons
-                      name="radio"
-                      size={16}
-                      color={interferMode ? Colors.accent : Colors.smoke}
-                    />
-                    <Text
-                      style={[
-                        styles.interferLabel,
-                        interferMode && { color: Colors.accent },
-                      ]}
-                    >
-                      INTERFERE
-                    </Text>
-                  </View>
-                  <Switch
-                    value={interferMode}
-                    onValueChange={toggleInterferMode}
-                    trackColor={{
-                      false: "rgba(255,255,255,0.1)",
-                      true: "rgba(57,243,255,0.35)",
-                    }}
-                    thumbColor={interferMode ? Colors.accent : Colors.smoke}
-                  />
-                </View>
-
-                {interferMode && (
-                  <Text style={styles.interferHint}>
-                    Tap & hold the icon above to flash
-                  </Text>
-                )}
-
-                <Pressable
-                  style={styles.endStrobeBtn}
-                  onPress={handleEndStrobe}
-                >
-                  <Ionicons name="stop-circle" size={18} color="#FF4444" />
-                  <Text style={styles.endStrobeBtnText}>END STROBE</Text>
-                </Pressable>
-              </View>
-            )}
 
             {!isDJ && (
               <Pressable style={styles.leaveBtn} onPress={handleLeave}>
@@ -801,6 +784,150 @@ export default function JoinStrobeScreen() {
           </>
         )}
       </View>
+
+      {/* DJ-only controls pinned to the bottom of the screen */}
+      {joined && isActive && sessionInfo && isDJ && (
+        <View style={styles.djControlsBottom} pointerEvents="box-none">
+          <View style={styles.interferRow}>
+            <View style={styles.interferLeft}>
+              <Ionicons
+                name="radio"
+                size={16}
+                color={interferMode ? Colors.accent : Colors.smoke}
+              />
+              <Text
+                style={[
+                  styles.interferLabel,
+                  interferMode && { color: Colors.accent },
+                ]}
+              >
+                INTERFERE
+              </Text>
+            </View>
+            <Switch
+              value={interferMode}
+              onValueChange={toggleInterferMode}
+              trackColor={{
+                false: "rgba(255,255,255,0.1)",
+                true: "rgba(57,243,255,0.35)",
+              }}
+              thumbColor={interferMode ? Colors.accent : Colors.smoke}
+            />
+          </View>
+
+          {interferMode && (
+            <Text style={styles.interferHint}>
+              Tap & hold the icon above to flash
+            </Text>
+          )}
+
+          <Pressable style={styles.endStrobeBtn} onPress={handleEndStrobe}>
+            <Ionicons name="stop-circle" size={18} color="#FF4444" />
+            <Text style={styles.endStrobeBtnText}>END STROBE</Text>
+          </Pressable>
+        </View>
+      )}
+
+      {/* End strobe + leave confirmation (DJ only) */}
+      <Modal
+        visible={endStrobeModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setEndStrobeModal(false)}
+      >
+        <BlurView intensity={60} tint="dark" style={{ flex: 1 }}>
+          <Pressable
+            style={{
+              flex: 1,
+              justifyContent: "center",
+              alignItems: "center",
+              padding: 32,
+            }}
+            onPress={() => setEndStrobeModal(false)}
+          >
+            <Pressable
+              onPress={() => {}}
+              style={{
+                backgroundColor: Colors.bgCard,
+                borderRadius: 20,
+                padding: 24,
+                width: "100%",
+                borderWidth: 1,
+                borderColor: "rgba(57, 243, 255, 0.15)",
+              }}
+            >
+              <Text
+                style={{
+                  fontSize: 18,
+                  fontWeight: "700",
+                  color: Colors.platinum,
+                  marginBottom: 10,
+                }}
+              >
+                End strobe?
+              </Text>
+              <Text
+                style={{
+                  fontSize: 14,
+                  color: Colors.smoke,
+                  lineHeight: 20,
+                  marginBottom: 24,
+                }}
+              >
+                Are you sure you want to end the strobe and leave? This will
+                stop the light show for everyone synced to you.
+              </Text>
+              <View style={{ flexDirection: "row", gap: 10 }}>
+                <Pressable
+                  onPress={() => setEndStrobeModal(false)}
+                  style={{
+                    flex: 1,
+                    paddingVertical: 12,
+                    borderRadius: 14,
+                    backgroundColor: Colors.bgSecondary,
+                    alignItems: "center",
+                    borderWidth: 1,
+                    borderColor: "rgba(255,255,255,0.1)",
+                  }}
+                >
+                  <Text
+                    style={{
+                      fontSize: 15,
+                      fontWeight: "600",
+                      color: Colors.lightGrey,
+                    }}
+                  >
+                    Cancel
+                  </Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => {
+                    setEndStrobeModal(false);
+                    handleEndStrobe();
+                  }}
+                  style={{
+                    flex: 1,
+                    paddingVertical: 12,
+                    borderRadius: 14,
+                    backgroundColor: "#EF4444",
+                    alignItems: "center",
+                  }}
+                >
+                  <Text
+                    style={{
+                      fontSize: 15,
+                      fontWeight: "700",
+                      color: Colors.white,
+                    }}
+                  >
+                    End & Leave
+                  </Text>
+                </Pressable>
+              </View>
+            </Pressable>
+          </Pressable>
+        </BlurView>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -1060,6 +1187,13 @@ const styles = StyleSheet.create({
     width: "100%",
     gap: 12,
     marginTop: 4,
+  },
+  djControlsBottom: {
+    position: "absolute",
+    left: 20,
+    right: 20,
+    bottom: 30,
+    gap: 12,
   },
   interferRow: {
     flexDirection: "row",

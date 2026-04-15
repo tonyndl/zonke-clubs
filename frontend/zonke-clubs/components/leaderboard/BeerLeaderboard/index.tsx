@@ -289,7 +289,7 @@ export const BeerLeaderboard = () => {
               <Text style={styles.beerCount}>
                 R{entry.totalSpent.toLocaleString()}
               </Text>
-              <Text style={styles.litresLabel}>spent</Text>
+              <Text style={styles.litresLabel}>one night</Text>
             </View>
           </View>
         </PressableScale>

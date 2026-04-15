@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
+import { Pagination } from "../../components/Pagination";
 import { Card, CardTitle, CardDescription } from "../../components/Card";
 import {
   PrimaryButton,
@@ -29,8 +30,6 @@ import {
   RiTicket2Line,
   RiHeartLine,
   RiMusic2Line,
-  RiArrowLeftLine,
-  RiArrowRightLine,
 } from "react-icons/ri";
 import {
   EventsContainer,
@@ -54,9 +53,6 @@ import {
   EventFooter,
   EmptyState,
   EventActions,
-  PaginationContainer,
-  PageButton,
-  PageInfo,
 } from "./styles";
 
 interface DJ {
@@ -83,6 +79,14 @@ export const Events: React.FC = () => {
   const [pendingDJId, setPendingDJId] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
+  const [zoom, setZoom] = useState(1);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [showZoomControls, setShowZoomControls] = useState(false);
+  const isDragging = useRef(false);
+  const dragStart = useRef({ x: 0, y: 0 });
+  const panStart = useRef({ x: 0, y: 0 });
+  const zoomControlsTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Load events and DJs on mount, cleaning up past events first
   useEffect(() => {
@@ -302,229 +306,447 @@ export const Events: React.FC = () => {
     return event.status === filter;
   });
 
+  const openLightbox = (src: string) => {
+    setLightboxSrc(src);
+    setZoom(1);
+    setPan({ x: 0, y: 0 });
+  };
+
+  const closeLightbox = () => {
+    setLightboxSrc(null);
+    setZoom(1);
+    setPan({ x: 0, y: 0 });
+    setShowZoomControls(false);
+    if (zoomControlsTimer.current) clearTimeout(zoomControlsTimer.current);
+  };
+
+  const flashZoomControls = useCallback(() => {
+    setShowZoomControls(true);
+    if (zoomControlsTimer.current) clearTimeout(zoomControlsTimer.current);
+    zoomControlsTimer.current = setTimeout(
+      () => setShowZoomControls(false),
+      2500,
+    );
+  }, []);
+
+  const handleLightboxWheel = useCallback(
+    (e: React.WheelEvent) => {
+      e.preventDefault();
+      setZoom((prev) => {
+        const delta = e.deltaY < 0 ? 0.25 : -0.25;
+        const next = Math.min(5, Math.max(1, prev + delta));
+        if (next === 1) setPan({ x: 0, y: 0 });
+        return next;
+      });
+      flashZoomControls();
+    },
+    [flashZoomControls],
+  );
+
+  const handleImgMouseDown = (e: React.MouseEvent) => {
+    flashZoomControls();
+    if (zoom <= 1) return;
+    e.preventDefault();
+    isDragging.current = true;
+    dragStart.current = { x: e.clientX, y: e.clientY };
+    panStart.current = { ...pan };
+  };
+
+  const handleImgMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging.current) return;
+    setPan({
+      x: panStart.current.x + (e.clientX - dragStart.current.x),
+      y: panStart.current.y + (e.clientY - dragStart.current.y),
+    });
+  };
+
+  const handleImgMouseUp = () => {
+    isDragging.current = false;
+  };
+
   return (
-    <EventsContainer>
-      <PageHeader>
-        <HeaderLeft>
-          <PageTitle>Events Management</PageTitle>
-          <PageDescription>
-            Create, manage, and promote your club events to attract more
-            visitors.
-          </PageDescription>
-        </HeaderLeft>
-        <HeaderActions>
-          <PrimaryButton onClick={() => setIsModalOpen(true)}>
-            {React.createElement(RiAddLine as React.ComponentType)}
-            Create Event
-          </PrimaryButton>
-        </HeaderActions>
-      </PageHeader>
+    <>
+      <EventsContainer>
+        <PageHeader>
+          <HeaderLeft>
+            <PageTitle>Events Management</PageTitle>
+            <PageDescription>
+              Create, manage, and promote your club events to attract more
+              visitors.
+            </PageDescription>
+          </HeaderLeft>
+          <HeaderActions>
+            <PrimaryButton onClick={() => setIsModalOpen(true)}>
+              {React.createElement(RiAddLine as React.ComponentType)}
+              Create Event
+            </PrimaryButton>
+          </HeaderActions>
+        </PageHeader>
 
-      <CreateEventModal
-        isOpen={isModalOpen || editingEvent !== null}
-        onClose={closeModal}
-        onSubmit={handleModalSubmit}
-        mode={editingEvent ? "edit" : "create"}
-        initialData={
-          editingEvent
-            ? {
-                title: editingEvent.title,
-                description: editingEvent.description,
-                date: editingEvent.date,
-                start_time: editingEvent.start_time,
-                end_time: editingEvent.end_time || "",
-                general_entry_price: String(
-                  editingEvent.general_entry_price || "0",
-                ),
-                vip_entry_price: String(editingEvent.vip_entry_price || "0"),
-                dj_lineup: editingEvent.dj_lineup || [],
-                cover_image: editingEvent.cover_image || "",
-                status: editingEvent.status,
-              }
-            : pendingDJId
+        <CreateEventModal
+          isOpen={isModalOpen || editingEvent !== null}
+          onClose={closeModal}
+          onSubmit={handleModalSubmit}
+          mode={editingEvent ? "edit" : "create"}
+          initialData={
+            editingEvent
               ? {
-                  title: "",
-                  description: "",
-                  date: "",
-                  start_time: "",
-                  end_time: "",
-                  general_entry_price: "",
-                  vip_entry_price: "",
-                  dj_lineup: [pendingDJId],
-                  cover_image: "",
-                  status: "draft",
+                  title: editingEvent.title,
+                  description: editingEvent.description,
+                  date: editingEvent.date,
+                  start_time: editingEvent.start_time,
+                  end_time: editingEvent.end_time || "",
+                  general_entry_price: String(
+                    editingEvent.general_entry_price || "0",
+                  ),
+                  vip_entry_price: String(editingEvent.vip_entry_price || "0"),
+                  dj_lineup: editingEvent.dj_lineup || [],
+                  cover_image: editingEvent.cover_image || "",
+                  status: editingEvent.status,
                 }
-              : undefined
-        }
-        availableDJs={djs.map((dj) => ({ id: dj.id, name: dj.name }))}
-        onAddDJ={() => {
-          setShouldReopenEventModal(true);
-          setIsModalOpen(false);
-          setIsAddDJModalOpen(true);
-        }}
-      />
+              : pendingDJId
+                ? {
+                    title: "",
+                    description: "",
+                    date: "",
+                    start_time: "",
+                    end_time: "",
+                    general_entry_price: "",
+                    vip_entry_price: "",
+                    dj_lineup: [pendingDJId],
+                    cover_image: "",
+                    status: "draft",
+                  }
+                : undefined
+          }
+          availableDJs={djs.map((dj) => ({ id: dj.id, name: dj.name }))}
+          onAddDJ={() => {
+            setShouldReopenEventModal(true);
+            setIsModalOpen(false);
+            setIsAddDJModalOpen(true);
+          }}
+        />
 
-      <AddDJModal
-        isOpen={isAddDJModalOpen}
-        onClose={() => setIsAddDJModalOpen(false)}
-        onSubmit={handleAddDJ}
-      />
+        <AddDJModal
+          isOpen={isAddDJModalOpen}
+          onClose={() => setIsAddDJModalOpen(false)}
+          onSubmit={handleAddDJ}
+        />
 
-      <ConfirmationModal
-        isOpen={deletingEvent !== null}
-        onClose={closeDeleteModal}
-        onConfirm={handleConfirmDelete}
-        title="Delete Event"
-        message={`Are you sure you want to delete "${deletingEvent?.title}"? This action cannot be undone.`}
-        confirmText="Delete Event"
-        cancelText="Cancel"
-        type="danger"
-      />
+        <ConfirmationModal
+          isOpen={deletingEvent !== null}
+          onClose={closeDeleteModal}
+          onConfirm={handleConfirmDelete}
+          title="Delete Event"
+          message={`Are you sure you want to delete "${deletingEvent?.title}"? This action cannot be undone.`}
+          confirmText="Delete Event"
+          cancelText="Cancel"
+          type="danger"
+        />
 
-      <FilterTabs>
-        <FilterTab active={filter === "all"} onClick={() => setFilter("all")}>
-          All Events ({events.length})
-        </FilterTab>
-        <FilterTab
-          active={filter === "published"}
-          onClick={() => setFilter("published")}
-        >
-          Published ({events.filter((e) => e.status === "published").length})
-        </FilterTab>
-        <FilterTab
-          active={filter === "draft"}
-          onClick={() => setFilter("draft")}
-        >
-          Drafts ({events.filter((e) => e.status === "draft").length})
-        </FilterTab>
-      </FilterTabs>
-
-      {isLoading ? (
-        <Card>
-          <EmptyState>
-            <CardTitle>Loading events...</CardTitle>
-          </EmptyState>
-        </Card>
-      ) : (
-        <EventsGrid>
-          {filteredEvents.map((event) => (
-            <EventCard key={event.id}>
-              <EventImage>
-                {event.cover_image ? (
-                  <EventCoverImg src={event.cover_image} alt={event.title} />
-                ) : (
-                  React.createElement(
-                    RiCalendarEventLine as React.ComponentType,
-                  )
-                )}
-              </EventImage>
-
-              <EventContent>
-                <EventHeader>
-                  <div>
-                    <EventTitle>{event.title}</EventTitle>
-                  </div>
-                  <StatusBadge status={event.status}>
-                    {event.status}
-                  </StatusBadge>
-                </EventHeader>
-
-                <EventMeta>
-                  <MetaItem>
-                    {React.createElement(
-                      RiCalendarEventLine as React.ComponentType,
-                    )}
-                    {(() => {
-                      // Parse date in local timezone to avoid UTC conversion issues
-                      const [year, month, day] = event.date
-                        .split("-")
-                        .map(Number);
-                      const date = new Date(year, month - 1, day);
-                      return date.toLocaleDateString("en-US", {
-                        weekday: "long",
-                        month: "short",
-                        day: "numeric",
-                      });
-                    })()}
-                  </MetaItem>
-                  <MetaItem>
-                    {React.createElement(RiTimeLine as React.ComponentType)}
-                    {event.start_time}
-                    {event.end_time && ` - ${event.end_time}`}
-                  </MetaItem>
-                  {event.dj_lineup && event.dj_lineup.length > 0 && (
-                    <MetaItem>
-                      {React.createElement(RiMusic2Line as React.ComponentType)}
-                      {event.dj_lineup.map(resolveDJName).join(", ")}
-                    </MetaItem>
-                  )}
-                  <MetaItem>
-                    {React.createElement(RiTicket2Line as React.ComponentType)}
-                    General: R{event.general_entry_price} | VIP: R
-                    {event.vip_entry_price}
-                  </MetaItem>
-                </EventMeta>
-
-                <EventFooter>
-                  <div></div>
-                  <EventActions>
-                    <OutlineButton onClick={() => openEditModal(event)}>
-                      {React.createElement(RiEditLine as React.ComponentType)}
-                    </OutlineButton>
-                    <DangerButton onClick={() => openDeleteModal(event)}>
-                      {React.createElement(
-                        RiDeleteBinLine as React.ComponentType,
-                      )}
-                    </DangerButton>
-                  </EventActions>
-                </EventFooter>
-              </EventContent>
-            </EventCard>
-          ))}
-        </EventsGrid>
-      )}
-
-      {!isLoading && totalPages > 1 && (
-        <PaginationContainer>
-          <PageButton disabled={currentPage === 1} onClick={handlePrevPage}>
-            {React.createElement(RiArrowLeftLine as React.ComponentType)}
-            Prev
-          </PageButton>
-          <PageInfo>
-            Page {currentPage} of {totalPages}
-          </PageInfo>
-          <PageButton
-            disabled={currentPage === totalPages}
-            onClick={handleNextPage}
+        <FilterTabs>
+          <FilterTab active={filter === "all"} onClick={() => setFilter("all")}>
+            All Events ({events.length})
+          </FilterTab>
+          <FilterTab
+            active={filter === "published"}
+            onClick={() => setFilter("published")}
           >
-            Next
-            {React.createElement(RiArrowRightLine as React.ComponentType)}
-          </PageButton>
-        </PaginationContainer>
-      )}
+            Published ({events.filter((e) => e.status === "published").length})
+          </FilterTab>
+          <FilterTab
+            active={filter === "draft"}
+            onClick={() => setFilter("draft")}
+          >
+            Drafts ({events.filter((e) => e.status === "draft").length})
+          </FilterTab>
+        </FilterTabs>
 
-      {!isLoading && filteredEvents.length === 0 && (
-        <Card>
-          <EmptyState>
-            {React.createElement(RiCalendarEventLine as React.ComponentType)}
-            <CardTitle>No events found</CardTitle>
-            <CardDescription>
-              {filter === "all"
-                ? "Create your first event to start attracting club-goers"
-                : `No ${filter} events at the moment`}
-            </CardDescription>
-            {filter === "all" && (
-              <PrimaryButton
-                style={{ marginTop: theme.spacing.lg }}
-                onClick={() => setIsModalOpen(true)}
+        {isLoading ? (
+          <Card>
+            <EmptyState>
+              <CardTitle>Loading events...</CardTitle>
+            </EmptyState>
+          </Card>
+        ) : (
+          <EventsGrid>
+            {filteredEvents.map((event) => (
+              <EventCard key={event.id}>
+                <EventImage
+                  onClick={() =>
+                    event.cover_image && openLightbox(event.cover_image)
+                  }
+                  style={event.cover_image ? { cursor: "pointer" } : undefined}
+                >
+                  {event.cover_image ? (
+                    <EventCoverImg src={event.cover_image} alt={event.title} />
+                  ) : (
+                    React.createElement(
+                      RiCalendarEventLine as React.ComponentType,
+                    )
+                  )}
+                </EventImage>
+
+                <EventContent>
+                  <EventHeader>
+                    <div>
+                      <EventTitle>{event.title}</EventTitle>
+                    </div>
+                    <StatusBadge status={event.status}>
+                      {event.status}
+                    </StatusBadge>
+                  </EventHeader>
+
+                  <EventMeta>
+                    <MetaItem>
+                      {React.createElement(
+                        RiCalendarEventLine as React.ComponentType,
+                      )}
+                      {(() => {
+                        // Parse date in local timezone to avoid UTC conversion issues
+                        const [year, month, day] = event.date
+                          .split("-")
+                          .map(Number);
+                        const date = new Date(year, month - 1, day);
+                        return date.toLocaleDateString("en-US", {
+                          weekday: "long",
+                          month: "short",
+                          day: "numeric",
+                        });
+                      })()}
+                    </MetaItem>
+                    <MetaItem>
+                      {React.createElement(RiTimeLine as React.ComponentType)}
+                      {event.start_time}
+                      {event.end_time && ` - ${event.end_time}`}
+                    </MetaItem>
+                    {event.dj_lineup && event.dj_lineup.length > 0 && (
+                      <MetaItem>
+                        {React.createElement(
+                          RiMusic2Line as React.ComponentType,
+                        )}
+                        {event.dj_lineup.map(resolveDJName).join(", ")}
+                      </MetaItem>
+                    )}
+                    <MetaItem>
+                      {React.createElement(
+                        RiTicket2Line as React.ComponentType,
+                      )}
+                      General: R{event.general_entry_price} | VIP: R
+                      {event.vip_entry_price}
+                    </MetaItem>
+                  </EventMeta>
+
+                  <EventFooter>
+                    <div></div>
+                    <EventActions>
+                      <OutlineButton onClick={() => openEditModal(event)}>
+                        {React.createElement(RiEditLine as React.ComponentType)}
+                      </OutlineButton>
+                      <DangerButton onClick={() => openDeleteModal(event)}>
+                        {React.createElement(
+                          RiDeleteBinLine as React.ComponentType,
+                        )}
+                      </DangerButton>
+                    </EventActions>
+                  </EventFooter>
+                </EventContent>
+              </EventCard>
+            ))}
+          </EventsGrid>
+        )}
+
+        {!isLoading && (
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={loadEvents}
+          />
+        )}
+
+        {!isLoading && filteredEvents.length === 0 && (
+          <Card>
+            <EmptyState>
+              {React.createElement(RiCalendarEventLine as React.ComponentType)}
+              <CardTitle>No events found</CardTitle>
+              <CardDescription>
+                {filter === "all"
+                  ? "Create your first event to start attracting club-goers"
+                  : `No ${filter} events at the moment`}
+              </CardDescription>
+              {filter === "all" && (
+                <PrimaryButton
+                  style={{ marginTop: theme.spacing.lg }}
+                  onClick={() => setIsModalOpen(true)}
+                >
+                  {/* {React.createElement(RiAddLine as React.ComponentType)} */}
+                  Create Your First Event
+                </PrimaryButton>
+              )}
+            </EmptyState>
+          </Card>
+        )}
+      </EventsContainer>
+
+      {/* Lightbox */}
+      {lightboxSrc && (
+        <div
+          onClick={zoom <= 1 ? closeLightbox : undefined}
+          onWheel={handleLightboxWheel}
+          onMouseMove={handleImgMouseMove}
+          onMouseUp={handleImgMouseUp}
+          onMouseLeave={handleImgMouseUp}
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 9999,
+            background: "rgba(0,0,0,0.92)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            cursor:
+              zoom > 1 ? (isDragging.current ? "grabbing" : "grab") : "zoom-in",
+            overflow: "hidden",
+            userSelect: "none",
+          }}
+        >
+          <img
+            src={lightboxSrc}
+            alt="Event cover"
+            draggable={false}
+            onMouseDown={handleImgMouseDown}
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              maxWidth: "90vw",
+              maxHeight: "90vh",
+              objectFit: "contain",
+              transform: `scale(${zoom}) translate(${pan.x / zoom}px, ${pan.y / zoom}px)`,
+              transformOrigin: "center center",
+              transition: isDragging.current ? "none" : "transform 0.15s ease",
+              cursor:
+                zoom > 1
+                  ? isDragging.current
+                    ? "grabbing"
+                    : "grab"
+                  : "zoom-in",
+            }}
+          />
+
+          {/* Close button */}
+          <button
+            onClick={closeLightbox}
+            style={{
+              position: "absolute",
+              top: 20,
+              right: 24,
+              background: "rgba(255,255,255,0.1)",
+              border: "1px solid rgba(255,255,255,0.2)",
+              borderRadius: 8,
+              color: "#fff",
+              fontSize: 22,
+              lineHeight: 1,
+              padding: "6px 12px",
+              cursor: "pointer",
+              zIndex: 1,
+            }}
+          >
+            ✕
+          </button>
+
+          {/* Zoom controls */}
+          <div
+            style={{
+              position: "absolute",
+              bottom: 24,
+              left: "50%",
+              transform: "translateX(-50%)",
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              background: "rgba(0,0,0,0.5)",
+              border: "1px solid rgba(255,255,255,0.15)",
+              borderRadius: 10,
+              padding: "6px 12px",
+              opacity: showZoomControls ? 1 : 0,
+              pointerEvents: showZoomControls ? "auto" : "none",
+              transition: "opacity 0.25s ease",
+            }}
+          >
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                flashZoomControls();
+                setZoom((z) => {
+                  const next = Math.max(1, +(z - 0.25).toFixed(2));
+                  if (next <= 1) setPan({ x: 0, y: 0 });
+                  return next;
+                });
+              }}
+              style={{
+                background: "none",
+                border: "none",
+                color: "#fff",
+                fontSize: 20,
+                cursor: "pointer",
+                lineHeight: 1,
+                padding: "0 4px",
+              }}
+            >
+              −
+            </button>
+            <span
+              style={{
+                color: "#fff",
+                fontSize: 13,
+                minWidth: 40,
+                textAlign: "center",
+              }}
+            >
+              {Math.round(zoom * 100)}%
+            </span>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                flashZoomControls();
+                setZoom((z) => Math.min(5, +(z + 0.25).toFixed(2)));
+              }}
+              style={{
+                background: "none",
+                border: "none",
+                color: "#fff",
+                fontSize: 20,
+                cursor: "pointer",
+                lineHeight: 1,
+                padding: "0 4px",
+              }}
+            >
+              +
+            </button>
+            {zoom !== 1 && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  flashZoomControls();
+                  setZoom(1);
+                  setPan({ x: 0, y: 0 });
+                }}
+                style={{
+                  background: "none",
+                  border: "1px solid rgba(255,255,255,0.3)",
+                  color: "rgba(255,255,255,0.7)",
+                  fontSize: 11,
+                  cursor: "pointer",
+                  borderRadius: 4,
+                  padding: "2px 6px",
+                  marginLeft: 4,
+                }}
               >
-                {/* {React.createElement(RiAddLine as React.ComponentType)} */}
-                Create Your First Event
-              </PrimaryButton>
+                Reset
+              </button>
             )}
-          </EmptyState>
-        </Card>
+          </div>
+        </div>
       )}
-    </EventsContainer>
+    </>
   );
 };

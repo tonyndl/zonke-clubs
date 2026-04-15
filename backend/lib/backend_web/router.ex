@@ -64,6 +64,7 @@ defmodule BackendWeb.Router do
     # Spending (user-facing)
     get "/spending/history", SpendingController, :history
     get "/spending/stats", SpendingController, :stats
+    get "/spending/rankings", SpendingController, :rankings
     get "/spending/club/:club_id", SpendingController, :club_history
     get "/spending/club/:club_id/stats", SpendingController, :club_stats
 
@@ -98,6 +99,7 @@ defmodule BackendWeb.Router do
     put "/posts/:id", PostController, :update
     delete "/posts/:id", PostController, :delete
     get "/posts/user/me", PostController, :user_posts
+    get "/posts/user/:user_id", PostController, :user_posts_by_id
     put "/posts/:id/pin", PostController, :pin
     put "/posts/:id/unpin", PostController, :unpin
 

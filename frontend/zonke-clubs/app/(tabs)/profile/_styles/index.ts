@@ -459,19 +459,7 @@ export const styles = StyleSheet.create({
     top: 12,
     right: 12,
   },
-  modalContent: {
-    // width: '90%'
-    // marginHorizontal: 12
-    // flex: 1,
-    // width: '85%',
-    // maxWidth: 400,
-    // borderRadius: 24,
-    // padding: 24,
-    // backgroundColor: 'pink',
-    // overflow: 'hidden',
-    // borderWidth: 1,
-    // borderColor: 'rgba(57, 243, 255, 0.2)',
-  },
+  modalContent: {},
   clubModalContent: {},
   modalGradient: {
     ...StyleSheet.absoluteFillObject,
@@ -480,12 +468,19 @@ export const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 8,
+    marginBottom: 18,
   },
   modalTitle: {
     fontSize: 22,
     fontWeight: "800",
-    color: Colors.platinum,
+    textAlign: "center",
+    margin: "auto",
+    color: Colors.gold,
+  },
+  modalClose: {
+    position: "absolute",
+    right: 0,
+    top: 0,
   },
   modalSubtitle: {
     fontSize: 13,

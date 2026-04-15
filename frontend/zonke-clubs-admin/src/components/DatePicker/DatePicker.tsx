@@ -22,37 +22,26 @@ interface DatePickerProps {
   value: string; // Format: YYYY-MM-DD
   onChange: (date: string) => void;
   minDate?: string;
+  closedDays?: number[]; // 0=Sun, 1=Mon, ..., 6=Sat
 }
 
 export const DatePicker: React.FC<DatePickerProps> = ({
   value,
   onChange,
   minDate,
+  closedDays = [],
 }) => {
+  const [closedTooltip, setClosedTooltip] = useState<string | null>(null);
   const [isOpen, setIsOpen] = useState(false);
-  const [showAbove, setShowAbove] = useState(false);
   const [currentMonth, setCurrentMonth] = useState(() => {
     if (value) {
-      // Parse date in local timezone to avoid shifting
-      const [year, month, day] = value.split("-").map(Number);
-      return new Date(year, month - 1, day);
+      const [year, month] = value.split("-").map(Number);
+      return new Date(year, month - 1, 1);
     }
     return new Date();
   });
   const containerRef = useRef<HTMLDivElement>(null);
-
-  // Calculate position when opening
-  useEffect(() => {
-    if (isOpen && containerRef.current) {
-      const rect = containerRef.current.getBoundingClientRect();
-      const spaceBelow = window.innerHeight - rect.bottom;
-      const spaceAbove = rect.top;
-      const dropdownHeight = 420; // max-height of dropdown
-
-      // Show above if there's not enough space below but enough space above
-      setShowAbove(spaceBelow < dropdownHeight && spaceAbove > spaceBelow);
-    }
-  }, [isOpen]);
+  const calendarRef = useRef<HTMLDivElement>(null);
 
   // Handle click outside to close dropdown
   useEffect(() => {
@@ -67,6 +56,13 @@ export const DatePicker: React.FC<DatePickerProps> = ({
 
     if (isOpen) {
       document.addEventListener("mousedown", handleClickOutside);
+      // Scroll the calendar into view after it renders
+      setTimeout(() => {
+        calendarRef.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "nearest",
+        });
+      }, 50);
     }
 
     return () => {
@@ -110,7 +106,12 @@ export const DatePicker: React.FC<DatePickerProps> = ({
       isToday: boolean;
       isSelected: boolean;
       isDisabled: boolean;
+      isClosed: boolean;
     }> = [];
+
+    const isClosed = (d: Date) => closedDays.includes(d.getDay());
+    const isBeforeMin = (d: Date) =>
+      minDate ? formatDate(d) < minDate : false;
 
     // Previous month days
     const prevMonthLastDay = new Date(year, month, 0).getDate();
@@ -123,7 +124,8 @@ export const DatePicker: React.FC<DatePickerProps> = ({
         isCurrentMonth: false,
         isToday: false,
         isSelected: false,
-        isDisabled: minDate ? formatDate(date) < minDate : false,
+        isDisabled: isBeforeMin(date) || isClosed(date),
+        isClosed: isClosed(date),
       });
     }
 
@@ -142,7 +144,8 @@ export const DatePicker: React.FC<DatePickerProps> = ({
         isCurrentMonth: true,
         isToday: dateStr === todayStr,
         isSelected: dateStr === value,
-        isDisabled: minDate ? dateStr < minDate : false,
+        isDisabled: isBeforeMin(date) || isClosed(date),
+        isClosed: isClosed(date),
       });
     }
 
@@ -156,7 +159,8 @@ export const DatePicker: React.FC<DatePickerProps> = ({
         isCurrentMonth: false,
         isToday: false,
         isSelected: false,
-        isDisabled: minDate ? formatDate(date) < minDate : false,
+        isDisabled: isBeforeMin(date) || isClosed(date),
+        isClosed: isClosed(date),
       });
     }
 
@@ -175,7 +179,17 @@ export const DatePicker: React.FC<DatePickerProps> = ({
     );
   };
 
-  const handleDateSelect = (date: Date, isDisabled: boolean) => {
+  const handleDateSelect = (
+    date: Date,
+    isDisabled: boolean,
+    isClosed: boolean,
+  ) => {
+    if (isClosed) {
+      const dayName = date.toLocaleDateString("en-US", { weekday: "long" });
+      setClosedTooltip(`Club is closed on ${dayName}s`);
+      setTimeout(() => setClosedTooltip(null), 2000);
+      return;
+    }
     if (isDisabled) return;
     onChange(formatDate(date));
     setIsOpen(false);
@@ -207,7 +221,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({
         </CalendarIcon>
       </DateInput>
 
-      <CalendarDropdown isOpen={isOpen} showAbove={showAbove}>
+      <CalendarDropdown ref={calendarRef} isOpen={isOpen} showAbove={false}>
         <CalendarHeader>
           <NavButton type="button" onClick={handlePrevMonth}>
             {React.createElement(RiArrowLeftSLine as React.ComponentType)}
@@ -230,13 +244,37 @@ export const DatePicker: React.FC<DatePickerProps> = ({
               isToday={day.isToday}
               isDisabled={day.isDisabled}
               isOtherMonth={!day.isCurrentMonth}
-              onClick={() => handleDateSelect(day.date, day.isDisabled)}
-              disabled={day.isDisabled}
+              onClick={() =>
+                handleDateSelect(day.date, day.isDisabled, day.isClosed)
+              }
+              disabled={day.isDisabled && !day.isClosed}
+              title={day.isClosed ? "Club is closed" : undefined}
+              style={
+                day.isClosed && day.isCurrentMonth
+                  ? { textDecoration: "line-through" }
+                  : undefined
+              }
             >
               {day.day}
             </DayCell>
           ))}
         </CalendarGrid>
+
+        {closedTooltip && (
+          <div
+            style={{
+              padding: "8px 16px",
+              textAlign: "center",
+              fontSize: "13px",
+              fontWeight: 600,
+              color: "#ef4444",
+              borderTop: "1px solid rgba(239, 68, 68, 0.2)",
+              background: "rgba(239, 68, 68, 0.08)",
+            }}
+          >
+            {closedTooltip}
+          </div>
+        )}
 
         <TodayButton type="button" onClick={handleToday}>
           Today

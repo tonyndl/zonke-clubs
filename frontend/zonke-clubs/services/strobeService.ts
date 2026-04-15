@@ -84,10 +84,17 @@ export const strobeService = {
 class StrobeChannel {
   private channel: any = null;
   private clubId: string | null = null;
+  private presenceState: Record<string, any> = {};
   private onStarted: ((info: StrobeSessionInfo) => void) | null = null;
   private onUpdated: ((info: StrobeSessionInfo) => void) | null = null;
   private onStopped: ((sessionId: string) => void) | null = null;
   private onOverrideCb: ((on: boolean, resume: boolean) => void) | null = null;
+  private onPresenceCb: ((count: number) => void) | null = null;
+
+  private emitPresenceCount() {
+    const count = Object.keys(this.presenceState).length;
+    this.onPresenceCb?.(count);
+  }
 
   join(clubId: string): Promise<void> {
     // Reuse existing channel if already joined to the same club
@@ -119,6 +126,24 @@ class StrobeChannel {
       this.onOverrideCb?.(payload.on, payload.resume ?? true);
     });
 
+    // Presence tracking — count connected users on this strobe channel
+    this.channel.on("presence_state", (state: any) => {
+      this.presenceState = state || {};
+      this.emitPresenceCount();
+    });
+
+    this.channel.on("presence_diff", (diff: any) => {
+      const joins = diff?.joins || {};
+      const leaves = diff?.leaves || {};
+      Object.keys(joins).forEach((k) => {
+        this.presenceState[k] = joins[k];
+      });
+      Object.keys(leaves).forEach((k) => {
+        delete this.presenceState[k];
+      });
+      this.emitPresenceCount();
+    });
+
     return new Promise((resolve, reject) => {
       this.channel
         .join()
@@ -134,6 +159,7 @@ class StrobeChannel {
       this.channel = null;
     }
     this.clubId = null;
+    this.presenceState = {};
   }
 
   // DJ: start a strobe session
@@ -224,6 +250,10 @@ class StrobeChannel {
 
   onStrobeOverride(cb: (on: boolean, resume: boolean) => void) {
     this.onOverrideCb = cb;
+  }
+
+  onPresenceUpdate(cb: (count: number) => void) {
+    this.onPresenceCb = cb;
   }
 }
 
