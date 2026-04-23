@@ -24,8 +24,8 @@ import { userService } from "@/services/userService";
 import { connectionService } from "@/services/connectionService";
 import { clubsService, Club as ApiClub } from "@/services/clubsService";
 import { User } from "@/services/authService";
-import { TextStroke } from "../_screens/Login/utils";
-import { styles as profileStyles } from "./../(tabs)/profile/_styles";
+import { TextStroke } from "../screens/Login/utils";
+import { styles as profileStyles } from "./../(tabs)/profile/styles";
 import { BeerStatsTab } from "@/components/beer-analytics/BeerStatsTab";
 import { UserMediaGrid } from "@/components/profile/UserMediaGrid";
 import { ClubFeedViewer } from "@/components/club/ClubFeedViewer";
@@ -60,6 +60,7 @@ export default function ViewProfileScreen() {
 
   const [isRequestSending, setIsRequestSending] = useState(false);
   const [requestSent, setRequestSent] = useState(false);
+  const [requestExpired, setRequestExpired] = useState(false);
   const [connectionAccepted, setConnectionAccepted] = useState(false);
   const [chatThreadId, setChatThreadId] = useState<string | undefined>(
     undefined,
@@ -158,30 +159,30 @@ export default function ViewProfileScreen() {
   useFocusEffect(
     useCallback(() => {
       if (!id) return;
-      Promise.all([
-        connectionService.getSentRequests(),
-        connectionService.getReceivedRequests(),
-      ])
-        .then(([sentResponse, receivedResponse]) => {
-          const sentRequest = sentResponse.requests.find(
-            (req: any) => req.receiver.id === id,
-          );
-          const receivedRequest = receivedResponse.requests.find(
-            (req: any) => req.sender.id === id,
-          );
-          const request = sentRequest || receivedRequest;
-          if (request) {
-            if (request.status === "accepted" && request.threadId) {
-              setConnectionAccepted(true);
-              setChatThreadId(request.threadId);
-              setRequestSent(false);
-            } else {
-              setRequestSent(true);
-              setConnectionAccepted(false);
-              setChatThreadId(undefined);
-            }
+      connectionService
+        .getConnectionWithUser(id)
+        .then(({ request }) => {
+          if (!request) {
+            setRequestSent(false);
+            setRequestExpired(false);
+            setConnectionAccepted(false);
+            setChatThreadId(undefined);
+          } else if (request.status === "accepted" && request.threadId) {
+            setConnectionAccepted(true);
+            setChatThreadId(request.threadId);
+            setRequestSent(false);
+            setRequestExpired(false);
+          } else if (request.status === "pending") {
+            const expired =
+              !!request.plannedDate &&
+              new Date(request.plannedDate) < new Date();
+            setRequestSent(true);
+            setRequestExpired(expired);
+            setConnectionAccepted(false);
+            setChatThreadId(undefined);
           } else {
             setRequestSent(false);
+            setRequestExpired(false);
             setConnectionAccepted(false);
             setChatThreadId(undefined);
           }
@@ -286,7 +287,7 @@ export default function ViewProfileScreen() {
           >
             <Ionicons name="chevron-back" size={28} color={Colors.gold} />
           </PressableScale>
-          <TextStroke stroke={0.6} color={Colors.secondaryBlue}>
+          <TextStroke stroke={0.6} color={Colors.gold}>
             <Text style={profileStyles.headerTitle}>Profile</Text>
           </TextStroke>
         </Animated.View>
@@ -329,7 +330,7 @@ export default function ViewProfileScreen() {
               <Ionicons name="chatbubble" size={20} color={Colors.white} />
               <Text style={profileStyles.chatNowButtonText}>Chat</Text>
             </PressableScale>
-          ) : requestSent ? (
+          ) : requestSent && !requestExpired ? (
             <PressableScale
               style={[
                 profileStyles.connectButton,
@@ -340,7 +341,7 @@ export default function ViewProfileScreen() {
               <Ionicons name="checkmark-circle" size={20} color={Colors.gold} />
               <Text style={profileStyles.requestPendingText}>Requested</Text>
             </PressableScale>
-          ) : (
+          ) : !requestSent ? (
             <PressableScale
               style={profileStyles.connectButton}
               onPress={handleSendConnectionRequest}
@@ -351,7 +352,7 @@ export default function ViewProfileScreen() {
                 {isRequestSending ? "Sending..." : "Send Connection Request"}
               </Text>
             </PressableScale>
-          )}
+          ) : null}
         </Animated.View>
 
         {/* Tab Switcher */}
@@ -631,6 +632,13 @@ export default function ViewProfileScreen() {
         posts={userPosts}
         initialPostIndex={feedInitialIndex}
         onClose={() => setShowFeedViewer(false)}
+        onPostLiked={(postId, liked, likeCount) => {
+          setUserPosts((prev) =>
+            prev.map((p) =>
+              p.id === postId ? { ...p, isLiked: liked, likeCount } : p,
+            ),
+          );
+        }}
       />
 
       <Toast

@@ -96,6 +96,11 @@ class AuthService {
           throw new Error("Invalid response from server");
         }
 
+        console.log(
+          "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT",
+          response,
+        );
+
         return this.saveAuthData(response.jwt, response.user).then(
           () => response,
         );

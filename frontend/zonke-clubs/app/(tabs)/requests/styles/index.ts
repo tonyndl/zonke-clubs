@@ -106,7 +106,7 @@ export const styles = StyleSheet.create({
   },
   filterPills: {
     flexDirection: "row",
-    width: "80%",
+    width: "100%",
     justifyContent: "space-between",
   },
   filterPill: {

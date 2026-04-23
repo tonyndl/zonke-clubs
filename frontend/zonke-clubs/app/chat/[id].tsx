@@ -60,6 +60,8 @@ export default function ChatScreen() {
   const [toastType, setToastType] = useState<"success" | "error" | "info">(
     "success",
   );
+  const [profileModalVisible, setProfileModalVisible] = useState(false);
+  const [fullscreenImageVisible, setFullscreenImageVisible] = useState(false);
   const [confirmModal, setConfirmModal] = useState<{
     visible: boolean;
     title: string;
@@ -103,15 +105,14 @@ export default function ChatScreen() {
             connectionService
               .getRequestByThread(threadData.thread.id)
               .then((response) => {
-                if (response.request.status === "declined") {
+                if (
+                  response.request &&
+                  response.request.status === "declined"
+                ) {
                   setIsDisconnected(true);
-                  // We can't determine who disconnected from stored data, but the
-                  // real-time event will set disconnectedByMe correctly if needed
                 }
               })
-              .catch(() => {
-                // If no connection request exists, that's fine (direct messages)
-              });
+              .catch(() => {});
 
             // Mark messages as read now that we have the thread
             websocketService.markMessagesAsRead(threadData.thread.id);
@@ -134,7 +135,10 @@ export default function ChatScreen() {
                   connectionService
                     .getRequestByThread(threadData.thread.id)
                     .then((response) => {
-                      if (response.request.status === "declined") {
+                      if (
+                        response.request &&
+                        response.request.status === "declined"
+                      ) {
                         setIsDisconnected(true);
                       }
                     })
@@ -689,7 +693,14 @@ export default function ChatScreen() {
           </PressableScale>
 
           <View style={styles.headerCenter}>
-            <View style={styles.avatarContainer}>
+            <Pressable
+              onPress={() =>
+                otherUser.avatarUrl
+                  ? setFullscreenImageVisible(true)
+                  : setProfileModalVisible(true)
+              }
+              style={styles.avatarContainer}
+            >
               {otherUser.avatarUrl ? (
                 <Image
                   source={{ uri: otherUser.avatarUrl }}
@@ -703,7 +714,7 @@ export default function ChatScreen() {
                 </View>
               )}
               {otherUser.isOnline && <View style={styles.onlineDot} />}
-            </View>
+            </Pressable>
             <View>
               <Text style={styles.headerName}>{displayName}</Text>
               <Text style={styles.headerStatus}>
@@ -858,6 +869,180 @@ export default function ChatScreen() {
           onHide={() => setToastVisible(false)}
         />
       </SafeAreaView>
+
+      {/* Profile Preview Modal */}
+      <Modal
+        visible={profileModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setProfileModalVisible(false)}
+      >
+        <BlurView intensity={60} tint="dark" style={{ flex: 1 }}>
+          <Pressable
+            style={{
+              flex: 1,
+              justifyContent: "center",
+              alignItems: "center",
+              padding: 32,
+            }}
+            onPress={() => setProfileModalVisible(false)}
+          >
+            <Pressable
+              onPress={() => {}}
+              style={{
+                backgroundColor: Colors.bgCard,
+                borderRadius: 24,
+                padding: 28,
+                width: "100%",
+                alignItems: "center",
+                gap: 12,
+                borderWidth: 1,
+                borderColor: "rgba(57,243,255,0.15)",
+              }}
+            >
+              {/* Avatar */}
+              <Pressable
+                style={{ position: "relative" }}
+                onPress={() => {
+                  if (otherUser.avatarUrl) {
+                    setProfileModalVisible(false);
+                    setFullscreenImageVisible(true);
+                  }
+                }}
+              >
+                {otherUser.avatarUrl ? (
+                  <Image
+                    source={{ uri: otherUser.avatarUrl }}
+                    style={{
+                      width: 96,
+                      height: 96,
+                      borderRadius: 48,
+                      borderWidth: 3,
+                      borderColor: Colors.gold,
+                    }}
+                  />
+                ) : (
+                  <View
+                    style={{
+                      width: 96,
+                      height: 96,
+                      borderRadius: 48,
+                      backgroundColor: Colors.bgSecondary,
+                      alignItems: "center",
+                      justifyContent: "center",
+                      borderWidth: 3,
+                      borderColor: Colors.gold,
+                    }}
+                  >
+                    <Text
+                      style={{
+                        fontSize: 36,
+                        fontWeight: "700",
+                        color: Colors.gold,
+                      }}
+                    >
+                      {otherUser.username.charAt(0).toUpperCase()}
+                    </Text>
+                  </View>
+                )}
+                {otherUser.isOnline && (
+                  <View
+                    style={{
+                      position: "absolute",
+                      bottom: 4,
+                      right: 4,
+                      width: 16,
+                      height: 16,
+                      borderRadius: 8,
+                      backgroundColor: "#22C55E",
+                      borderWidth: 2,
+                      borderColor: Colors.bgCard,
+                    }}
+                  />
+                )}
+              </Pressable>
+
+              {/* Name & status */}
+              <Text
+                style={{ fontSize: 20, fontWeight: "700", color: Colors.white }}
+              >
+                {displayName}
+              </Text>
+              <Text style={{ fontSize: 13, color: Colors.smoke }}>
+                {otherUser.isOnline
+                  ? "online"
+                  : formatLastSeen(otherUser.lastSeenAt)}
+              </Text>
+
+              {/* View Profile button */}
+              <PressableScale
+                onPress={() => {
+                  setProfileModalVisible(false);
+                  router.push(`/profile/${otherUser.id}` as any);
+                }}
+                style={{
+                  marginTop: 8,
+                  width: "100%",
+                  paddingVertical: 14,
+                  borderRadius: 16,
+                  backgroundColor: Colors.gold,
+                  alignItems: "center",
+                  flexDirection: "row",
+                  justifyContent: "center",
+                  gap: 8,
+                }}
+              >
+                <Ionicons name="person" size={18} color={Colors.bg} />
+                <Text
+                  style={{ fontSize: 15, fontWeight: "700", color: Colors.bg }}
+                >
+                  View Profile
+                </Text>
+              </PressableScale>
+            </Pressable>
+          </Pressable>
+        </BlurView>
+      </Modal>
+
+      {/* Fullscreen Avatar Modal */}
+      <Modal
+        visible={fullscreenImageVisible}
+        transparent
+        animationType="fade"
+        statusBarTranslucent
+        onRequestClose={() => setFullscreenImageVisible(false)}
+      >
+        <Pressable
+          style={{
+            flex: 1,
+            backgroundColor: "black",
+            justifyContent: "center",
+            alignItems: "center",
+          }}
+          onPress={() => setFullscreenImageVisible(false)}
+        >
+          {otherUser?.avatarUrl && (
+            <Image
+              source={{ uri: otherUser.avatarUrl }}
+              style={{ width: "100%", height: "100%" }}
+              resizeMode="contain"
+            />
+          )}
+          <Pressable
+            onPress={() => setFullscreenImageVisible(false)}
+            style={{
+              position: "absolute",
+              top: 48,
+              right: 16,
+              backgroundColor: "rgba(0,0,0,0.5)",
+              borderRadius: 20,
+              padding: 8,
+            }}
+          >
+            <Ionicons name="close" size={24} color="white" />
+          </Pressable>
+        </Pressable>
+      </Modal>
 
       {/* Confirm Modal */}
       <Modal

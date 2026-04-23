@@ -15,11 +15,16 @@ import { Colors } from "@/constants/ui";
 import { Toast } from "@/components/ui/Toast";
 import { websocketService } from "@/services/websocketService";
 import { clubsService } from "@/services/clubsService";
-import { styles } from "./_styles";
+import { styles } from "./styles";
 
 export default function PeopleBrowseScreen() {
   const params = useLocalSearchParams<{ clubId?: string }>();
   const paramClubId = params.clubId;
+
+  console.log(
+    "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB",
+    paramClubId,
+  );
 
   const [clubId] = useState<string | null>(paramClubId || null);
   const [intentions, setIntentions] = useState<MeetupIntention[]>([]);

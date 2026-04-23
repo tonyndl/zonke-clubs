@@ -3,7 +3,7 @@ import { api } from "./api";
 export type ClubVideo = {
   id: string;
   url: string;
-  thumbnail: string;
+  thumbnail?: string;
   duration: number;
   uploaded_at: string; // ISO date string
   likes: number;

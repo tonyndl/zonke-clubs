@@ -161,7 +161,8 @@ export const AuthScreen = () => {
     setIsLoading(true);
     authLogin({ username: username.trim(), password })
       .then(() => {
-        router.replace("/(tabs)");
+        // router.replace("/(tabs)");
+        router.replace("/screens/ProfileSetup");
       })
       .catch((error) => {
         showError("Login Failed", error.message || "Invalid credentials");
@@ -190,13 +191,8 @@ export const AuthScreen = () => {
       password,
       role: "club_goer",
     })
-      .then((result) => {
-        // Navigate to profile setup for new users
-        if (result.needsSetup) {
-          router.replace("/screens/ProfileSetup");
-        } else {
-          router.replace("/(tabs)");
-        }
+      .then(() => {
+        router.replace("/screens/ProfileSetup");
       })
       .catch((error) => {
         showError("Registration Failed", error.message || "Please try again");
@@ -230,7 +226,7 @@ export const AuthScreen = () => {
           showsVerticalScrollIndicator={false}
         >
           <View style={{ alignItems: "center", marginBottom: 18 }}>
-            <TextStroke stroke={0.6} color={Colors.secondaryBlue}>
+            <TextStroke stroke={0.6} color={Colors.gold}>
               <Text style={styles.title}>{isLogin ? "Login" : "Sign Up"}</Text>
             </TextStroke>
           </View>

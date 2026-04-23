@@ -694,7 +694,7 @@ export const HomeScreen = () => {
   const [clubViewMode, setClubViewMode] = useState<ClubViewMode>(
     (params.clubViewMode as ClubViewMode) || "cards",
   );
-  const [videoFeed, setVideoFeed] = useState<any[]>([]);
+  const [videoFeed, setVideoFeed] = useState<any[]>(() => getAllClubVideos([]));
   const [videoSearchQuery, setVideoSearchQuery] = useState("");
   const debouncedSearchQuery = useDebounce(searchQuery, 300);
   const debouncedVideoSearchQuery = useDebounce(videoSearchQuery, 300);
@@ -706,6 +706,8 @@ export const HomeScreen = () => {
     latitude: number;
     longitude: number;
   } | null>(null);
+
+  const listRef = useRef<FlatList>(null);
 
   useEffect(() => {
     Location.requestForegroundPermissionsAsync()
@@ -767,7 +769,6 @@ export const HomeScreen = () => {
     setError(null);
     setCurrentPage(1);
     setClubsPage(1);
-
     clubsService
       .getClubs(!!user, 1)
       .then((response) => {
@@ -848,7 +849,6 @@ export const HomeScreen = () => {
 
     const nextPage = currentPage + 1;
     setLoadingMore(true);
-
     clubsService
       .getClubs(!!user, nextPage)
       .then((response) => {
@@ -1045,22 +1045,16 @@ export const HomeScreen = () => {
 
   const filteredClubs = useMemo(
     () =>
-      clubs
-        .map((c) => ({
-          ...c,
-          distance:
-            userCoords && c.location.latitude && c.location.longitude
-              ? getDistance(userCoords, {
-                  latitude: c.location.latitude,
-                  longitude: c.location.longitude,
-                })
-              : undefined,
-        }))
-        .sort((a, b) => {
-          if (a.distance == null) return 1;
-          if (b.distance == null) return -1;
-          return a.distance - b.distance;
-        }),
+      clubs.map((c) => ({
+        ...c,
+        distance:
+          userCoords && c.location.latitude && c.location.longitude
+            ? getDistance(userCoords, {
+                latitude: c.location.latitude,
+                longitude: c.location.longitude,
+              })
+            : undefined,
+      })),
     [clubs, userCoords],
   );
 
@@ -1113,7 +1107,7 @@ export const HomeScreen = () => {
       <View style={styles.header}>
         {/* Title + search icon side by side */}
         <View style={styles.titleRow}>
-          <TextStroke stroke={0.6} color={Colors.secondaryBlue}>
+          <TextStroke stroke={0.6} color={Colors.gold}>
             <Text style={styles.title}>Discover</Text>
           </TextStroke>
           <PressableScale
@@ -1297,6 +1291,7 @@ export const HomeScreen = () => {
       {clubViewMode === "cards" ? (
         viewMode === "clubs" ? (
           <FlatList
+            ref={listRef}
             keyboardShouldPersistTaps="handled"
             data={debouncedSearchQuery ? searchResults : displayedClubs}
             keyExtractor={(item) => item.id}
@@ -1337,52 +1332,54 @@ export const HomeScreen = () => {
             ListHeaderComponent={
               <>
                 {/* ── Events Carousel ── */}
-                <View style={styles.eventsSectionWrapper}>
-                  <View style={styles.sectionHeaderRow}>
-                    <View style={styles.eventsTitleRow}>
-                      <Ionicons name="flame" size={16} color={Colors.gold} />
-                      <Text style={[styles.sectionHeader, { marginLeft: 6 }]}>
-                        Upcoming Events
-                      </Text>
-                    </View>
-                    <View
-                      style={[styles.sectionHeaderLine, { marginLeft: 8 }]}
-                    />
-                  </View>
-
-                  {eventsLoading ? (
-                    <View style={styles.eventsLoadingRow}>
-                      {[0, 1, 2].map((i) => (
-                        <View key={i} style={styles.eventCardSkeleton} />
-                      ))}
-                    </View>
-                  ) : events.length > 0 ? (
-                    <FlatList
-                      keyboardShouldPersistTaps="handled"
-                      data={events}
-                      keyExtractor={(item) => item.id}
-                      renderItem={renderEventCard}
-                      horizontal
-                      showsHorizontalScrollIndicator={false}
-                      style={styles.eventsCarousel}
-                      contentContainerStyle={styles.eventsCarouselContent}
-                      snapToInterval={EVENT_CARD_WIDTH + 12}
-                      snapToAlignment="start"
-                      decelerationRate="fast"
-                    />
-                  ) : (
-                    <View style={styles.eventsEmpty}>
-                      <Ionicons
-                        name="calendar-outline"
-                        size={26}
-                        color={Colors.smoke}
+                {events.length > 0 && (
+                  <View style={styles.eventsSectionWrapper}>
+                    <View style={styles.sectionHeaderRow}>
+                      <View style={styles.eventsTitleRow}>
+                        <Ionicons name="flame" size={16} color={Colors.gold} />
+                        <Text style={[styles.sectionHeader, { marginLeft: 6 }]}>
+                          Upcoming Events
+                        </Text>
+                      </View>
+                      <View
+                        style={[styles.sectionHeaderLine, { marginLeft: 8 }]}
                       />
-                      <Text style={styles.eventsEmptyText}>
-                        No upcoming events nearby
-                      </Text>
                     </View>
-                  )}
-                </View>
+
+                    {eventsLoading ? (
+                      <View style={styles.eventsLoadingRow}>
+                        {[0, 1, 2].map((i) => (
+                          <View key={i} style={styles.eventCardSkeleton} />
+                        ))}
+                      </View>
+                    ) : events.length > 0 ? (
+                      <FlatList
+                        keyboardShouldPersistTaps="handled"
+                        data={events}
+                        keyExtractor={(item) => item.id}
+                        renderItem={renderEventCard}
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        style={styles.eventsCarousel}
+                        contentContainerStyle={styles.eventsCarouselContent}
+                        snapToInterval={EVENT_CARD_WIDTH + 12}
+                        snapToAlignment="start"
+                        decelerationRate="fast"
+                      />
+                    ) : (
+                      <View style={styles.eventsEmpty}>
+                        <Ionicons
+                          name="calendar-outline"
+                          size={26}
+                          color={Colors.smoke}
+                        />
+                        <Text style={styles.eventsEmptyText}>
+                          No upcoming events nearby
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+                )}
 
                 {/* ── Clubs Near You header ── */}
                 <View style={styles.sectionHeaderRow}>
@@ -1429,11 +1426,7 @@ export const HomeScreen = () => {
       ) : (
         /* Videos view */
         <View style={styles.videoFeedContainer}>
-          <ClubVideoFeed
-            videos={filteredVideos}
-            onLike={toggleLike}
-            likedClubs={liked}
-          />
+          <ClubVideoFeed videos={filteredVideos} />
         </View>
       )}
       {/* ── Instagram-style Event Viewer ── */}
@@ -1774,6 +1767,7 @@ const styles = StyleSheet.create({
 
   // ── Club cards ───────────────────────────────────────────────────────────
   listContent: {
+    flexGrow: 1,
     paddingBottom: 100,
   },
   card: {

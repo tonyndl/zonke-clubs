@@ -64,7 +64,7 @@ import * as Location from "expo-location";
 import { AuthProvider, useAuth } from "../contexts/AuthContext";
 import { UserRoleProvider } from "../contexts/UserRoleContext";
 import { LedColorProvider } from "../contexts/LedColorContext";
-import { AuthScreen } from "./_screens/Login";
+import { AuthScreen } from "./screens/Login";
 import {
   setupStrobeNotificationCategory,
   updateDeviceLocation,

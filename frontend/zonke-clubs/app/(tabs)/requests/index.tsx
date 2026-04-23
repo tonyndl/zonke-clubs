@@ -6,8 +6,8 @@ import {
   RefreshControl,
   Image,
   TouchableOpacity,
-  Alert,
   Pressable,
+  StyleSheet,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useFocusEffect } from "expo-router";
@@ -23,9 +23,9 @@ import {
   transformRequest,
 } from "@/services/connectionService";
 import { websocketService } from "@/services/websocketService";
-import { TextStroke } from "../../_screens/Login/utils";
+import { TextStroke } from "../../screens/Login/utils";
 import { Toast } from "@/components/ui/Toast";
-import { styles } from "./_styles";
+import { styles } from "./styles";
 
 type TabType = "received" | "sent";
 type StatusFilter = "all" | "pending" | "accepted";
@@ -54,6 +54,12 @@ export default function RequestsScreen() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [menuVisible, setMenuVisible] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [confirmModal, setConfirmModal] = useState<{
+    title: string;
+    body: string;
+    confirmLabel: string;
+    onConfirm: () => void;
+  } | null>(null);
 
   const loadRequests = () => {
     return Promise.all([
@@ -263,86 +269,78 @@ export default function RequestsScreen() {
   };
 
   const handleDeleteSelected = () => {
-    const count = selectedIds.size;
-    if (count === 0) return;
-    Alert.alert(
-      "Delete Requests",
-      `Delete ${count} request${count > 1 ? "s" : ""}? This will remove them for both sides.`,
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: () => {
-            setDeleting(true);
-            const ids = Array.from(selectedIds);
-            connectionService
-              .deleteRequests(ids)
-              .then(() => {
-                const idSet = new Set(ids);
-                setReceivedRequests((prev) =>
-                  prev.filter((r) => !idSet.has(r.id)),
-                );
-                setSentRequests((prev) => prev.filter((r) => !idSet.has(r.id)));
-                setToastMessage(
-                  `Deleted ${count} request${count > 1 ? "s" : ""}`,
-                );
-                setToastType("info");
-                setToastVisible(true);
-                exitSelectionMode();
-              })
-              .catch(() => {
-                setToastMessage("Failed to delete requests");
-                setToastType("error");
-                setToastVisible(true);
-              })
-              .finally(() => setDeleting(false));
-          },
-        },
-      ],
-    );
+    if (selectedIds.size === 0) return;
+    const allRequests = [...receivedRequests, ...sentRequests];
+    const deletableIds = Array.from(selectedIds).filter((id) => {
+      const req = allRequests.find((r) => r.id === id);
+      return req && req.status !== "accepted";
+    });
+    if (deletableIds.length === 0) {
+      exitSelectionMode();
+      return;
+    }
+    const count = deletableIds.length;
+    setConfirmModal({
+      title: "Delete Requests",
+      body: `Delete ${count} request${count > 1 ? "s" : ""}? This will remove them for both sides.`,
+      confirmLabel: "Delete",
+      onConfirm: () => {
+        setConfirmModal(null);
+        setDeleting(true);
+        connectionService
+          .deleteRequests(deletableIds)
+          .then(() => {
+            const idSet = new Set(deletableIds);
+            setReceivedRequests((prev) => prev.filter((r) => !idSet.has(r.id)));
+            setSentRequests((prev) => prev.filter((r) => !idSet.has(r.id)));
+            setToastMessage(`Deleted ${count} request${count > 1 ? "s" : ""}`);
+            setToastType("info");
+            setToastVisible(true);
+            exitSelectionMode();
+          })
+          .catch(() => {
+            setToastMessage("Failed to delete requests");
+            setToastType("error");
+            setToastVisible(true);
+          })
+          .finally(() => setDeleting(false));
+      },
+    });
   };
 
   const handleDeleteAll = () => {
     setMenuVisible(false);
-    const current = filteredRequests;
-    if (current.length === 0) return;
-    Alert.alert(
-      "Delete All",
-      `Delete all ${current.length} request${current.length > 1 ? "s" : ""} in this view? This will remove them for both sides.`,
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Delete All",
-          style: "destructive",
-          onPress: () => {
-            setDeleting(true);
-            const ids = current.map((r) => r.id);
-            connectionService
-              .deleteRequests(ids)
-              .then(() => {
-                const idSet = new Set(ids);
-                setReceivedRequests((prev) =>
-                  prev.filter((r) => !idSet.has(r.id)),
-                );
-                setSentRequests((prev) => prev.filter((r) => !idSet.has(r.id)));
-                setToastMessage(
-                  `Deleted ${ids.length} request${ids.length > 1 ? "s" : ""}`,
-                );
-                setToastType("info");
-                setToastVisible(true);
-                exitSelectionMode();
-              })
-              .catch(() => {
-                setToastMessage("Failed to delete requests");
-                setToastType("error");
-                setToastVisible(true);
-              })
-              .finally(() => setDeleting(false));
-          },
-        },
-      ],
-    );
+    const deletable = filteredRequests.filter((r) => r.status !== "accepted");
+    if (deletable.length === 0) return;
+    setConfirmModal({
+      title: "Delete All",
+      body: `Delete all ${deletable.length} request${deletable.length > 1 ? "s" : ""} in this view? This will remove them for both sides.`,
+      confirmLabel: "Delete All",
+      onConfirm: () => {
+        setConfirmModal(null);
+        setDeleting(true);
+        const ids = deletable.map((r) => r.id);
+        connectionService
+          .deleteRequests(ids)
+          .then(() => {
+            const idSet = new Set(ids);
+            setReceivedRequests((prev) => prev.filter((r) => !idSet.has(r.id)));
+            setSentRequests((prev) => prev.filter((r) => !idSet.has(r.id)));
+            setToastMessage(
+              `Deleted ${ids.length} request${ids.length > 1 ? "s" : ""}`,
+            );
+            setToastType("info");
+            setToastVisible(true);
+            exitSelectionMode();
+          })
+          .catch(() => {
+            setToastMessage("Failed to delete requests");
+            setToastType("error");
+            setToastVisible(true);
+          })
+          .finally(() => setDeleting(false));
+      },
+    });
   };
 
   const formatTimeAgo = (dateString: string): string => {
@@ -643,7 +641,7 @@ export default function RequestsScreen() {
     <SafeAreaView style={styles.container} edges={["top"]}>
       {/* Header */}
       <View style={styles.header}>
-        <TextStroke stroke={0.6} color={Colors.secondaryBlue}>
+        <TextStroke stroke={0.6} color={Colors.gold}>
           <Text style={styles.headerTitle}>Requests</Text>
         </TextStroke>
       </View>
@@ -834,7 +832,11 @@ export default function RequestsScreen() {
                   onPress={() => {
                     setMenuVisible(false);
                     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                    setSelectionMode(true);
+                    if (selectionMode) {
+                      exitSelectionMode();
+                    } else {
+                      setSelectionMode(true);
+                    }
                   }}
                   style={{
                     flexDirection: "row",
@@ -845,20 +847,31 @@ export default function RequestsScreen() {
                   }}
                 >
                   <Ionicons
-                    name="checkmark-circle-outline"
+                    name={
+                      selectionMode
+                        ? "checkmark-circle"
+                        : "checkmark-circle-outline"
+                    }
                     size={18}
-                    color={Colors.platinum}
+                    color={selectionMode ? Colors.gold : Colors.platinum}
                   />
                   <Text
                     style={{
-                      color: Colors.platinum,
+                      color: selectionMode ? Colors.gold : Colors.platinum,
                       fontSize: 14,
                       fontWeight: "600",
                     }}
                   >
-                    Select
+                    {selectionMode ? "Deselect" : "Select"}
                   </Text>
                 </TouchableOpacity>
+                <View
+                  style={{
+                    height: 1,
+                    backgroundColor: "rgba(57, 243, 255, 0.1)",
+                    marginHorizontal: 14,
+                  }}
+                />
                 <TouchableOpacity
                   onPress={handleDeleteAll}
                   style={{
@@ -982,6 +995,98 @@ export default function RequestsScreen() {
         onHide={() => setToastVisible(false)}
         type={toastType}
       />
+
+      {/* Custom Confirm Modal */}
+      {confirmModal && (
+        <View style={confirmStyles.overlay}>
+          <View style={confirmStyles.card}>
+            <View style={confirmStyles.iconWrap}>
+              <Ionicons name="trash-outline" size={28} color="#EF4444" />
+            </View>
+            <Text style={confirmStyles.title}>{confirmModal.title}</Text>
+            <Text style={confirmStyles.body}>{confirmModal.body}</Text>
+            <View style={confirmStyles.actions}>
+              <Pressable
+                style={confirmStyles.cancelBtn}
+                onPress={() => setConfirmModal(null)}
+              >
+                <Text style={confirmStyles.cancelText}>Cancel</Text>
+              </Pressable>
+              <Pressable
+                style={confirmStyles.deleteBtn}
+                onPress={confirmModal.onConfirm}
+              >
+                <Ionicons name="trash-outline" size={16} color="#fff" />
+                <Text style={confirmStyles.deleteText}>
+                  {confirmModal.confirmLabel}
+                </Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      )}
     </SafeAreaView>
   );
 }
+
+const confirmStyles = StyleSheet.create({
+  overlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0,0,0,0.7)",
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 200,
+    padding: 24,
+  },
+  card: {
+    backgroundColor: Colors.bgCard,
+    borderRadius: 24,
+    padding: 24,
+    width: "100%",
+    alignItems: "center",
+    gap: 12,
+    borderWidth: 1,
+    borderColor: "rgba(57,243,255,0.15)",
+  },
+  iconWrap: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: "rgba(239,68,68,0.12)",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 4,
+  },
+  title: { fontSize: 18, fontWeight: "700", color: Colors.white },
+  body: {
+    fontSize: 14,
+    color: Colors.smoke,
+    textAlign: "center",
+    lineHeight: 20,
+  },
+  actions: { flexDirection: "row", gap: 12, marginTop: 8, width: "100%" },
+  cancelBtn: {
+    flex: 1,
+    paddingVertical: 13,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "rgba(57,243,255,0.2)",
+    alignItems: "center",
+  },
+  cancelText: { fontSize: 15, fontWeight: "600", color: Colors.smoke },
+  deleteBtn: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    paddingVertical: 13,
+    borderRadius: 14,
+    backgroundColor: "#EF4444",
+  },
+  deleteText: { fontSize: 15, fontWeight: "700", color: "#fff" },
+});

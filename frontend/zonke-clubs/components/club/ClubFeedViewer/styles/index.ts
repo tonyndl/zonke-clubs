@@ -8,6 +8,80 @@ export const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "black",
   },
+
+  // ── Per-post full-screen page ───────────────────────────────────────────────
+  feedItem: {
+    width: SCREEN_WIDTH,
+    height: SCREEN_HEIGHT,
+    backgroundColor: "black",
+    overflow: "hidden",
+  },
+
+  // ── Media ───────────────────────────────────────────────────────────────────
+  mediaPage: {
+    width: SCREEN_WIDTH,
+    height: SCREEN_HEIGHT,
+  },
+  media: {
+    width: SCREEN_WIDTH,
+    height: SCREEN_HEIGHT,
+  },
+
+  // ── Bottom gradient ─────────────────────────────────────────────────────────
+  gradient: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: "55%",
+    zIndex: 1,
+  },
+
+  // ── Center play icon ────────────────────────────────────────────────────────
+  centerPlayIcon: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 3,
+  },
+  playIconBackground: {
+    width: 90,
+    height: 90,
+    borderRadius: 45,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  // ── Tap area (full screen minus progress bar strip) ────────────────────────
+  tapArea: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 25,
+    zIndex: 5,
+  },
+
+  // ── Duration badge – top right ──────────────────────────────────────────────
+  durationBadge: {
+    position: "absolute",
+    right: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+    zIndex: 10,
+  },
+  durationText: {
+    color: Colors.white,
+    fontSize: 12,
+    fontWeight: "600",
+  },
+
+  // ── Close button – top left ─────────────────────────────────────────────────
   closeButton: {
     position: "absolute",
     left: 16,
@@ -16,7 +90,11 @@ export const styles = StyleSheet.create({
   closeButtonInner: {
     width: 44,
     height: 44,
+    alignItems: "center",
+    justifyContent: "center",
   },
+
+  // ── Menu button – top right (owner only) ────────────────────────────────────
   menuButton: {
     position: "absolute",
     right: 16,
@@ -27,57 +105,95 @@ export const styles = StyleSheet.create({
     height: 44,
     alignItems: "center",
     justifyContent: "center",
+    backgroundColor: "rgba(0,0,0,0.45)",
+    borderRadius: 22,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "rgba(255,255,255,0.18)",
   },
-  counterBadge: {
+
+  // ── Bottom info wrapper ─────────────────────────────────────────────────────
+  bottomInfoWrapper: {
     position: "absolute",
-    // Note: When uncommenting, use insets.top + 14 for proper safe area
-    top: 14,
+    left: 16,
     right: 16,
-    backgroundColor: "rgba(0, 0, 0, 0.7)",
+    bottom: 36,
+    zIndex: 15,
+  },
+  bottomInfo: {
+    gap: 8,
+    marginBottom: 18,
+  },
+
+  // ── Caption ─────────────────────────────────────────────────────────────────
+  captionText: {
+    color: Colors.platinum,
+    fontSize: 14,
+    lineHeight: 20,
+    fontWeight: "500",
+  },
+
+  // ── Club name row + like + mute ─────────────────────────────────────────────
+  nameContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  clubBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "rgba(10,10,15,0.7)",
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 16,
+    borderRadius: 20,
     borderWidth: 1,
-    borderColor: "rgba(57, 243, 255, 0.3)",
+    borderColor: Colors.gold,
+    alignSelf: "flex-start",
   },
-  counterText: {
+  clubName: {
+    color: Colors.white,
+    fontSize: 16,
+    fontWeight: "700",
+    maxWidth: 200,
+  },
+  rightActions: {
+    flexDirection: "column",
+    alignItems: "flex-end",
+    gap: 16,
+  },
+
+  // ── Location row ─────────────────────────────────────────────────────────────
+  locationRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 4,
+  },
+  locationText: {
+    color: Colors.platinum,
+    fontSize: 14,
+    flexShrink: 1,
+  },
+
+  // ── Stats row (time ago) ─────────────────────────────────────────────────────
+  statsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 16,
+    marginTop: 4,
+    marginBottom: 20,
+  },
+  stat: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  statText: {
     color: Colors.platinum,
     fontSize: 12,
-    fontWeight: "700",
   },
-  feedItem: {
-    width: SCREEN_WIDTH,
-    height: SCREEN_HEIGHT,
-    backgroundColor: "black",
-    justifyContent: "center",
-  },
-  mediaContainer: {
-    width: SCREEN_WIDTH,
-    height: SCREEN_HEIGHT * 0.85,
-    position: "relative",
-  },
-  scrollView: {
-    width: SCREEN_WIDTH,
-    height: SCREEN_HEIGHT * 0.85,
-  },
-  mediaItem: {
-    width: SCREEN_WIDTH,
-    height: SCREEN_HEIGHT * 0.85,
-    justifyContent: "flex-start",
-    alignItems: "center",
-  },
-  media: {
-    width: SCREEN_WIDTH,
-    height: SCREEN_HEIGHT * 0.85,
-  },
-  videoTapArea: {
-    ...StyleSheet.absoluteFillObject,
-  },
+
+  // ── Pagination dots ─────────────────────────────────────────────────────────
   dotsContainer: {
-    position: "absolute",
-    bottom: 100,
-    left: 0,
-    right: 0,
     flexDirection: "row",
     justifyContent: "center",
     gap: 5,
@@ -86,127 +202,37 @@ export const styles = StyleSheet.create({
     width: 5,
     height: 5,
     borderRadius: 2.5,
-    backgroundColor: "rgba(255, 255, 255, 0.3)",
+    backgroundColor: "rgba(255,255,255,0.3)",
   },
   dotActive: {
-    backgroundColor: "rgba(57, 243, 255, 0.9)",
-    width: 5,
+    backgroundColor: Colors.gold,
+    width: 8,
   },
-  navLeft: {
-    position: "absolute",
-    left: 16,
-    top: "50%",
-    marginTop: -25,
-  },
-  navRight: {
-    position: "absolute",
-    right: 16,
-    top: "50%",
-    marginTop: -25,
-  },
-  navButton: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: "rgba(0, 0, 0, 0.6)",
-    alignItems: "center",
+
+  // ── Progress bar ────────────────────────────────────────────────────────────
+  progressTouchArea: {
+    height: 25,
     justifyContent: "center",
-    borderWidth: 2,
-    borderColor: "rgba(57, 243, 255, 0.3)",
+    zIndex: 20,
   },
-  infoOverlay: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-  },
-  gradientOverlay: {
-    padding: 20,
-    paddingBottom: 40,
-  },
-  descriptionContainer: {
-    marginBottom: 12,
-  },
-  description: {
-    color: Colors.platinum,
-    fontSize: 15,
-    lineHeight: 22,
-    fontWeight: "500",
-  },
-  statsRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 20,
-  },
-  stat: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
-  statText: {
-    color: Colors.platinum,
-    fontSize: 14,
-    fontWeight: "600",
-  },
-  videoBottomControls: {
-    position: "absolute",
-    bottom: 20,
-    left: 16,
-    right: 16,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    zIndex: 5,
-  },
-  feedPlayPauseButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: "rgba(0, 0, 0, 0.6)",
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1,
-    borderColor: "rgba(57, 243, 255, 0.3)",
-  },
-  progressBarContainer: {
-    flex: 1,
-    paddingVertical: 8,
-    justifyContent: "center",
-  },
-  progressBarBackground: {
-    height: 4,
-    backgroundColor: "rgba(255, 255, 255, 0.2)",
+  progressTrack: {
+    width: "100%",
+    height: 3,
+    backgroundColor: "rgba(255,255,255,0.3)",
     borderRadius: 2,
-    position: "relative",
   },
-  progressBarFill: {
+  progressFill: {
     height: "100%",
     backgroundColor: Colors.gold,
+    borderRadius: 2,
   },
   progressThumb: {
     position: "absolute",
-    top: -6,
-    width: 16,
-    height: 16,
-    borderRadius: 8,
+    top: -4,
+    right: -5,
+    width: 11,
+    height: 11,
+    borderRadius: 6,
     backgroundColor: Colors.gold,
-    marginLeft: -8,
-    shadowColor: Colors.gold,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.8,
-    shadowRadius: 4,
-    elevation: 5,
-    borderWidth: 2,
-    borderColor: "#fff",
-  },
-  feedMuteButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: "rgba(0, 0, 0, 0.6)",
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1,
-    borderColor: "rgba(57, 243, 255, 0.3)",
   },
 });

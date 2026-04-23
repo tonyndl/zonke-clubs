@@ -44,7 +44,7 @@ defmodule BackendWeb.API.SpendingController do
 
     conn
     |> put_status(:ok)
-    |> json(stats)
+    |> render(:stats, stats: stats)
   end
 
   @doc """
@@ -55,7 +55,7 @@ defmodule BackendWeb.API.SpendingController do
 
     conn
     |> put_status(:ok)
-    |> json(%{rankings: rankings})
+    |> render(:rankings, rankings: rankings)
   end
 
   @doc """

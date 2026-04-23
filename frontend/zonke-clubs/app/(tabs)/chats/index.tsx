@@ -9,9 +9,9 @@ import { Colors } from "@/constants/ui";
 import { PressableScale } from "@/components/ui/PressableScale";
 import { ChatThread } from "@/types/connection";
 import { getThreads } from "@/services/messageService";
-import { TextStroke } from "../../_screens/Login/utils";
+import { TextStroke } from "../../screens/Login/utils";
 import { websocketService } from "@/services/websocketService";
-import { styles } from "./_styles";
+import { styles } from "./styles";
 
 export default function ChatsScreen() {
   const [threads, setThreads] = useState<ChatThread[]>([]);
@@ -349,11 +349,11 @@ export default function ChatsScreen() {
         onPress={() => {
           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
           // Navigate to people browse with default club
-          router.push("/people-browse" as any);
+          router.replace("/(tabs)");
         }}
       >
         <Ionicons name="people" size={20} color={Colors.bg} />
-        <Text style={styles.exploreText}>Discover People</Text>
+        <Text style={styles.exploreText}>Discover People at Clubs</Text>
       </PressableScale>
     </View>
   );

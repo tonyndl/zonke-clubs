@@ -103,10 +103,26 @@ defmodule BackendWeb.API.ConnectionRequestController do
   """
   def disconnect_by_thread(conn, %{"thread_id" => thread_id}, session) do
     with {:ok, request} <- Connections.get_request_by_thread(thread_id),
+         {:ok, _} when not is_nil(request) <- {:ok, request},
          {:ok, updated_request} <- Connections.disconnect(request, session.id) do
       conn
       |> put_status(:ok)
       |> render(:show, request: updated_request)
+    else
+      {:ok, nil} -> {:error, :not_found}
+      error -> error
+    end
+  end
+
+  @doc """
+  Get the active connection between the current user and another user.
+  Returns null if no active connection exists.
+  """
+  def with_user(conn, %{"user_id" => user_id}, session) do
+    with {:ok, request} <- Connections.get_connection_with_user(session.id, user_id) do
+      conn
+      |> put_status(:ok)
+      |> render(:show, request: request)
     end
   end
 
@@ -116,8 +132,7 @@ defmodule BackendWeb.API.ConnectionRequestController do
   """
   def get_by_thread(conn, %{"thread_id" => thread_id}, session) do
     with {:ok, request} <- Connections.get_request_by_thread(thread_id) do
-      # Verify user is part of this connection
-      if request.sender_id == session.id or request.receiver_id == session.id do
+      if is_nil(request) or request.sender_id == session.id or request.receiver_id == session.id do
         conn
         |> put_status(:ok)
         |> render(:show, request: request)

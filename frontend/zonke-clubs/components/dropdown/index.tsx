@@ -285,13 +285,15 @@ export const DropdownInput = <T extends FieldValues>({
 
   return (
     <View>
-      <View style={{ flexDirection: "row", alignItems: "center" }}>
-        {labelIcon && <View style={{ marginRight: 6 }}>{labelIcon}</View>}
-        <Text style={styles.label}>{label}</Text>
-        {required && (
-          <Text style={{ color: Colors.gold, paddingLeft: 3 }}>*</Text>
-        )}
-      </View>
+      {label && (
+        <View style={{ flexDirection: "row", alignItems: "center" }}>
+          {labelIcon && <View style={{ marginRight: 6 }}>{labelIcon}</View>}
+          <Text style={styles.label}>{label}</Text>
+          {required && (
+            <Text style={{ color: Colors.gold, paddingLeft: 3 }}>*</Text>
+          )}
+        </View>
+      )}
 
       <Pressable
         ref={inputRef}

@@ -7,6 +7,11 @@ import { Colors } from "@/constants/ui";
 import { PressableScale } from "@/components/ui/PressableScale";
 import { styles } from "./styles";
 
+function formatAmount(value: number): string {
+  const [whole, dec] = value.toFixed(2).split(".");
+  return whole.replace(/\B(?=(\d{3})+(?!\d))/g, " ") + "." + dec;
+}
+
 interface LeaderboardEntry {
   rank: number;
   userId: string;
@@ -287,7 +292,7 @@ export const BeerLeaderboard = () => {
             {/* Total spent */}
             <View style={styles.beerCountContainer}>
               <Text style={styles.beerCount}>
-                R{entry.totalSpent.toLocaleString()}
+                R{formatAmount(entry.totalSpent)}
               </Text>
               <Text style={styles.litresLabel}>one night</Text>
             </View>

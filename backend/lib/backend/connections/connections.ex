@@ -207,6 +207,7 @@ defmodule Backend.Connections do
       ConnectionRequest
       |> where([r], r.id in ^ids)
       |> where([r], r.sender_id == ^user_id or r.receiver_id == ^user_id)
+      |> where([r], r.status != "accepted")
       |> Repo.delete_all()
 
     {:ok, count}
@@ -270,8 +271,35 @@ defmodule Backend.Connections do
   end
 
   @doc """
+  Get the active connection between two users (any direction).
+  Returns the most recent accepted or pending request.
+  """
+  def get_connection_with_user(current_user_id, other_user_id) do
+    request =
+      from(cr in ConnectionRequest,
+        where:
+          (cr.sender_id == ^current_user_id and cr.receiver_id == ^other_user_id) or
+            (cr.sender_id == ^other_user_id and cr.receiver_id == ^current_user_id),
+        where: cr.status in ["pending", "accepted"],
+        # Prefer accepted over pending; among same status prefer most recent
+        order_by: [
+          fragment("CASE WHEN ? = 'accepted' THEN 0 ELSE 1 END", cr.status),
+          desc: cr.updated_at
+        ],
+        limit: 1
+      )
+      |> Repo.one()
+
+    case request do
+      nil -> {:ok, nil}
+      request -> {:ok, Repo.preload(request, [:sender, :receiver, :club, :intention, :thread])}
+    end
+  end
+
+  @doc """
   Get connection request by thread_id.
   If there are multiple (due to duplicates), get the most recent non-declined one.
+  Returns {:ok, nil} if no matching request exists (e.g. request was deleted).
   """
   def get_request_by_thread(thread_id) do
     request =
@@ -284,7 +312,7 @@ defmodule Backend.Connections do
       |> Repo.one()
 
     case request do
-      nil -> {:error, :not_found}
+      nil -> {:ok, nil}
       request -> {:ok, Repo.preload(request, [:sender, :receiver, :club, :intention])}
     end
   end

@@ -2,7 +2,7 @@ import { Platform } from "react-native";
 
 // Use local network IP for physical devices/emulators
 // Change this to your computer's local IP address
-const LOCAL_IP = "192.168.1.139";
+const LOCAL_IP = "192.168.1.140";
 
 const getApiUrl = () => {
   if (Platform.OS === "web") {
@@ -151,11 +151,12 @@ class ApiService {
               // Handle changeset errors (422 with errors object)
               if (error.errors && typeof error.errors === "object") {
                 const errorMessages = Object.entries(error.errors)
-                  .map(
-                    ([field, messages]) =>
-                      `${field}: ${Array.isArray(messages) ? messages.join(", ") : messages}`,
+                  .map(([_field, messages]) =>
+                    Array.isArray(messages)
+                      ? messages.join(", ")
+                      : String(messages),
                   )
-                  .join("; ");
+                  .join(". ");
                 throw new Error(errorMessages || "Validation failed");
               }
               throw new Error(
@@ -221,11 +222,12 @@ class ApiService {
               // Handle changeset errors (422 with errors object)
               if (error.errors && typeof error.errors === "object") {
                 const errorMessages = Object.entries(error.errors)
-                  .map(
-                    ([field, messages]) =>
-                      `${field}: ${Array.isArray(messages) ? messages.join(", ") : messages}`,
+                  .map(([_field, messages]) =>
+                    Array.isArray(messages)
+                      ? messages.join(", ")
+                      : String(messages),
                   )
-                  .join("; ");
+                  .join(". ");
                 throw new Error(errorMessages || "Validation failed");
               }
               throw new Error(

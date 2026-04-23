@@ -24,7 +24,7 @@ interface AuthContextType {
   isLoading: boolean;
   isAuthenticated: boolean;
   login: (data: LoginData) => Promise<void>;
-  register: (data: RegisterData) => Promise<{ needsSetup: boolean }>;
+  register: (data: RegisterData) => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
 }
@@ -81,6 +81,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     return authService
       .login(data)
       .then((response) => {
+        console.log(
+          "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
+        );
         setUser(response.user);
         AsyncStorage.getItem(PUSH_TOKEN_KEY).then((storedToken) => {
           if (storedToken !== null) {
@@ -98,14 +101,14 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       });
   };
 
-  const register = (data: RegisterData): Promise<{ needsSetup: boolean }> => {
+  const register = (data: RegisterData): Promise<void> => {
     return authService
       .register(data)
       .then(() => {
         return login({
           username: data.username,
           password: data.password,
-        }).then(() => ({ needsSetup: true }));
+        });
       })
       .catch((error) => {
         throw error;
