@@ -29,7 +29,7 @@ export function LocationPicker({
   const displayValue = value?.name || (typeof value === "string" ? value : "");
 
   return (
-    <View style={styles.container}>
+    <View>
       <DropdownInput
         name="location"
         label={label || ""}

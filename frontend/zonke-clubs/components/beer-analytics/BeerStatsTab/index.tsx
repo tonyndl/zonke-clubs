@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { View, Text, ActivityIndicator, ScrollView } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import { Colors } from "@/constants/ui";
 import {
   spendingService,
@@ -16,6 +17,56 @@ interface Props {
   spendingVisible?: boolean;
 }
 
+function formatAmount(value: number): string {
+  const [whole, dec] = value.toFixed(2).split(".");
+  return whole.replace(/\B(?=(\d{3})+(?!\d))/g, " ") + "." + dec;
+}
+
+function formatDate(dateStr: string): string {
+  const d = new Date(dateStr);
+  const day = d.getDate().toString().padStart(2, "0");
+  const month = d.toLocaleString("en-ZA", { month: "short" });
+  return `${day} ${month}`;
+}
+
+function getRankColors(rank: number): {
+  border: string;
+  badge: string;
+  trophyColor: string;
+  tintBg: string;
+} {
+  if (rank === 1) {
+    return {
+      border: Colors.gold,
+      badge: Colors.gold,
+      trophyColor: Colors.gold,
+      tintBg: "rgba(57,243,255,0.08)",
+    };
+  }
+  if (rank === 2) {
+    return {
+      border: Colors.platinum,
+      badge: Colors.platinum,
+      trophyColor: Colors.platinum,
+      tintBg: "rgba(229,228,226,0.06)",
+    };
+  }
+  if (rank === 3) {
+    return {
+      border: Colors.smoke,
+      badge: Colors.smoke,
+      trophyColor: Colors.smoke,
+      tintBg: "rgba(154,164,178,0.06)",
+    };
+  }
+  return {
+    border: "rgba(57,243,255,0.2)",
+    badge: Colors.primaryBlue,
+    trophyColor: Colors.primaryBlue,
+    tintBg: "rgba(57,243,255,0.04)",
+  };
+}
+
 export function BeerStatsTab({
   userId,
   isOwnProfile,
@@ -29,6 +80,7 @@ export function BeerStatsTab({
       club_name: string;
       rank: number;
       best_amount: number;
+      best_amount_date?: string;
     }>
   >([]);
   const [loading, setLoading] = useState(true);
@@ -68,8 +120,13 @@ export function BeerStatsTab({
   if (!canView) {
     return (
       <View style={styles.emptyContainer}>
-        <Ionicons name="lock-closed" size={48} color={Colors.lightGrey} />
+        <View style={styles.emptyIconWrap}>
+          <Ionicons name="lock-closed" size={32} color={Colors.gold} />
+        </View>
         <Text style={styles.emptyText}>Spending data is private</Text>
+        <Text style={styles.emptySubtext}>
+          This member has chosen to keep their spending private
+        </Text>
       </View>
     );
   }
@@ -86,7 +143,9 @@ export function BeerStatsTab({
   if (error || !stats) {
     return (
       <View style={styles.errorContainer}>
-        <Ionicons name="alert-circle" size={48} color={Colors.smoke} />
+        <View style={styles.emptyIconWrap}>
+          <Ionicons name="alert-circle" size={32} color={Colors.smoke} />
+        </View>
         <Text style={styles.errorText}>
           {error || "No spending data available"}
         </Text>
@@ -102,7 +161,9 @@ export function BeerStatsTab({
   if (!hasData) {
     return (
       <View style={styles.emptyContainer}>
-        <Ionicons name="beer-outline" size={64} color={Colors.lightGrey} />
+        <View style={styles.emptyIconWrap}>
+          <Ionicons name="beer-outline" size={32} color={Colors.gold} />
+        </View>
         <Text style={styles.emptyText}>No spending records yet</Text>
         <Text style={styles.emptySubtext}>
           When you visit clubs, they'll add your spending records here
@@ -111,162 +172,222 @@ export function BeerStatsTab({
     );
   }
 
+  const totalSpent = stats.total_spent ?? 0;
+  const avgPerVisit = stats.average_per_visit ?? 0;
+  const favoriteClub = stats.most_visited_club ?? null;
+
+  // Derive best night from history (max single-visit amount)
+  const bestNight =
+    history.length > 0 ? Math.max(...history.map((r) => Number(r.amount))) : 0;
+
   return (
     <ScrollView
       style={styles.container}
       keyboardShouldPersistTaps="handled"
       showsVerticalScrollIndicator={false}
     >
-      {/* Stats Overview */}
+      {/* ── Hero Card ─────────────────────────────────── */}
       <Animated.View
-        entering={FadeInDown.delay(100).springify()}
+        entering={FadeInDown.delay(80).springify()}
         style={styles.section}
       >
-        <Text style={styles.sectionTitle}>Overview</Text>
-        <View style={styles.statsGrid}>
-          <View style={styles.statCard}>
-            <Ionicons name="wallet" size={24} color={Colors.gold} />
-            <Text style={styles.statValue}>
-              R{parseFloat(stats.total_spending || "0").toFixed(2)}
-            </Text>
-            <Text style={styles.statLabel}>Total Spent</Text>
+        <LinearGradient
+          colors={["rgba(57,243,255,0.18)", "rgba(57,243,255,0.04)"]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.heroCard}
+        >
+          {/* Wallet icon + label */}
+          <View style={styles.heroTopRow}>
+            <View style={styles.heroIconWrap}>
+              <Ionicons name="wallet" size={20} color={Colors.gold} />
+            </View>
+            <Text style={styles.heroLabel}>Total Spent</Text>
           </View>
 
-          <View style={styles.statCard}>
-            <Ionicons name="calendar" size={24} color={Colors.primaryBlue} />
-            <Text style={styles.statValue}>{stats.total_visits}</Text>
-            <Text style={styles.statLabel}>Visits</Text>
-          </View>
+          {/* Big total */}
+          <Text style={styles.heroAmount}>R{formatAmount(totalSpent)}</Text>
 
-          <View style={styles.statCard}>
-            <Ionicons name="bar-chart" size={24} color={Colors.gold} />
-            <Text style={styles.statValue}>
-              R{parseFloat(stats.average_spending || "0").toFixed(2)}
-            </Text>
-            <Text style={styles.statLabel}>Avg/Visit</Text>
-          </View>
+          {/* Divider */}
+          <View style={styles.heroDivider} />
 
-          <View style={styles.statCard}>
-            <Ionicons name="trophy" size={24} color={Colors.primaryBlue} />
-            <Text style={styles.statValue}>
-              R{parseFloat(stats.max_spending || "0").toFixed(2)}
-            </Text>
-            <Text style={styles.statLabel}>Best Night</Text>
+          {/* Three inline pills */}
+          <View style={styles.heroPillsRow}>
+            <View style={styles.heroPill}>
+              <Text style={styles.heroPillValue}>{stats.total_visits}</Text>
+              <Text style={styles.heroPillLabel}>Visits</Text>
+            </View>
+
+            <View style={styles.heroPillSeparator} />
+
+            <View style={styles.heroPill}>
+              <Text style={styles.heroPillValue}>
+                R{formatAmount(avgPerVisit)}
+              </Text>
+              <Text style={styles.heroPillLabel}>Avg / Visit</Text>
+            </View>
+
+            <View style={styles.heroPillSeparator} />
+
+            <View style={styles.heroPill}>
+              <Text style={styles.heroPillValue}>
+                {bestNight > 0 ? `R${formatAmount(bestNight)}` : "—"}
+              </Text>
+              <Text style={styles.heroPillLabel}>Best Night</Text>
+            </View>
           </View>
-        </View>
+        </LinearGradient>
       </Animated.View>
 
-      {/* Favorite Club */}
-      {stats.favorite_club && (
+      {/* ── Favorite Spot ─────────────────────────────── */}
+      {favoriteClub && (
         <Animated.View
-          entering={FadeInDown.delay(200).springify()}
+          entering={FadeInDown.delay(160).springify()}
           style={styles.section}
         >
-          <Text style={styles.sectionTitle}>Favorite Spot</Text>
-          <View style={styles.favoriteClubCard}>
-            <View style={styles.favoriteClubHeader}>
-              <Ionicons name="heart" size={24} color="#ff3b30" />
-              <View style={styles.favoriteClubInfo}>
-                <Text style={styles.favoriteClubName}>
-                  {stats.favorite_club.name}
+          <View style={styles.sectionTitleRow}>
+            <View style={styles.sectionTitleBar} />
+            <Text style={styles.sectionTitle}>Favorite Spot</Text>
+          </View>
+
+          <View style={styles.favoriteCard}>
+            {/* Accent stripe */}
+            <LinearGradient
+              colors={[Colors.primaryBlue, Colors.secondaryBlue]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 0, y: 1 }}
+              style={styles.favoriteAccentStripe}
+            />
+
+            <View style={styles.favoriteCardInner}>
+              <View style={styles.favoriteInfo}>
+                <Text style={styles.favoriteClubName} numberOfLines={1}>
+                  {favoriteClub.club_name}
                 </Text>
                 <Text style={styles.favoriteClubVisits}>
-                  {stats.favorite_club.visit_count} visit
-                  {stats.favorite_club.visit_count > 1 ? "s" : ""}
+                  {favoriteClub.visit_count} visit
+                  {favoriteClub.visit_count !== 1 ? "s" : ""}
                 </Text>
               </View>
+              <Ionicons name="heart" size={28} color={Colors.gold} />
             </View>
           </View>
         </Animated.View>
       )}
 
-      {/* Leaderboard Rankings */}
+      {/* ── Leaderboard ───────────────────────────────── */}
       {rankings.length > 0 && (
         <Animated.View
-          entering={FadeInDown.delay(225).springify()}
+          entering={FadeInDown.delay(240).springify()}
           style={styles.section}
         >
-          <Text style={styles.sectionTitle}>Leaderboard</Text>
-          {rankings.map((r, index) => (
-            <Animated.View
-              key={r.club_id}
-              entering={FadeInDown.delay(250 + index * 50).springify()}
-              style={styles.rankingCard}
-            >
-              <View style={styles.rankBadge}>
-                <Text style={styles.rankBadgeText}>#{r.rank}</Text>
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.rankingClubName}>{r.club_name}</Text>
-                <Text style={styles.rankingAmount}>
-                  Best night: R{parseFloat(String(r.best_amount)).toFixed(2)}
-                </Text>
-              </View>
-              <Ionicons name="trophy" size={20} color={Colors.gold} />
-            </Animated.View>
-          ))}
-        </Animated.View>
-      )}
-
-      {/* Clubs Visited */}
-      {stats.clubs_visited && stats.clubs_visited > 0 && (
-        <Animated.View
-          entering={FadeInDown.delay(250).springify()}
-          style={styles.section}
-        >
-          <View style={styles.clubsVisitedCard}>
-            <Ionicons name="location" size={20} color={Colors.gold} />
-            <Text style={styles.clubsVisitedText}>
-              Visited {stats.clubs_visited} club
-              {stats.clubs_visited > 1 ? "s" : ""}
-            </Text>
+          <View style={styles.sectionTitleRow}>
+            <View style={styles.sectionTitleBar} />
+            <Text style={styles.sectionTitle}>Leaderboard</Text>
           </View>
+
+          {rankings.map((r, index) => {
+            const rc = getRankColors(r.rank);
+            return (
+              <Animated.View
+                key={r.club_id}
+                entering={FadeInDown.delay(270 + index * 55).springify()}
+                style={[
+                  styles.rankingCard,
+                  {
+                    borderColor: rc.border,
+                    backgroundColor: rc.tintBg,
+                  },
+                ]}
+              >
+                {/* Rank badge */}
+                <View
+                  style={[
+                    styles.rankBadge,
+                    { backgroundColor: rc.badge + "22", borderColor: rc.badge },
+                  ]}
+                >
+                  <Text style={[styles.rankBadgeText, { color: rc.badge }]}>
+                    {r.rank}
+                  </Text>
+                </View>
+
+                {/* Club info */}
+                <View style={styles.rankingInfo}>
+                  <Text style={styles.rankingClubName} numberOfLines={1}>
+                    {r.club_name}
+                  </Text>
+                  <View style={styles.rankingMeta}>
+                    <Text style={styles.rankingBestNight}>
+                      R{formatAmount(Number(r.best_amount))}
+                    </Text>
+                    {r.best_amount_date ? (
+                      <>
+                        <Text style={styles.rankingMetaDot}>·</Text>
+                        <Text style={styles.rankingDate}>
+                          {formatDate(r.best_amount_date)}
+                        </Text>
+                      </>
+                    ) : null}
+                  </View>
+                </View>
+
+                {/* Trophy */}
+                <Ionicons name="trophy" size={22} color={rc.trophyColor} />
+              </Animated.View>
+            );
+          })}
         </Animated.View>
       )}
 
-      {/* Recent Spending History */}
+      {/* ── Recent Visits ─────────────────────────────── */}
       {history.length > 0 && (
         <Animated.View
-          entering={FadeInDown.delay(300).springify()}
+          entering={FadeInDown.delay(320).springify()}
           style={styles.section}
         >
-          <Text style={styles.sectionTitle}>Recent Visits</Text>
+          <View style={styles.sectionTitleRow}>
+            <View style={styles.sectionTitleBar} />
+            <Text style={styles.sectionTitle}>Recent Visits</Text>
+          </View>
+
           <View style={styles.historyList}>
             {history.map((record, index) => (
               <Animated.View
                 key={record.id}
-                entering={FadeInDown.delay(350 + index * 50).springify()}
+                entering={FadeInDown.delay(360 + index * 45).springify()}
                 style={styles.historyItem}
               >
-                <View style={styles.historyItemLeft}>
-                  <View style={styles.historyIconContainer}>
-                    <Ionicons name="beer" size={20} color={Colors.gold} />
-                  </View>
-                  <View style={styles.historyItemInfo}>
-                    <Text style={styles.historyItemClub}>
-                      {record.club?.name || "Unknown Club"}
-                    </Text>
-                    <Text style={styles.historyItemDate}>
-                      {new Date(record.visit_date).toLocaleDateString("en-ZA", {
-                        year: "numeric",
-                        month: "short",
-                        day: "numeric",
-                      })}
-                    </Text>
-                  </View>
-                </View>
-                <View style={styles.historyItemRight}>
-                  <Text style={styles.historyItemAmount}>
-                    R{parseFloat(record.amount).toFixed(2)}
+                {/* Date badge */}
+                <View style={styles.historyDateBadge}>
+                  <Text style={styles.historyDateText}>
+                    {formatDate(record.visit_date)}
                   </Text>
                 </View>
+
+                {/* Club + notes */}
+                <View style={styles.historyMiddle}>
+                  <Text style={styles.historyClubName} numberOfLines={1}>
+                    {record.club?.name || "Unknown Club"}
+                  </Text>
+                  {record.notes ? (
+                    <Text style={styles.historyNotes} numberOfLines={1}>
+                      {record.notes}
+                    </Text>
+                  ) : null}
+                </View>
+
+                {/* Amount */}
+                <Text style={styles.historyAmount}>
+                  R{formatAmount(Number(record.amount))}
+                </Text>
               </Animated.View>
             ))}
           </View>
         </Animated.View>
       )}
 
-      <View style={{ height: 40 }} />
+      <View style={{ height: 48 }} />
     </ScrollView>
   );
 }

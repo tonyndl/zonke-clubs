@@ -3,9 +3,9 @@ import {
   View,
   Text,
   TextInput,
-  Alert,
+  Pressable,
+  StyleSheet,
   ActivityIndicator,
-  Dimensions,
 } from "react-native";
 import { styles } from "./styles";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
@@ -30,6 +30,59 @@ import { TextStroke } from "../Login/utils";
 import { LocationPicker } from "@/components/ui/LocationPicker";
 import { Location } from "@/services/locationService";
 import postsService from "@/services/postsService";
+
+const alertStyles = StyleSheet.create({
+  overlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.7)",
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 100,
+  },
+  card: {
+    width: "80%",
+    backgroundColor: Colors.bgCard,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "rgba(57,243,255,0.15)",
+    padding: 24,
+    alignItems: "center",
+  },
+  iconWrap: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: "rgba(57,243,255,0.1)",
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  title: {
+    color: Colors.white,
+    fontSize: 17,
+    fontWeight: "700",
+    textAlign: "center",
+    marginBottom: 8,
+  },
+  body: {
+    color: Colors.lightGrey,
+    fontSize: 14,
+    textAlign: "center",
+    lineHeight: 20,
+    marginBottom: 20,
+  },
+  okBtn: {
+    backgroundColor: Colors.gold,
+    borderRadius: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 32,
+  },
+  okText: {
+    color: Colors.bg,
+    fontSize: 15,
+    fontWeight: "700",
+  },
+});
 
 const VIBE_OPTIONS = [
   { emoji: "💃", name: "Dancing", gradient: ["#FF6B9D", "#C86BFF"] as const },
@@ -71,6 +124,10 @@ export default function ProfileSetupScreen() {
   const [location, setLocation] = useState<Location | null>(null);
   const [favoriteDrinks, setFavoriteDrinks] = useState<string[]>([]);
   const [isSaving, setIsSaving] = useState(false);
+  const [alertModal, setAlertModal] = useState<{
+    title: string;
+    message: string;
+  } | null>(null);
 
   const pickImage = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -78,10 +135,10 @@ export default function ProfileSetupScreen() {
     ImagePicker.requestMediaLibraryPermissionsAsync()
       .then(({ status }) => {
         if (status !== "granted") {
-          Alert.alert(
-            "Permission Required",
-            "We need access to your photos to set a profile picture.",
-          );
+          setAlertModal({
+            title: "Permission Required",
+            message: "We need access to your photos to set a profile picture.",
+          });
           return Promise.reject("Permission denied");
         }
         return ImagePicker.launchImageLibraryAsync({
@@ -123,10 +180,18 @@ export default function ProfileSetupScreen() {
   const handleNext = () => {
     if (currentStep === 1 && !avatarUri) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      Alert.alert(
-        "Profile Photo Required",
-        "Please add a profile photo to continue.",
-      );
+      setAlertModal({
+        title: "Profile Photo Required",
+        message: "Please add a profile photo to continue.",
+      });
+      return;
+    }
+    if (currentStep === 1 && !location) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      setAlertModal({
+        title: "Location Required",
+        message: "Please select your location to continue.",
+      });
       return;
     }
     if (currentStep < totalSteps) {
@@ -145,12 +210,28 @@ export default function ProfileSetupScreen() {
   };
 
   const handleSkip = () => {
+    if (!avatarUri && !location) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      setAlertModal({
+        title: "Required Fields Missing",
+        message: "A profile photo and location are required before continuing.",
+      });
+      return;
+    }
     if (!avatarUri) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      Alert.alert(
-        "Profile Photo Required",
-        "Please add a profile photo before continuing.",
-      );
+      setAlertModal({
+        title: "Profile Photo Required",
+        message: "Please add a profile photo before continuing.",
+      });
+      return;
+    }
+    if (!location) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      setAlertModal({
+        title: "Location Required",
+        message: "Please select your location before continuing.",
+      });
       return;
     }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -165,7 +246,10 @@ export default function ProfileSetupScreen() {
       })
       .catch((error) => {
         console.error("Skip onboarding failed:", error);
-        Alert.alert("Error", "Failed to complete setup. Please try again.");
+        setAlertModal({
+          title: "Error",
+          message: "Failed to complete setup. Please try again.",
+        });
         setIsSaving(false);
       });
   };
@@ -223,14 +307,13 @@ export default function ProfileSetupScreen() {
         console.error("❌ [ProfileSetup] Profile update failed:", error);
         const errorMessage =
           error.message || "Failed to save profile. Please try again.";
-        Alert.alert("Error", errorMessage);
+        setAlertModal({ title: "Error", message: errorMessage });
         setIsSaving(false);
       });
   };
 
   const progress = (currentStep / totalSteps) * 100;
-  // Step 1 requires a profile photo before proceeding
-  const canProceed = currentStep > 1 || !!avatarUri;
+  const canProceed = currentStep > 1 || (!!avatarUri && !!location);
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
@@ -284,7 +367,7 @@ export default function ProfileSetupScreen() {
             exiting={FadeOutDown.springify()}
           >
             <View style={styles.stepHeader}>
-              <TextStroke stroke={0.6} color={Colors.secondaryBlue}>
+              <TextStroke stroke={0.6} color={Colors.gold}>
                 <Text style={styles.stepTitle}>Tell us about yourself</Text>
               </TextStroke>
 
@@ -357,11 +440,14 @@ export default function ProfileSetupScreen() {
                 >
                   <Ionicons name="flash" size={22} color={Colors.gold} />
                 </LinearGradient>
-                <Text style={styles.sectionTitle}>Your Vibe</Text>
+                <View style={styles.textArea}>
+                  <Text style={styles.sectionTitle}>Your Vibe</Text>
+                  <Text style={styles.sectionSubtitle}>
+                    What kind of atmosphere do you enjoy?
+                  </Text>
+                </View>
               </View>
-              <Text style={styles.sectionSubtitle}>
-                What kind of atmosphere do you enjoy?
-              </Text>
+
               <View style={styles.vibesGrid}>
                 {VIBE_OPTIONS.map((vibe, index) => {
                   const isSelected = selectedVibes.includes(vibe.name);
@@ -423,11 +509,14 @@ export default function ProfileSetupScreen() {
                     color={Colors.primaryBlue}
                   />
                 </LinearGradient>
-                <Text style={styles.sectionTitle}>Your Location</Text>
+                <View style={styles.textArea}>
+                  <Text style={styles.sectionTitle}>Your Location</Text>
+                  <Text style={styles.sectionSubtitle}>
+                    Where are you based?
+                  </Text>
+                </View>
               </View>
-              <Text style={styles.sectionSubtitle}>
-                Where are you based? (Optional)
-              </Text>
+
               <LocationPicker
                 value={location}
                 onChange={setLocation}
@@ -445,7 +534,7 @@ export default function ProfileSetupScreen() {
             exiting={FadeOutDown.springify()}
           >
             <View style={styles.stepHeader}>
-              <TextStroke stroke={0.6} color={Colors.secondaryBlue}>
+              <TextStroke stroke={0.6} color={Colors.gold}>
                 <Text style={styles.stepTitle}>What's your go-to drink?</Text>
               </TextStroke>
 
@@ -512,6 +601,29 @@ export default function ProfileSetupScreen() {
 
         <View style={styles.bottomSpacer} />
       </KeyboardAwareScrollView>
+
+      {/* Alert Modal */}
+      {alertModal && (
+        <View style={alertStyles.overlay}>
+          <View style={alertStyles.card}>
+            <View style={alertStyles.iconWrap}>
+              <Ionicons
+                name="information-circle-outline"
+                size={28}
+                color={Colors.primaryBlue}
+              />
+            </View>
+            <Text style={alertStyles.title}>{alertModal.title}</Text>
+            <Text style={alertStyles.body}>{alertModal.message}</Text>
+            <Pressable
+              style={alertStyles.okBtn}
+              onPress={() => setAlertModal(null)}
+            >
+              <Text style={alertStyles.okText}>OK</Text>
+            </Pressable>
+          </View>
+        </View>
+      )}
 
       {/* Next/Complete Button */}
       <Animated.View

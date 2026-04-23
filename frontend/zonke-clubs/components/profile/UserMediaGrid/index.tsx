@@ -349,7 +349,7 @@ function PostGridItem({
                 color={post.isLiked ? "#ef4444" : Colors.smoke}
               />
               <Text style={styles.feedStatText}>
-                {formatNumber(post.likes)}
+                {formatNumber(post.likeCount)}
               </Text>
             </View>
             {/* <View style={styles.feedStat}>

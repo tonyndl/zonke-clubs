@@ -277,6 +277,8 @@ export default function ClubScreen() {
           (apiPost: ApiClubPost) => ({
             id: apiPost.id,
             clubId: apiPost.club_id,
+            clubName: club!.name,
+            clubLocation: club!.location?.name,
             description: apiPost.caption || undefined,
             media: apiPost.assets.map((asset) => ({
               id: asset.id,
@@ -482,8 +484,16 @@ export default function ClubScreen() {
       });
   };
 
-  // Handle media press
+  // Handle media press — post media opens ClubFeedViewer, standalone assets use MediaViewer
   const handleMediaPress = (media: MediaAsset, allMedia: MediaAsset[]) => {
+    if (media.postId) {
+      const postIndex = clubPosts.findIndex((p) => p.id === media.postId);
+      if (postIndex !== -1) {
+        setFeedInitialIndex(postIndex);
+        setShowFeedViewer(true);
+        return;
+      }
+    }
     setSelectedMedia(media);
     setViewerMediaList(allMedia);
     setShowMediaViewer(true);
@@ -494,6 +504,8 @@ export default function ClubScreen() {
     const newPost: ClubPost = {
       id: `club_post_${Date.now()}`,
       clubId: clubId,
+      clubName: club?.name,
+      clubLocation: club?.location?.name,
       description: description || undefined,
       media: media.map((item, index) => ({
         id: `media_${Date.now()}_${index}`,
@@ -1878,11 +1890,9 @@ export default function ClubScreen() {
           );
         }}
         onPostLiked={(postId, liked, likeCount) => {
-          setClubPosts(
-            clubPosts.map((p) =>
-              p.id === postId
-                ? { ...p, isLiked: liked, likeCount: likeCount }
-                : p,
+          setClubPosts((prev) =>
+            prev.map((p) =>
+              p.id === postId ? { ...p, isLiked: liked, likeCount } : p,
             ),
           );
         }}

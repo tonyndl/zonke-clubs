@@ -345,7 +345,7 @@ export default function SettingsScreen() {
             entering={FadeInUp.delay(50).springify()}
             style={styles.titleContainer}
           >
-            <TextStroke stroke={0.6} color={Colors.secondaryBlue}>
+            <TextStroke stroke={0.6} color={Colors.gold}>
               <Text style={styles.screenTitle}>Settings</Text>
             </TextStroke>
           </Animated.View>

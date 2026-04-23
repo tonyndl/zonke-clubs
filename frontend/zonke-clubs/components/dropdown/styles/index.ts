@@ -17,13 +17,11 @@ export const styles = StyleSheet.create({
     borderRadius: 5,
     backgroundColor: Colors.bgSecondary,
     position: "relative",
-    // zIndex: 1,
     overflow: "hidden",
   },
   before: {
     ...StyleSheet.absoluteFillObject,
     borderRadius: 5,
-    // backgroundColor: Colors.lightGrey,
     opacity: 0.4,
     zIndex: -1,
   },

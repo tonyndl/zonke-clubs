@@ -15,8 +15,8 @@ import { useRouter, useLocalSearchParams } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import { TextStroke } from "../_screens/Login/utils";
-import { styles } from "./_styles";
+import { TextStroke } from "../screens/Login/utils";
+import { styles } from "./styles";
 import { FONT_FAMILIES } from "@/constants/fontFamilies";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");

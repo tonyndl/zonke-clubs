@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useCallback } from "react";
 import {
   View,
   Text,
@@ -11,11 +11,18 @@ import {
   ScrollView,
   NativeScrollEvent,
   NativeSyntheticEvent,
+  PanResponder,
   StyleSheet,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { VideoView, useVideoPlayer } from "expo-video";
-import Animated, { FadeIn, FadeOut } from "react-native-reanimated";
+import { LinearGradient } from "expo-linear-gradient";
+import Animated, {
+  FadeIn,
+  FadeOut,
+  ZoomIn,
+  ZoomOut,
+} from "react-native-reanimated";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { Ionicons } from "@expo/vector-icons";
 import { Provider as PaperProvider } from "react-native-paper";
@@ -25,12 +32,19 @@ import { PopupMenu } from "@/components/popup";
 import { EditPostModal } from "../EditPostModal";
 import { LikeButton } from "@/components/ui/LikeButton";
 import { ClubPost, MediaAsset } from "@/types/post";
+import { formatTimeAgo } from "@/data/clubVideos";
 import postsService from "@/services/postsService";
 import { clubsService } from "@/services/clubsService";
 import { Toast } from "@/components/ui/Toast";
 import { styles } from "./styles";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
+
+const formatDuration = (seconds: number): string => {
+  const m = Math.floor(seconds / 60);
+  const s = Math.floor(seconds % 60);
+  return `${m}:${s.toString().padStart(2, "0")}`;
+};
 
 interface Props {
   visible: boolean;
@@ -59,48 +73,44 @@ export function ClubFeedViewer({
   const [localPosts, setLocalPosts] = useState<ClubPost[]>(posts);
   const flatListRef = useRef<FlatList>(null);
 
-  // Update local posts when props change
   React.useEffect(() => {
     setLocalPosts(posts);
   }, [posts]);
 
-  // Handle like toggle
   const handleToggleLike = (postId: string) => {
-    // Optimistically update UI
-    setLocalPosts((prevPosts) =>
-      prevPosts.map((post) =>
-        post.id === postId
-          ? {
-              ...post,
-              isLiked: !post.isLiked,
-              likeCount: post.isLiked ? post.likeCount - 1 : post.likeCount + 1,
-            }
-          : post,
+    const post = localPosts.find((p) => p.id === postId);
+    if (!post) return;
+    const newLiked = !post.isLiked;
+    const newCount = newLiked ? post.likeCount + 1 : post.likeCount - 1;
+
+    setLocalPosts((prev) =>
+      prev.map((p) =>
+        p.id === postId ? { ...p, isLiked: newLiked, likeCount: newCount } : p,
       ),
     );
+    if (onPostLiked) onPostLiked(postId, newLiked, newCount);
 
-    // Call API
     clubsService
       .togglePostLike(postId)
       .then((result) => {
-        // Update with server response to ensure consistency
-        setLocalPosts((prevPosts) =>
-          prevPosts.map((post) =>
-            post.id === postId
-              ? { ...post, isLiked: result.liked, likeCount: result.like_count }
-              : post,
+        setLocalPosts((prev) =>
+          prev.map((p) =>
+            p.id === postId
+              ? { ...p, isLiked: result.liked, likeCount: result.like_count }
+              : p,
           ),
         );
-
-        // Notify parent component of the like change
-        if (onPostLiked) {
-          onPostLiked(postId, result.liked, result.like_count);
-        }
+        if (onPostLiked) onPostLiked(postId, result.liked, result.like_count);
       })
-      .catch((error) => {
-        console.error("Failed to toggle like:", error);
-        // Revert optimistic update on error
-        setLocalPosts(posts);
+      .catch(() => {
+        setLocalPosts((prev) =>
+          prev.map((p) =>
+            p.id === postId
+              ? { ...p, isLiked: post.isLiked, likeCount: post.likeCount }
+              : p,
+          ),
+        );
+        if (onPostLiked) onPostLiked(postId, post.isLiked, post.likeCount);
       });
   };
 
@@ -117,9 +127,7 @@ export function ClubFeedViewer({
   const handleViewableItemsChanged = useRef(({ viewableItems }: any) => {
     if (viewableItems.length > 0) {
       const index = viewableItems[0].index;
-      if (index !== null) {
-        setCurrentIndex(index);
-      }
+      if (index !== null) setCurrentIndex(index);
     }
   }).current;
 
@@ -166,7 +174,7 @@ export function ClubFeedViewer({
               onViewableItemsChanged={handleViewableItemsChanged}
               viewabilityConfig={viewabilityConfig}
               initialScrollIndex={initialPostIndex}
-              getItemLayout={(data, index) => ({
+              getItemLayout={(_, index) => ({
                 length: SCREEN_HEIGHT,
                 offset: SCREEN_HEIGHT * index,
                 index,
@@ -175,13 +183,6 @@ export function ClubFeedViewer({
               snapToInterval={SCREEN_HEIGHT}
               snapToAlignment="start"
             />
-
-            {/* Post Counter */}
-            {/* <Animated.View entering={FadeIn.delay(200)} style={styles.counterBadge}>
-          <Text style={styles.counterText}>
-            {currentIndex + 1} / {posts.length}
-          </Text>
-        </Animated.View> */}
           </Animated.View>
         </GestureHandlerRootView>
       </PaperProvider>
@@ -214,6 +215,8 @@ function FeedItem({
   const [showControls, setShowControls] = useState(true);
   const [videoProgress, setVideoProgress] = useState(0);
   const [isMuted, setIsMuted] = useState(false);
+  const [duration, setDuration] = useState(0);
+  const [currentTime, setCurrentTime] = useState(0);
   const [showEditModal, setShowEditModal] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -222,125 +225,132 @@ function FeedItem({
   const [toastType, setToastType] = useState<"success" | "error" | "info">(
     "error",
   );
+
   const scrollViewRef = useRef<ScrollView>(null);
-  const progressBarWidthRef = useRef<number>(0);
   const insets = useSafeAreaInsets();
+  const controlsTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isDraggingRef = useRef(false);
+  const trackWidthRef = useRef(0);
 
   const currentMedia = post.media[currentMediaIndex];
-  const isVideo = currentMedia.type === "video";
+  const isVideo = currentMedia?.type === "video";
   const hasMultipleMedia = post.media.length > 1;
 
-  // Create video player for current video - with preview frame
   const videoPlayer = useVideoPlayer(
     isVideo ? currentMedia.url : "",
     (player) => {
       player.loop = false;
       player.muted = isMuted;
-      // Set a preview frame so first frame loads immediately (like MediaViewer)
-      const previewTime = currentMedia.startTime || 0.1;
-      player.currentTime = previewTime;
+      player.currentTime = currentMedia?.startTime || 0.1;
     },
   );
 
-  // Update muted state when it changes
+  const playerRef = useRef(videoPlayer);
+  playerRef.current = videoPlayer;
+
+  const seekToRatio = useCallback((locationX: number) => {
+    const ratio = Math.max(0, Math.min(1, locationX / trackWidthRef.current));
+    const seekTime = ratio * (playerRef.current.duration ?? 0);
+    playerRef.current.currentTime = seekTime;
+    setVideoProgress(ratio * 100);
+    setCurrentTime(seekTime);
+  }, []);
+
+  const progressPanResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderGrant: (e) => {
+        isDraggingRef.current = true;
+        seekToRatio(e.nativeEvent.locationX);
+      },
+      onPanResponderMove: (e) => {
+        seekToRatio(e.nativeEvent.locationX);
+      },
+      onPanResponderRelease: (e) => {
+        seekToRatio(e.nativeEvent.locationX);
+        isDraggingRef.current = false;
+      },
+      onPanResponderTerminate: () => {
+        isDraggingRef.current = false;
+      },
+    }),
+  ).current;
+
+  // Sync muted state
   React.useEffect(() => {
-    if (videoPlayer) {
-      videoPlayer.muted = isMuted;
-    }
+    if (videoPlayer) videoPlayer.muted = isMuted;
   }, [isMuted, videoPlayer]);
 
-  // ONLY control playback for active posts - let inactive ones show first frame naturally
+  // Play/pause based on active state
   React.useEffect(() => {
     if (!videoPlayer || !isVideo || !isActive) return;
-
-    const isTrimmed =
-      currentMedia.startTime != null && currentMedia.endTime != null;
-
-    if (!isTrimmed) {
-      // For active non-trimmed videos, play them
-      videoPlayer.loop = true;
-      videoPlayer.play();
-    }
-
-    // Cleanup: pause when becoming inactive
+    videoPlayer.loop = true;
+    videoPlayer.play();
     return () => {
       try {
         videoPlayer.pause();
-      } catch (error) {
-        // Video player might already be destroyed, ignore error
-      }
+      } catch (_) {}
     };
   }, [isActive, isVideo, videoPlayer, currentMedia]);
 
-  // Handle trimmed video playback
+  // Progress polling + trimmed video loop
   React.useEffect(() => {
-    if (!videoPlayer || !isVideo || !isActive) return;
-
-    // Check if video is trimmed
+    if (!isVideo || !isActive) {
+      setVideoProgress(0);
+      setCurrentTime(0);
+      return;
+    }
     const isTrimmed =
-      currentMedia.startTime != null && currentMedia.endTime != null;
+      currentMedia?.startTime != null && currentMedia?.endTime != null;
 
-    if (isTrimmed) {
-      // Start at trim start time
-      videoPlayer.currentTime = currentMedia.startTime || 0;
-      videoPlayer.play(); // Start playing from trim start
+    const interval = setInterval(() => {
+      if (isDraggingRef.current) return;
+      const rawDur = videoPlayer.duration ?? 0;
+      const rawCur = videoPlayer.currentTime ?? 0;
+      const dur = isTrimmed
+        ? currentMedia.endTime! - currentMedia.startTime!
+        : rawDur;
+      const cur = isTrimmed ? rawCur - (currentMedia.startTime ?? 0) : rawCur;
+      setDuration(dur);
+      setCurrentTime(Math.max(0, cur));
+      setVideoProgress(dur > 0 ? (Math.max(0, cur) / dur) * 100 : 0);
+      if (isTrimmed && rawCur >= (currentMedia.endTime ?? 0)) {
+        videoPlayer.currentTime = currentMedia.startTime ?? 0;
+      }
+    }, 250);
 
-      // Monitor playback and loop within trimmed range + update progress
-      const interval = setInterval(() => {
-        const currentTime = videoPlayer.currentTime;
-        const startTime = currentMedia.startTime || 0;
-        const endTime = currentMedia.endTime || currentMedia.duration || 0;
-        const duration = endTime - startTime;
+    return () => clearInterval(interval);
+  }, [isVideo, isActive, videoPlayer, currentMedia]);
 
-        // Update progress bar
-        const progress = ((currentTime - startTime) / duration) * 100;
-        setVideoProgress(Math.max(0, Math.min(100, progress)));
+  // Auto-hide controls after 3 seconds
+  React.useEffect(() => {
+    if (showControls) {
+      if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
+      controlsTimeoutRef.current = setTimeout(
+        () => setShowControls(false),
+        3000,
+      );
+    }
+    return () => {
+      if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
+    };
+  }, [showControls]);
 
-        // If we've reached the end of the trim, loop back to start
-        if (currentTime >= endTime) {
-          videoPlayer.currentTime = startTime;
-        }
-      }, 100);
-
-      return () => clearInterval(interval);
+  const handleTap = () => {
+    if (isVideo) {
+      setShowControls(true);
+      if (videoPlayer?.playing) {
+        videoPlayer.pause();
+      } else {
+        videoPlayer?.play();
+      }
     } else {
-      // For non-trimmed videos, just loop normally
-      videoPlayer.loop = true;
-
-      // Update progress bar
-      const interval = setInterval(() => {
-        const currentTime = videoPlayer.currentTime;
-        const duration = videoPlayer.duration || currentMedia.duration || 0;
-        if (!duration) return;
-        const progress = (currentTime / duration) * 100;
-        setVideoProgress(Math.max(0, Math.min(100, progress)));
-      }, 100);
-
-      return () => clearInterval(interval);
-    }
-  }, [videoPlayer, currentMedia, isVideo, isActive]);
-
-  const handleNextMedia = () => {
-    if (currentMediaIndex < post.media.length - 1) {
-      const nextIndex = currentMediaIndex + 1;
-      scrollViewRef.current?.scrollTo({
-        x: SCREEN_WIDTH * nextIndex,
-        animated: true,
-      });
-      setCurrentMediaIndex(nextIndex);
+      setShowControls((prev) => !prev);
     }
   };
 
-  const handlePreviousMedia = () => {
-    if (currentMediaIndex > 0) {
-      const prevIndex = currentMediaIndex - 1;
-      scrollViewRef.current?.scrollTo({
-        x: SCREEN_WIDTH * prevIndex,
-        animated: true,
-      });
-      setCurrentMediaIndex(prevIndex);
-    }
-  };
+  const toggleMute = () => setIsMuted((m) => !m);
 
   const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     const offsetX = event.nativeEvent.contentOffset.x;
@@ -354,86 +364,24 @@ function FeedItem({
     }
   };
 
-  const togglePlayPause = () => {
-    if (videoPlayer) {
-      if (videoPlayer.playing) {
-        videoPlayer.pause();
-      } else {
-        videoPlayer.play();
-      }
-    }
-  };
-
-  const toggleMute = () => {
-    setIsMuted(!isMuted);
-  };
-
-  const handleVideoTap = () => {
-    setShowControls(!showControls);
-  };
-
-  React.useEffect(() => {
-    let timeout: ReturnType<typeof setTimeout> | undefined;
-    if (showControls && isVideo) {
-      timeout = setTimeout(() => {
-        setShowControls(false);
-      }, 3000);
-    }
-    return () => {
-      if (timeout) clearTimeout(timeout);
-    };
-  }, [showControls, isVideo]);
-
-  const handleProgressBarLayout = (event: any) => {
-    progressBarWidthRef.current = event.nativeEvent.layout.width;
-  };
-
-  const handleProgressBarPress = (event: any) => {
-    if (!videoPlayer || !isVideo || !progressBarWidthRef.current) return;
-
-    const { locationX } = event.nativeEvent;
-    const progress = Math.max(
-      0,
-      Math.min(1, locationX / progressBarWidthRef.current),
-    );
-    const duration = videoPlayer.duration || currentMedia.duration || 0;
-    if (!duration) return;
-    const newTime = progress * duration;
-
-    const wasPlaying = videoPlayer.playing;
-    videoPlayer.currentTime = newTime;
-    if (wasPlaying) {
-      videoPlayer.play();
-    }
-  };
-
   const handleMenuSelect = (value: string) => {
-    const lowerValue = value.toLowerCase();
-
-    if (lowerValue === "edit info") {
-      setShowEditModal(true);
-    } else if (lowerValue === "delete") {
-      setShowDeleteConfirm(true);
-    } else if (lowerValue === "pin to top") {
-      handlePinPost();
-    } else if (lowerValue === "unpin") {
-      handleUnpinPost();
-    }
+    const v = value.toLowerCase();
+    if (v === "edit info") setShowEditModal(true);
+    else if (v === "delete") setShowDeleteConfirm(true);
+    else if (v === "pin to top") handlePinPost();
+    else if (v === "unpin") handleUnpinPost();
   };
 
   const handlePinPost = () => {
     postsService
       .pinPost(post.id)
       .then((result) => {
-        if (onPostPinToggled) {
-          onPostPinToggled(post.id, result.pinned_at);
-        }
+        if (onPostPinToggled) onPostPinToggled(post.id, result.pinned_at);
         setToastType("success");
         setToastMessage("Post pinned!");
         setToastVisible(true);
       })
-      .catch((error) => {
-        console.error("Failed to pin post:", error);
+      .catch(() => {
         setToastType("error");
         setToastMessage("Failed to pin post");
         setToastVisible(true);
@@ -444,15 +392,12 @@ function FeedItem({
     postsService
       .unpinPost(post.id)
       .then(() => {
-        if (onPostPinToggled) {
-          onPostPinToggled(post.id, undefined);
-        }
+        if (onPostPinToggled) onPostPinToggled(post.id, undefined);
         setToastType("success");
         setToastMessage("Post unpinned");
         setToastVisible(true);
       })
-      .catch((error) => {
-        console.error("Failed to unpin post:", error);
+      .catch(() => {
         setToastType("error");
         setToastMessage("Failed to unpin post");
         setToastVisible(true);
@@ -464,13 +409,10 @@ function FeedItem({
     postsService
       .deletePost(post.id)
       .then(() => {
-        if (onPostDeleted) {
-          onPostDeleted(post.id);
-        }
+        if (onPostDeleted) onPostDeleted(post.id);
         onClose();
       })
-      .catch((error) => {
-        console.error("Failed to delete post:", error);
+      .catch(() => {
         setIsDeleting(false);
         setToastType("error");
         setToastMessage("Failed to delete post");
@@ -479,30 +421,101 @@ function FeedItem({
   };
 
   const handleEditSuccess = (updatedCaption: string) => {
-    if (onPostUpdated) {
-      onPostUpdated(post.id, updatedCaption);
-    }
+    if (onPostUpdated) onPostUpdated(post.id, updatedCaption);
   };
 
   return (
     <View style={styles.feedItem}>
-      {/* Close Button */}
-      <Animated.View
-        entering={FadeIn.delay(300)}
-        style={[styles.closeButton, { top: insets.top + 34 }]}
+      {/* Full-screen horizontal media scroll */}
+      <ScrollView
+        ref={scrollViewRef}
+        horizontal
+        pagingEnabled
+        showsHorizontalScrollIndicator={false}
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
+        style={StyleSheet.absoluteFill}
       >
-        <PressableScale onPress={onClose}>
-          <View style={styles.closeButtonInner}>
-            <Ionicons name="close" size={28} color={Colors.platinum} />
-          </View>
-        </PressableScale>
-      </Animated.View>
+        {post.media.map((media, index) => {
+          const isCurrentVideo = media.type === "video";
+          const isCurrentMedia = index === currentMediaIndex;
+          return (
+            <View key={index} style={styles.mediaPage}>
+              {isCurrentVideo && isCurrentMedia ? (
+                <VideoView
+                  player={videoPlayer}
+                  style={styles.media}
+                  contentFit="cover"
+                  surfaceType="textureView"
+                  nativeControls={false}
+                  allowsFullscreen={false}
+                />
+              ) : isCurrentVideo ? (
+                <View style={styles.media} />
+              ) : (
+                <Image
+                  source={{ uri: media.url }}
+                  style={styles.media}
+                  resizeMode="contain"
+                />
+              )}
+            </View>
+          );
+        })}
+      </ScrollView>
 
-      {/* Menu Button - Only show for user's own posts */}
-      {currentUserId && post.user?.id === currentUserId && (
+      {/* Center play icon — shown when paused + controls visible */}
+      {showControls && isVideo && !videoPlayer?.playing && (
         <Animated.View
-          entering={FadeIn.delay(300)}
-          style={[styles.menuButton, { top: insets.top + 26 }]}
+          entering={ZoomIn.duration(250).springify()}
+          exiting={ZoomOut.duration(200)}
+          style={styles.centerPlayIcon}
+          pointerEvents="none"
+        >
+          <View style={styles.playIconBackground}>
+            <Ionicons name="play" size={52} color={Colors.white} />
+          </View>
+        </Animated.View>
+      )}
+
+      {/* Tap area — covers screen above progress bar */}
+      <Pressable style={styles.tapArea} onPress={handleTap} />
+
+      {/* Duration badge — top right */}
+      {showControls && isVideo && duration > 0 && (
+        <Animated.View
+          entering={FadeIn.duration(200)}
+          exiting={FadeOut.duration(200)}
+          style={[styles.durationBadge, { top: insets.top + 16 }]}
+          pointerEvents="none"
+        >
+          <Text style={styles.durationText}>
+            {formatDuration(duration - currentTime)}
+          </Text>
+        </Animated.View>
+      )}
+
+      {/* Close button — top left */}
+      {showControls && (
+        <Animated.View
+          entering={FadeIn.duration(200)}
+          exiting={FadeOut.duration(200)}
+          style={[styles.closeButton, { top: insets.top + 8 }]}
+        >
+          <PressableScale onPress={onClose}>
+            <View style={styles.closeButtonInner}>
+              <Ionicons name="close" size={24} color={Colors.gold} />
+            </View>
+          </PressableScale>
+        </Animated.View>
+      )}
+
+      {/* Menu button — top right, owner only */}
+      {showControls && currentUserId && post.user?.id === currentUserId && (
+        <Animated.View
+          entering={FadeIn.duration(200)}
+          exiting={FadeOut.duration(200)}
+          style={[styles.menuButton, { top: insets.top + 8 }]}
         >
           <PopupMenu
             options={
@@ -516,7 +529,7 @@ function FeedItem({
             <View style={styles.menuButtonInner}>
               <Ionicons
                 name="ellipsis-vertical"
-                size={24}
+                size={20}
                 color={Colors.platinum}
               />
             </View>
@@ -524,142 +537,114 @@ function FeedItem({
         </Animated.View>
       )}
 
-      {/* Media Display */}
-      <View style={styles.mediaContainer}>
-        <ScrollView
-          ref={scrollViewRef}
-          horizontal
-          pagingEnabled
-          showsHorizontalScrollIndicator={false}
-          onScroll={handleScroll}
-          scrollEventThrottle={16}
-          style={styles.scrollView}
-        >
-          {post.media.map((media, index) => {
-            const isCurrentVideo = media.type === "video";
-            const isCurrentMedia = index === currentMediaIndex;
-
-            return (
-              <View key={index} style={styles.mediaItem}>
-                {isCurrentVideo && isCurrentMedia ? (
-                  <>
-                    <VideoView
-                      player={videoPlayer}
-                      style={styles.media}
-                      contentFit="contain"
-                      nativeControls={false}
-                      allowsFullscreen={false}
-                    />
-                    {/* Tap to show/hide controls */}
-                    <Pressable
-                      style={styles.videoTapArea}
-                      onPress={handleVideoTap}
-                    />
-                  </>
-                ) : isCurrentVideo ? (
-                  <View style={styles.media} />
-                ) : (
-                  <Image
-                    source={{ uri: media.url }}
-                    style={styles.media}
-                    resizeMode="contain"
-                  />
-                )}
-              </View>
-            );
-          })}
-        </ScrollView>
-
-        {/* Bottom Controls */}
-        {isVideo && showControls && (
-          <Animated.View
-            entering={FadeIn}
-            exiting={FadeOut}
-            style={styles.videoBottomControls}
-          >
-            <PressableScale
-              onPress={togglePlayPause}
-              style={styles.feedPlayPauseButton}
-            >
-              <Ionicons
-                name={videoPlayer?.playing ? "pause" : "play"}
-                size={24}
-                color={Colors.platinum}
-              />
-            </PressableScale>
-
-            <Pressable
-              style={styles.progressBarContainer}
-              onPress={handleProgressBarPress}
-            >
-              <View
-                style={styles.progressBarBackground}
-                onLayout={handleProgressBarLayout}
-              >
-                <Animated.View
-                  entering={FadeIn}
-                  style={[
-                    styles.progressBarFill,
-                    { width: `${videoProgress}%` },
-                  ]}
-                />
-              </View>
-            </Pressable>
-
-            <PressableScale onPress={toggleMute} style={styles.feedMuteButton}>
-              <Ionicons
-                name={isMuted ? "volume-mute" : "volume-high"}
-                size={24}
-                color={Colors.platinum}
-              />
-            </PressableScale>
-          </Animated.View>
-        )}
-
-        {/* Media Navigation Dots (Instagram style) */}
-        {hasMultipleMedia && (
-          <Animated.View
-            entering={FadeIn}
-            exiting={FadeOut}
-            style={styles.dotsContainer}
-          >
-            {post.media.map((_, index) => (
-              <View
-                key={index}
-                style={[
-                  styles.dot,
-                  index === currentMediaIndex && styles.dotActive,
-                ]}
-              />
-            ))}
-          </Animated.View>
-        )}
-      </View>
-
-      {/* Post Info Overlay */}
+      {/* Bottom info overlay */}
       {showControls && (
         <Animated.View
-          entering={FadeIn}
-          exiting={FadeOut}
-          style={styles.infoOverlay}
+          entering={FadeIn.duration(200)}
+          exiting={FadeOut.duration(200)}
+          style={styles.bottomInfoWrapper}
+          onStartShouldSetResponder={() => true}
         >
-          <View style={styles.gradientOverlay}>
+          <View style={styles.bottomInfo}>
+            {/* Caption */}
             {post.description && (
-              <View style={styles.descriptionContainer}>
-                <Text style={styles.description}>{post.description}</Text>
+              <Text style={styles.captionText} numberOfLines={3}>
+                {post.description}
+              </Text>
+            )}
+
+            {/* Club name + like + mute */}
+            <View style={styles.nameContainer}>
+              <View style={styles.clubBadge}>
+                <Ionicons name="home" size={14} color={Colors.gold} />
+                <Text style={styles.clubName} numberOfLines={1}>
+                  {post.clubName || "Club"}
+                </Text>
+              </View>
+              <View style={styles.rightActions}>
+                <LikeButton
+                  isLiked={post.isLiked}
+                  likeCount={post.likeCount}
+                  onToggleLike={() => onToggleLike(post.id)}
+                  size="medium"
+                  showCount
+                />
+                {isVideo && (
+                  <PressableScale onPress={toggleMute}>
+                    <Ionicons
+                      name={isMuted ? "volume-mute" : "volume-high"}
+                      size={28}
+                      color={Colors.white}
+                    />
+                  </PressableScale>
+                )}
+              </View>
+            </View>
+
+            {/* Location */}
+            {post.clubLocation && (
+              <View style={styles.locationRow}>
+                <Ionicons
+                  name="location"
+                  size={12}
+                  color={Colors.smoke}
+                  style={{ marginTop: 3 }}
+                />
+                <Text style={styles.locationText}>{post.clubLocation}</Text>
               </View>
             )}
 
+            {/* Time ago */}
             <View style={styles.statsRow}>
-              <LikeButton
-                isLiked={post.isLiked}
-                likeCount={post.likeCount}
-                onToggleLike={() => onToggleLike(post.id)}
-                size="medium"
-                showCount={true}
-              />
+              <View style={styles.stat}>
+                <Ionicons
+                  name="time-outline"
+                  size={14}
+                  color={Colors.platinum}
+                />
+                <Text style={styles.statText}>
+                  {formatTimeAgo(post.createdAt)}
+                </Text>
+              </View>
             </View>
+
+            {/* Pagination dots for multiple media */}
+            {hasMultipleMedia && (
+              <View style={styles.dotsContainer}>
+                {post.media.map((_, i) => (
+                  <View
+                    key={i}
+                    style={[
+                      styles.dot,
+                      i === currentMediaIndex && styles.dotActive,
+                    ]}
+                  />
+                ))}
+              </View>
+            )}
           </View>
+
+          {/* Progress bar — always visible, absolutely at bottom edge */}
+          {isVideo && (
+            <View
+              style={styles.progressTouchArea}
+              onLayout={(e) => {
+                trackWidthRef.current = e.nativeEvent.layout.width;
+              }}
+              {...progressPanResponder.panHandlers}
+            >
+              <View style={styles.progressTrack}>
+                <View
+                  style={[
+                    styles.progressFill,
+                    { width: `${videoProgress}%` as any },
+                  ]}
+                >
+                  <View style={styles.progressThumb} />
+                </View>
+              </View>
+            </View>
+          )}
         </Animated.View>
       )}
 
@@ -679,7 +664,7 @@ function FeedItem({
         onHide={() => setToastVisible(false)}
       />
 
-      {/* Delete Confirmation Overlay */}
+      {/* Delete confirmation overlay */}
       {showDeleteConfirm && (
         <View style={deleteConfirmStyles.overlay}>
           <View style={deleteConfirmStyles.card}>
@@ -716,13 +701,6 @@ function FeedItem({
   );
 }
 
-function formatNumber(num: number): string {
-  if (num >= 1000) {
-    return `${(num / 1000).toFixed(1)}k`;
-  }
-  return num.toString();
-}
-
 const deleteConfirmStyles = StyleSheet.create({
   overlay: {
     position: "absolute",
@@ -755,23 +733,14 @@ const deleteConfirmStyles = StyleSheet.create({
     justifyContent: "center",
     marginBottom: 4,
   },
-  title: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: "#E2E8F0",
-  },
+  title: { fontSize: 18, fontWeight: "700", color: "#E2E8F0" },
   body: {
     fontSize: 14,
     color: "#94A3B8",
     textAlign: "center",
     lineHeight: 20,
   },
-  actions: {
-    flexDirection: "row",
-    gap: 12,
-    marginTop: 8,
-    width: "100%",
-  },
+  actions: { flexDirection: "row", gap: 12, marginTop: 8, width: "100%" },
   cancelBtn: {
     flex: 1,
     paddingVertical: 13,
@@ -780,11 +749,7 @@ const deleteConfirmStyles = StyleSheet.create({
     borderColor: "rgba(255,255,255,0.12)",
     alignItems: "center",
   },
-  cancelText: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: "#94A3B8",
-  },
+  cancelText: { fontSize: 15, fontWeight: "600", color: "#94A3B8" },
   deleteBtn: {
     flex: 1,
     flexDirection: "row",
@@ -795,9 +760,5 @@ const deleteConfirmStyles = StyleSheet.create({
     borderRadius: 14,
     backgroundColor: "#FF6B6B",
   },
-  deleteText: {
-    fontSize: 15,
-    fontWeight: "700",
-    color: "#fff",
-  },
+  deleteText: { fontSize: 15, fontWeight: "700", color: "#fff" },
 });

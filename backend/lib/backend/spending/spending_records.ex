@@ -357,11 +357,9 @@ defmodule Backend.Spending.SpendingRecords do
       from s in SpendingRecord,
         where: s.user_id == ^user_id,
         select: %{
-          total_spending: sum(s.amount),
+          total_spent: sum(s.amount),
           total_visits: count(s.id, :distinct),
-          average_spending: avg(s.amount),
-          max_spending: max(s.amount),
-          clubs_visited: count(s.club_id, :distinct)
+          average_per_visit: avg(s.amount)
         }
 
     result = Repo.one(query)
@@ -380,15 +378,14 @@ defmodule Backend.Spending.SpendingRecords do
 
     favorite_club = Repo.one(favorite_club_query)
 
-    # Fetch club details if favorite club exists
-    favorite_club_data =
+    most_visited_club =
       if favorite_club do
         club = Repo.get(Backend.Clubs.Club, favorite_club.club_id)
 
         if club do
           %{
-            id: club.id,
-            name: club.name,
+            club_id: club.id,
+            club_name: club.name,
             visit_count: favorite_club.visit_count
           }
         else
@@ -398,9 +395,17 @@ defmodule Backend.Spending.SpendingRecords do
         nil
       end
 
-    result
-    |> Map.put(:favorite_club, favorite_club_data)
+    %{
+      total_spent: decimal_to_float(result.total_spent),
+      total_visits: result.total_visits,
+      average_per_visit: decimal_to_float(result.average_per_visit),
+      most_visited_club: most_visited_club
+    }
   end
+
+  defp decimal_to_float(nil), do: 0.0
+  defp decimal_to_float(%Decimal{} = d), do: Decimal.to_float(d)
+  defp decimal_to_float(v), do: v
 
   @doc """
   Gets the user's leaderboard rankings at clubs where they are in the top 10.
@@ -429,11 +434,22 @@ defmodule Backend.Spending.SpendingRecords do
 
         entry ->
           club = Repo.get(Backend.Clubs.Club, club_id)
+
+          best_date =
+            from(s in SpendingRecord,
+              where: s.user_id == ^user_id and s.club_id == ^club_id,
+              order_by: [desc: s.amount],
+              limit: 1,
+              select: s.visit_date
+            )
+            |> Repo.one()
+
           %{
             club_id: club_id,
             club_name: if(club, do: club.name, else: "Unknown"),
             rank: entry.rank,
-            best_amount: if(is_struct(entry.amount, Decimal), do: Decimal.to_float(entry.amount), else: entry.amount)
+            best_amount: decimal_to_float(entry.amount),
+            best_amount_date: best_date
           }
       end
     end)

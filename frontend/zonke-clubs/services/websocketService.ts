@@ -6,7 +6,7 @@ import { Platform } from "react-native";
 declare const WebSocket: any;
 
 // Use same IP as API service for consistency
-const LOCAL_IP = "192.168.1.139";
+const LOCAL_IP = "192.168.1.140";
 
 const getWebSocketUrl = () => {
   // For iOS and Android, use local network IP

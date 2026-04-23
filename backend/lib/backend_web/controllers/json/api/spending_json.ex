@@ -11,6 +11,19 @@ defmodule BackendWeb.API.SpendingJSON do
     %{spending_record: data(spending_record)}
   end
 
+  def stats(%{stats: stats}) do
+    %{
+      total_spent: stats.total_spent,
+      total_visits: stats.total_visits,
+      average_per_visit: stats.average_per_visit,
+      most_visited_club: stats.most_visited_club
+    }
+  end
+
+  def rankings(%{rankings: rankings}) do
+    %{rankings: rankings}
+  end
+
   defp data(spending_record) do
     %{
       id: spending_record.id,

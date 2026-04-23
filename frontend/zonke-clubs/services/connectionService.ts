@@ -138,15 +138,28 @@ class ConnectionService {
   }
 
   /**
+   * Get the active connection between the current user and another user (requires authentication)
+   */
+  getConnectionWithUser(
+    userId: string,
+  ): Promise<{ request: ConnectionRequest | null }> {
+    return api
+      .get<any>(`/connection-requests/with/${userId}`, true)
+      .then((response) => ({
+        request: response.request ? transformRequest(response.request) : null,
+      }));
+  }
+
+  /**
    * Get connection request by thread_id (requires authentication)
    */
   getRequestByThread(
     threadId: string,
-  ): Promise<SingleConnectionRequestResponse> {
+  ): Promise<{ request: ConnectionRequest | null }> {
     return api
       .get<any>(`/connection-requests/thread/${threadId}`, true)
       .then((response) => ({
-        request: transformRequest(response.request),
+        request: response.request ? transformRequest(response.request) : null,
       }));
   }
 

@@ -1,11 +1,17 @@
 import React, { useRef, useState, useCallback, useEffect, memo } from "react";
-import { View, Text, FlatList, ViewToken, Pressable } from "react-native";
+import {
+  View,
+  Text,
+  FlatList,
+  ViewToken,
+  Pressable,
+  PanResponder,
+} from "react-native";
 import { useVideoPlayer, VideoView } from "expo-video";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useIsFocused } from "@react-navigation/native";
 import * as Haptics from "expo-haptics";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, {
   FadeIn,
   FadeOut,
@@ -17,7 +23,7 @@ import { Colors } from "@/constants/ui";
 import { PressableScale } from "@/components/ui/PressableScale";
 import { ClubVideo } from "@/services/clubsService";
 import { formatTimeAgo } from "@/data/clubVideos";
-import { styles, SCREEN_HEIGHT, TAB_BAR_HEIGHT } from "./styles";
+import { styles } from "./styles";
 
 type VideoItem = ClubVideo & {
   clubId: string;
@@ -27,31 +33,73 @@ type VideoItem = ClubVideo & {
 
 type Props = {
   videos: VideoItem[];
-  onLike?: (clubId: string) => void;
-  likedClubs?: Record<string, boolean>;
 };
 
 type VideoPlayerProps = {
   item: VideoItem;
   isActive: boolean;
-  onLike?: (clubId: string) => void;
-  isLiked: boolean;
   isScreenFocused: boolean;
 };
 
+const formatDuration = (seconds: number): string => {
+  const m = Math.floor(seconds / 60);
+  const s = Math.floor(seconds % 60);
+  return `${m}:${s.toString().padStart(2, "0")}`;
+};
+
 const VideoPlayer: React.FC<VideoPlayerProps> = memo(
-  ({ item, isActive, onLike, isLiked, isScreenFocused }) => {
+  ({ item, isActive, isScreenFocused }) => {
     const [isMuted, setIsMuted] = useState(false);
     const [showControls, setShowControls] = useState(true);
     const [isPlaying, setIsPlaying] = useState(false);
+    const [progress, setProgress] = useState(0);
+    const [currentTime, setCurrentTime] = useState(0);
+    const [duration, setDuration] = useState(0);
     const controlsTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
       null,
     );
+    const progressIntervalRef = useRef<ReturnType<typeof setInterval> | null>(
+      null,
+    );
+    const trackWidthRef = useRef(0);
+    const isDraggingRef = useRef(false);
 
     const player = useVideoPlayer(item.url, (player) => {
       player.loop = true;
       player.muted = isMuted;
     });
+
+    const playerRef = useRef(player);
+    playerRef.current = player;
+
+    const seekToRatio = useCallback((locationX: number) => {
+      const ratio = Math.max(0, Math.min(1, locationX / trackWidthRef.current));
+      const seekTime = ratio * (playerRef.current.duration ?? 0);
+      playerRef.current.currentTime = seekTime;
+      setProgress(ratio);
+      setCurrentTime(seekTime);
+    }, []);
+
+    const progressPanResponder = useRef(
+      PanResponder.create({
+        onStartShouldSetPanResponder: () => true,
+        onMoveShouldSetPanResponder: () => true,
+        onPanResponderGrant: (e) => {
+          isDraggingRef.current = true;
+          seekToRatio(e.nativeEvent.locationX);
+        },
+        onPanResponderMove: (e) => {
+          seekToRatio(e.nativeEvent.locationX);
+        },
+        onPanResponderRelease: (e) => {
+          seekToRatio(e.nativeEvent.locationX);
+          isDraggingRef.current = false;
+        },
+        onPanResponderTerminate: () => {
+          isDraggingRef.current = false;
+        },
+      }),
+    ).current;
 
     useEffect(() => {
       // Only play if both the video is active AND the screen is focused
@@ -71,37 +119,53 @@ const VideoPlayer: React.FC<VideoPlayerProps> = memo(
       player.muted = isMuted;
     }, [isMuted, player]);
 
-    // Auto-hide controls after 3 seconds
+    // Poll progress while active
     useEffect(() => {
-      if (showControls && isPlaying) {
-        // Clear existing timeout
+      if (isActive && isScreenFocused) {
+        progressIntervalRef.current = setInterval(() => {
+          if (isDraggingRef.current) return;
+          const dur = player.duration ?? 0;
+          const cur = player.currentTime ?? 0;
+          setDuration(dur);
+          setCurrentTime(cur);
+          setProgress(dur > 0 ? cur / dur : 0);
+        }, 250);
+      } else {
+        if (progressIntervalRef.current) {
+          clearInterval(progressIntervalRef.current);
+          progressIntervalRef.current = null;
+        }
+        setProgress(0);
+        setCurrentTime(0);
+      }
+      return () => {
+        if (progressIntervalRef.current) {
+          clearInterval(progressIntervalRef.current);
+          progressIntervalRef.current = null;
+        }
+      };
+    }, [isActive, isScreenFocused, player]);
+
+    // Auto-hide controls after 3 seconds (playing or paused)
+    useEffect(() => {
+      if (showControls) {
         if (controlsTimeoutRef.current) {
           clearTimeout(controlsTimeoutRef.current);
         }
-
-        // Set new timeout to hide controls
         controlsTimeoutRef.current = setTimeout(() => {
           setShowControls(false);
         }, 3000);
       }
-
-      // Cleanup timeout on unmount
       return () => {
         if (controlsTimeoutRef.current) {
           clearTimeout(controlsTimeoutRef.current);
         }
       };
-    }, [showControls, isPlaying]);
+    }, [showControls]);
 
     const toggleMute = () => {
       setIsMuted(!isMuted);
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    };
-
-    const handleLike = () => {
-      if (onLike) {
-        onLike(item.clubId);
-      }
     };
 
     const goToClub = () => {
@@ -109,18 +173,13 @@ const VideoPlayer: React.FC<VideoPlayerProps> = memo(
     };
 
     const handleVideoTap = () => {
-      if (showControls) {
-        // If controls are showing, toggle play/pause
-        if (player.playing) {
-          player.pause();
-          setIsPlaying(false);
-        } else {
-          player.play();
-          setIsPlaying(true);
-        }
+      setShowControls(true);
+      if (player.playing) {
+        player.pause();
+        setIsPlaying(false);
       } else {
-        // If controls are hidden, show them
-        setShowControls(true);
+        player.play();
+        setIsPlaying(true);
       }
     };
 
@@ -130,6 +189,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = memo(
           player={player}
           style={styles.video}
           contentFit="cover"
+          surfaceType="textureView"
           nativeControls={false}
         />
 
@@ -147,6 +207,20 @@ const VideoPlayer: React.FC<VideoPlayerProps> = memo(
           </Animated.View>
         )}
 
+        {/* Countdown timer — top right, shown with controls */}
+        {showControls && duration > 0 && (
+          <Animated.View
+            entering={FadeIn.duration(200)}
+            exiting={FadeOut.duration(200)}
+            style={styles.durationBadge}
+            pointerEvents="none"
+          >
+            <Text style={styles.durationText}>
+              {formatDuration(duration - currentTime)}
+            </Text>
+          </Animated.View>
+        )}
+
         {/* Tap area for play/pause and showing controls - behind controls */}
         <Pressable style={styles.tapArea} onPress={handleVideoTap} />
 
@@ -157,16 +231,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = memo(
             exiting={FadeOut.duration(200)}
             style={styles.rightControls}
             pointerEvents="box-none"
-          >
-            {/* Mute toggle */}
-            <PressableScale onPress={toggleMute} style={styles.controlButton}>
-              <Ionicons
-                name={isMuted ? "volume-mute" : "volume-high"}
-                size={28}
-                color={Colors.white}
-              />
-            </PressableScale>
-          </Animated.View>
+          ></Animated.View>
         )}
 
         {/* Bottom info - above tap area */}
@@ -175,14 +240,28 @@ const VideoPlayer: React.FC<VideoPlayerProps> = memo(
             entering={FadeIn.duration(200)}
             exiting={FadeOut.duration(200)}
             style={styles.bottomInfoWrapper}
-            pointerEvents="box-none"
+            onStartShouldSetResponder={() => true}
           >
-            <Pressable onPress={goToClub} style={styles.bottomInfo}>
-              <View style={styles.clubBadge}>
-                <Ionicons name="home" size={14} color={Colors.gold} />
-                <Text style={styles.clubName} numberOfLines={1}>
-                  {item.clubName}
-                </Text>
+            <View style={styles.bottomInfo}>
+              <View style={styles.nameContainer}>
+                <Pressable onPress={goToClub} style={styles.clubBadge}>
+                  <Ionicons name="home" size={14} color={Colors.gold} />
+                  <Text style={styles.clubName} numberOfLines={1}>
+                    {item.clubName}
+                  </Text>
+                </Pressable>
+
+                {/* Mute toggle */}
+                <PressableScale
+                  onPress={toggleMute}
+                  style={styles.controlButton}
+                >
+                  <Ionicons
+                    name={isMuted ? "volume-mute" : "volume-high"}
+                    size={28}
+                    color={Colors.white}
+                  />
+                </PressableScale>
               </View>
 
               {item.clubLocation && (
@@ -215,7 +294,24 @@ const VideoPlayer: React.FC<VideoPlayerProps> = memo(
                   </Text>
                 </View>
               </View>
-            </Pressable>
+            </View>
+
+            {/* Progress bar — always visible, draggable to seek */}
+            <View
+              style={styles.progressTouchArea}
+              onLayout={(e) => {
+                trackWidthRef.current = e.nativeEvent.layout.width;
+              }}
+              {...progressPanResponder.panHandlers}
+            >
+              <View style={styles.progressTrack}>
+                <View
+                  style={[styles.progressFill, { width: `${progress * 100}%` }]}
+                >
+                  <View style={styles.progressThumb} />
+                </View>
+              </View>
+            </View>
           </Animated.View>
         )}
       </View>
@@ -223,17 +319,12 @@ const VideoPlayer: React.FC<VideoPlayerProps> = memo(
   },
 );
 
-export const ClubVideoFeed: React.FC<Props> = ({
-  videos,
-  onLike,
-  likedClubs = {},
-}) => {
+export const ClubVideoFeed: React.FC<Props> = ({ videos }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
-  const insets = useSafeAreaInsets();
+  const [containerHeight, setContainerHeight] = useState(0);
   const isFocused = useIsFocused();
 
-  // Calculate video height: screen height minus tab bar and safe area
-  const VIDEO_HEIGHT = SCREEN_HEIGHT - TAB_BAR_HEIGHT - insets.top;
+  const VIDEO_HEIGHT = containerHeight;
 
   const onViewableItemsChanged = useRef(
     ({ viewableItems }: { viewableItems: ViewToken[] }) => {
@@ -256,13 +347,11 @@ export const ClubVideoFeed: React.FC<Props> = ({
         <VideoPlayer
           item={item}
           isActive={index === currentIndex}
-          onLike={onLike}
-          isLiked={likedClubs[item.clubId] || false}
           isScreenFocused={isFocused}
         />
       </View>
     ),
-    [currentIndex, onLike, likedClubs, VIDEO_HEIGHT, isFocused],
+    [currentIndex, VIDEO_HEIGHT, isFocused],
   );
 
   const getItemLayout = useCallback(
@@ -284,21 +373,28 @@ export const ClubVideoFeed: React.FC<Props> = ({
   }
 
   return (
-    <FlatList
-      data={videos}
-      renderItem={renderItem}
-      keyExtractor={(item) => `${item.clubId}-${item.id}`}
-      pagingEnabled
-      showsVerticalScrollIndicator={false}
-      snapToInterval={VIDEO_HEIGHT}
-      snapToAlignment="start"
-      decelerationRate="fast"
-      onViewableItemsChanged={onViewableItemsChanged}
-      viewabilityConfig={viewabilityConfig}
-      getItemLayout={getItemLayout}
-      removeClippedSubviews
-      maxToRenderPerBatch={2}
-      windowSize={3}
-    />
+    <View
+      style={{ flex: 1 }}
+      onLayout={(e) => setContainerHeight(e.nativeEvent.layout.height)}
+    >
+      {containerHeight > 0 && (
+        <FlatList
+          data={videos}
+          renderItem={renderItem}
+          keyExtractor={(item) => `${item.clubId}-${item.id}`}
+          pagingEnabled
+          showsVerticalScrollIndicator={false}
+          snapToInterval={VIDEO_HEIGHT}
+          snapToAlignment="start"
+          decelerationRate="fast"
+          onViewableItemsChanged={onViewableItemsChanged}
+          viewabilityConfig={viewabilityConfig}
+          getItemLayout={getItemLayout}
+          removeClippedSubviews
+          maxToRenderPerBatch={2}
+          windowSize={3}
+        />
+      )}
+    </View>
   );
 };

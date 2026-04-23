@@ -20,7 +20,7 @@ import Animated, {
 import { Ionicons } from "@expo/vector-icons";
 import { Colors } from "@/constants/ui";
 import { PressableScale } from "@/components/ui/PressableScale";
-import { TextStroke } from "../../_screens/Login/utils";
+import { TextStroke } from "../../screens/Login/utils";
 import { LinearGradient } from "expo-linear-gradient";
 import {
   router,
@@ -58,7 +58,7 @@ import {
   formatPlannedDate,
 } from "@/types/meetup";
 import { PostIntentionModal } from "@/components/meetup/PostIntentionModal";
-import { styles } from "./_styles";
+import { styles } from "./styles";
 
 const intentionStyles = StyleSheet.create({
   card: {
@@ -1273,7 +1273,7 @@ export default function ProfileScreen() {
               <Ionicons name="chevron-back" size={28} color={Colors.gold} />
             </PressableScale>
           )}
-          <TextStroke stroke={0.6} color={Colors.secondaryBlue}>
+          <TextStroke stroke={0.6} color={Colors.gold}>
             <Text style={styles.headerTitle}>Profile</Text>
           </TextStroke>
           {isOwnProfile && (

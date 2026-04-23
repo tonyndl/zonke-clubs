@@ -7,6 +7,10 @@ defmodule BackendWeb.API.ConnectionRequestJSON do
     %{requests: Enum.map(requests, &data/1)}
   end
 
+  def show(%{request: nil}) do
+    %{request: nil}
+  end
+
   def show(%{request: request}) do
     %{request: data(request)}
   end

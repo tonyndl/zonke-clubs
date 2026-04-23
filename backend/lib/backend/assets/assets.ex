@@ -11,10 +11,8 @@ defmodule Backend.Assets do
   @bucket "zonke-clubs-bucket"
   # 7 days in seconds
   @expires_in 604_000
-  # Note: 30 second video duration limit is enforced client-side (see VIDEO_UPLOAD_GUIDE.md)
-  # Future: add server-side validation with ffprobe
-  # 50MB max file size
-  @max_file_size 50 * 1024 * 1024
+  # 50MB max size for images only — videos have no size limit (duration enforced client-side)
+  @max_image_size 50 * 1024 * 1024
 
   @allowed_image_types [
     "image/jpeg",
@@ -29,11 +27,14 @@ defmodule Backend.Assets do
 
   # === S3 UPLOAD/DOWNLOAD FUNCTIONS ===
 
-  # Validates file type and size
+  # Validates file type and (for images) size
   defp validate_file(%Plug.Upload{content_type: content_type, path: path}) do
-    with :ok <- validate_file_type(content_type),
-         :ok <- validate_file_size(path) do
-      :ok
+    with :ok <- validate_file_type(content_type) do
+      if content_type in @allowed_image_types do
+        validate_image_size(path)
+      else
+        :ok
+      end
     end
   end
 
@@ -48,14 +49,14 @@ defmodule Backend.Assets do
     end
   end
 
-  defp validate_file_size(path) do
+  defp validate_image_size(path) do
     case File.stat(path) do
-      {:ok, %{size: size}} when size <= @max_file_size ->
+      {:ok, %{size: size}} when size <= @max_image_size ->
         :ok
 
       {:ok, %{size: size}} ->
         {:error,
-         "File size #{size} bytes exceeds maximum of #{@max_file_size} bytes (#{@max_file_size / 1024 / 1024}MB)"}
+         "Image size #{size} bytes exceeds maximum of #{@max_image_size} bytes (#{@max_image_size / 1024 / 1024}MB)"}
 
       {:error, reason} ->
         {:error, "Failed to read file: #{inspect(reason)}"}
@@ -248,7 +249,7 @@ defmodule Backend.Assets do
     if Mix.env() == :dev do
       # Use local network IP for mobile device access
       # Change this to your machine's IP address if different
-      local_ip = System.get_env("LOCAL_IP") || "192.168.1.139"
+      local_ip = System.get_env("LOCAL_IP") || "192.168.1.140"
 
       ExAws.Config.new(:s3,
         scheme: "http://",

@@ -71,28 +71,24 @@ export function LikeButton({
     onToggleLike();
   };
 
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-  }));
-
   const iconSize = SIZES[size].icon;
   const textSize = SIZES[size].text;
 
   return (
     <Pressable onPress={handlePress} style={styles.container}>
-      <Animated.View style={[styles.iconContainer, animatedStyle]}>
+      {showCount && count > 0 && (
+        <Text style={[styles.count, { fontSize: textSize }]}>
+          {count >= 1000 ? `${(count / 1000).toFixed(1)}k` : count}
+        </Text>
+      )}
+
+      <Animated.View style={[styles.iconContainer]}>
         <Ionicons
           name={liked ? "heart" : "heart-outline"}
           size={iconSize}
           color={liked ? "#FF4458" : Colors.platinum}
         />
       </Animated.View>
-
-      {showCount && count > 0 && (
-        <Text style={[styles.count, { fontSize: textSize }]}>
-          {count >= 1000 ? `${(count / 1000).toFixed(1)}k` : count}
-        </Text>
-      )}
     </Pressable>
   );
 }

@@ -46,6 +46,7 @@ defmodule BackendWeb.Router do
     get "/connection-requests/received", ConnectionRequestController, :received
     get "/connection-requests/sent", ConnectionRequestController, :sent
     get "/connection-requests/thread/:thread_id", ConnectionRequestController, :get_by_thread
+    get "/connection-requests/with/:user_id", ConnectionRequestController, :with_user
     post "/connection-requests/batch-delete", ConnectionRequestController, :batch_delete
     post "/connection-requests", ConnectionRequestController, :create
     put "/connection-requests/:id/accept", ConnectionRequestController, :accept

@@ -18,7 +18,6 @@ export const styles = StyleSheet.create({
   video: {
     width: "100%",
     height: "100%",
-    position: "absolute",
     zIndex: 0,
   },
   gradient: {
@@ -44,9 +43,17 @@ export const styles = StyleSheet.create({
   },
   tapArea: {
     position: "absolute",
-    width: "100%",
-    height: "100%",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 25,
     zIndex: 5,
+  },
+  nameContainer: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
   },
   rightControls: {
     position: "absolute",
@@ -59,12 +66,12 @@ export const styles = StyleSheet.create({
   bottomInfoWrapper: {
     position: "absolute",
     left: 16,
-    right: 80,
-    bottom: 120,
+    right: 16,
+    bottom: 36,
     zIndex: 15,
   },
   controlButton: {
-    alignItems: "center",
+    // alignItems: "center",
     gap: 4,
   },
   controlText: {
@@ -74,6 +81,7 @@ export const styles = StyleSheet.create({
   },
   bottomInfo: {
     gap: 8,
+    marginBottom: 18,
   },
   clubBadge: {
     flexDirection: "row",
@@ -102,6 +110,7 @@ export const styles = StyleSheet.create({
     alignItems: "center",
     gap: 16,
     marginTop: 4,
+    marginBottom: 20,
   },
   stat: {
     flexDirection: "row",
@@ -111,6 +120,49 @@ export const styles = StyleSheet.create({
   statText: {
     color: Colors.platinum,
     fontSize: 12,
+  },
+  durationBadge: {
+    position: "absolute",
+    top: 12,
+    right: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+    zIndex: 10,
+  },
+  durationText: {
+    color: Colors.white,
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  progressTouchArea: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 25,
+    justifyContent: "center",
+    zIndex: 20,
+  },
+  progressTrack: {
+    width: "100%",
+    height: 3,
+    backgroundColor: "rgba(255,255,255,0.3)",
+    borderRadius: 2,
+  },
+  progressFill: {
+    height: "100%",
+    backgroundColor: Colors.gold,
+    borderRadius: 2,
+  },
+  progressThumb: {
+    position: "absolute",
+    top: -4,
+    right: -5,
+    width: 11,
+    height: 11,
+    borderRadius: 6,
+    backgroundColor: Colors.gold,
   },
   emptyContainer: {
     flex: 1,

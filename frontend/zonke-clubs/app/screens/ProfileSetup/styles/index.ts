@@ -141,9 +141,12 @@ export const styles = StyleSheet.create({
   },
   sectionHeader: {
     flexDirection: "row",
-    alignItems: "center",
     gap: 12,
-    marginBottom: 12,
+    marginBottom: 20,
+  },
+  textArea: {
+    justifyContent: "center",
+    gap: 10,
   },
   iconGradient: {
     width: 44,
@@ -156,12 +159,11 @@ export const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: "600",
     color: Colors.gold,
+    marginVertical: "auto",
   },
   sectionSubtitle: {
     fontSize: 13,
     color: Colors.lightGrey,
-    marginBottom: 16,
-    marginLeft: 56,
   },
   bioContainer: {
     backgroundColor: Colors.bgCard,
