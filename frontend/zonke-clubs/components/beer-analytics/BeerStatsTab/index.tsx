@@ -10,6 +10,7 @@ import {
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { Ionicons } from "@expo/vector-icons";
 import { styles } from "./styles";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 interface Props {
   userId: string;
@@ -119,15 +120,11 @@ export function BeerStatsTab({
 
   if (!canView) {
     return (
-      <View style={styles.emptyContainer}>
-        <View style={styles.emptyIconWrap}>
-          <Ionicons name="lock-closed" size={32} color={Colors.gold} />
-        </View>
-        <Text style={styles.emptyText}>Spending data is private</Text>
-        <Text style={styles.emptySubtext}>
-          This member has chosen to keep their spending private
-        </Text>
-      </View>
+      <EmptyState
+        icon="lock-closed"
+        title="Spending data is private"
+        subtitle="This member has chosen to keep their spending private"
+      />
     );
   }
 
@@ -142,17 +139,11 @@ export function BeerStatsTab({
 
   if (error || !stats) {
     return (
-      <View style={styles.errorContainer}>
-        <View style={styles.emptyIconWrap}>
-          <Ionicons name="alert-circle" size={32} color={Colors.smoke} />
-        </View>
-        <Text style={styles.errorText}>
-          {error || "No spending data available"}
-        </Text>
-        <Text style={styles.errorSubtext}>
-          Clubs you visit will add your spending records here
-        </Text>
-      </View>
+      <EmptyState
+        icon="alert-circle-outline"
+        title={error || "No spending data available"}
+        subtitle="Clubs you visit will add your spending records here"
+      />
     );
   }
 
@@ -160,15 +151,11 @@ export function BeerStatsTab({
 
   if (!hasData) {
     return (
-      <View style={styles.emptyContainer}>
-        <View style={styles.emptyIconWrap}>
-          <Ionicons name="beer-outline" size={32} color={Colors.gold} />
-        </View>
-        <Text style={styles.emptyText}>No spending records yet</Text>
-        <Text style={styles.emptySubtext}>
-          When you visit clubs, they'll add your spending records here
-        </Text>
-      </View>
+      <EmptyState
+        icon="beer-outline"
+        title="No spending records yet"
+        subtitle="When you visit clubs, they'll add your spending records here"
+      />
     );
   }
 

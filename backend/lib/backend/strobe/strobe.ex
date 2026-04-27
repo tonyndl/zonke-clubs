@@ -109,8 +109,23 @@ defmodule Backend.Strobe do
 
     case result do
       {:ok, approval} ->
+        approval = Repo.preload(approval, :dj_user)
         BackendWeb.Endpoint.broadcast("user:#{dj_user_id}", "dj_request_approved", %{
           club_id: club_id
+        })
+        BackendWeb.Endpoint.broadcast("strobe:#{club_id}", "dj_approval_approved", %{
+          approval: %{
+            id: approval.id,
+            dj_user_id: approval.dj_user_id,
+            club_id: approval.club_id,
+            status: approval.status,
+            expires_at: approval.expires_at,
+            dj_user: %{
+              id: approval.dj_user.id,
+              username: approval.dj_user.username,
+              avatar_url: approval.dj_user.avatar_url
+            }
+          }
         })
         {:ok, approval}
 
@@ -130,6 +145,9 @@ defmodule Backend.Strobe do
           {:ok, _} ->
             BackendWeb.Endpoint.broadcast("user:#{dj_user_id}", "dj_request_denied", %{
               club_id: club_id
+            })
+            BackendWeb.Endpoint.broadcast("strobe:#{club_id}", "dj_approval_revoked", %{
+              dj_user_id: dj_user_id
             })
             {:ok, :deleted}
 

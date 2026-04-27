@@ -9,6 +9,7 @@ import {
   TextInput,
   Pressable,
   PanResponder,
+  StyleSheet,
 } from "react-native";
 import { Modal } from "@/components/modal";
 import Svg, {
@@ -73,6 +74,7 @@ import { PlaywriteIE_400Regular } from "@expo-google-fonts/playwrite-ie";
 import { Workbench_400Regular } from "@expo-google-fonts/workbench";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
+const AnimatedLinearGradient = Animated.createAnimatedComponent(LinearGradient);
 const BOX_WIDTH = SCREEN_WIDTH - 32 - 8 - 6; // marginHorizontal(32) + ledBorder margin(8) + border(6)
 const PREVIEW_TEXT_WIDTH = BOX_WIDTH * 0.98; // matches render width
 const PREVIEW_BOX_HEIGHT = 186; // ledDisplay 200 - ledBorder margin(8) - border(6)
@@ -86,7 +88,8 @@ type LEDStyle =
   | "fire"
   | "pink"
   | "purple"
-  | "white";
+  | "white"
+  | "rainbow";
 interface LEDTheme {
   name: string;
   primaryColor: string;
@@ -161,7 +164,116 @@ const LED_THEMES: Record<LEDStyle, LEDTheme> = {
     backgroundColor: "#000000",
     icon: "snow",
   },
+  rainbow: {
+    name: "Rainbow",
+    primaryColor: "#FFE000",
+    secondaryColor: "#8B00FF",
+    glowColor: "rgba(255, 224, 0, 0.6)",
+    backgroundColor: "#000000",
+    icon: "color-palette",
+  },
 };
+
+const RAINBOW_STRIPE_COLORS = [
+  "#FF0000",
+  "#FF8C00",
+  "#FFE000",
+  "#00CC00",
+  "#0066FF",
+  "#8B00FF",
+];
+
+function ScanRainbowText({
+  text,
+  textStyle,
+  containerStyle,
+  hollow,
+  hollowBgColor,
+}: {
+  text: string;
+  textStyle: any;
+  containerStyle?: any;
+  hollow?: boolean;
+  hollowBgColor?: string;
+}) {
+  const fontSize: number = textStyle.fontSize ?? 40;
+  const w: number | undefined = textStyle.width;
+  const [totalHeight, setTotalHeight] = useState(fontSize);
+
+  const stripeH = fontSize / RAINBOW_STRIPE_COLORS.length;
+  const numLines = Math.max(1, Math.round(totalHeight / fontSize));
+  const containerHeight = numLines * fontSize;
+
+  return (
+    <View
+      style={[
+        w !== undefined ? { width: w } : undefined,
+        containerStyle,
+        { height: containerHeight },
+      ]}
+    >
+      {/* Hidden reference — lineHeight:fontSize makes each line exactly fontSize px so numLines is exact */}
+      <Text
+        style={
+          {
+            ...textStyle,
+            lineHeight: fontSize,
+            position: "absolute",
+            opacity: 0,
+            includeFontPadding: false,
+          } as any
+        }
+        onLayout={(e) => {
+          const h = e.nativeEvent.layout.height;
+          if (h > 0 && Math.abs(h - totalHeight) > 0.5) setTotalHeight(h);
+        }}
+      >
+        {text}
+      </Text>
+      {Array.from({ length: numLines }).flatMap((_, l) =>
+        RAINBOW_STRIPE_COLORS.map((color, i) => {
+          const offset = l * fontSize + i * stripeH;
+          const stripeText = (
+            <Text
+              style={
+                {
+                  ...textStyle,
+                  color: hollow ? hollowBgColor : color,
+                  // hollow uses absolute positioning so TextStroke's wrapper has zero layout height
+                  // and doesn't interfere with the stripe clip; non-hollow uses marginTop (in-flow)
+                  ...(hollow
+                    ? { position: "absolute" as const, top: -offset }
+                    : { marginTop: -offset }),
+                  lineHeight: fontSize,
+                  includeFontPadding: false,
+                } as any
+              }
+            >
+              {text}
+            </Text>
+          );
+          return (
+            <View
+              key={`${l}-${i}`}
+              style={[
+                { height: stripeH, overflow: "hidden" },
+                w !== undefined ? { width: w } : undefined,
+              ]}
+            >
+              {hollow ? (
+                <TextStroke color={color} stroke={2}>
+                  {stripeText}
+                </TextStroke>
+              ) : (
+                stripeText
+              )}
+            </View>
+          );
+        }),
+      )}
+    </View>
+  );
+}
 
 function hsvToHex(h: number, s: number, v: number): string {
   const i = Math.floor(h / 60) % 6;
@@ -205,18 +317,24 @@ function ColorWheelPicker({
   onColorChange,
   previewTextColor,
   previewBgColor,
+  isRainbow,
+  tab,
 }: {
   size: number;
   initialColor: string;
   onColorChange: (hex: string) => void;
   previewTextColor?: string;
   previewBgColor?: string;
+  isRainbow?: boolean;
+  tab: "text" | "bg";
 }) {
   const cx = size / 2;
   const cy = size / 2;
   const outerR = size / 2 - 2;
   const holeR = size * 0.18;
   const [selectedColor, setSelectedColor] = useState(initialColor);
+  const [hasInteractedText, setHasInteractedText] = useState(false);
+  const [hasInteractedBg, setHasInteractedBg] = useState(false);
 
   const pickColor = (x: number, y: number) => {
     const dx = x - cx;
@@ -227,6 +345,11 @@ function ColorWheelPicker({
     if (angle < 0) angle += 360;
     const saturation = Math.min(1, (radius - holeR) / (outerR - holeR));
     const hex = hsvToHex(angle, saturation, 1);
+    if (tab === "text") {
+      if (!hasInteractedText) setHasInteractedText(true);
+    } else {
+      if (!hasInteractedBg) setHasInteractedBg(true);
+    }
     setSelectedColor(hex);
     onColorChange(hex);
   };
@@ -241,7 +364,6 @@ function ColorWheelPicker({
         pickColor(e.nativeEvent.locationX, e.nativeEvent.locationY),
     }),
   ).current;
-
   const slices = useMemo(() => {
     const paths: React.ReactElement[] = [];
     for (let i = 0; i < WHEEL_SLICES; i++) {
@@ -322,7 +444,11 @@ function ColorWheelPicker({
             justifyContent: "center",
           }}
         >
-          <Text style={getATextStyle()}>A</Text>
+          {isRainbow && (tab === "bg" || !hasInteractedText) ? (
+            <ScanRainbowText text="A" textStyle={getATextStyle()} />
+          ) : (
+            <Text style={getATextStyle()}>A</Text>
+          )}
         </View>
       )}
     </View>
@@ -341,6 +467,7 @@ function SpeedSlider({
   backgroundColor,
   onDragStart,
   onDragEnd,
+  isRainbow,
 }: {
   value: number;
   onChange: (speed: number) => void;
@@ -349,6 +476,7 @@ function SpeedSlider({
   backgroundColor: string;
   onDragStart: () => void;
   onDragEnd: () => void;
+  isRainbow?: boolean;
 }) {
   const [trackWidth, setTrackWidth] = useState(0);
   const positionRef = useRef(0);
@@ -420,27 +548,51 @@ function SpeedSlider({
         >
           SCROLL SPEED
         </Text>
-        <View
-          style={{
-            paddingHorizontal: 10,
-            paddingVertical: 3,
-            borderRadius: 8,
-            backgroundColor: primaryColor + "22",
-            borderWidth: 1,
-            borderColor: primaryColor + "55",
-          }}
-        >
-          <Text
+        {isRainbow ? (
+          <LinearGradient
+            colors={RAINBOW_STRIPE_COLORS as any}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
             style={{
-              color: primaryColor,
-              fontSize: 11,
-              fontWeight: "800",
-              letterSpacing: 1,
+              paddingHorizontal: 10,
+              paddingVertical: 3,
+              borderRadius: 8,
             }}
           >
-            {getLabel(value)}
-          </Text>
-        </View>
+            <Text
+              style={{
+                color: "#fff",
+                fontSize: 11,
+                fontWeight: "800",
+                letterSpacing: 1,
+              }}
+            >
+              {getLabel(value)}
+            </Text>
+          </LinearGradient>
+        ) : (
+          <View
+            style={{
+              paddingHorizontal: 10,
+              paddingVertical: 3,
+              borderRadius: 8,
+              backgroundColor: primaryColor + "22",
+              borderWidth: 1,
+              borderColor: primaryColor + "55",
+            }}
+          >
+            <Text
+              style={{
+                color: primaryColor,
+                fontSize: 11,
+                fontWeight: "800",
+                letterSpacing: 1,
+              }}
+            >
+              {getLabel(value)}
+            </Text>
+          </View>
+        )}
       </View>
 
       {/* Slider track */}
@@ -465,7 +617,11 @@ function SpeedSlider({
 
             {/* Filled gradient track */}
             <LinearGradient
-              colors={[secondaryColor + "90", primaryColor]}
+              colors={
+                isRainbow
+                  ? (RAINBOW_STRIPE_COLORS as any)
+                  : [secondaryColor + "90", primaryColor]
+              }
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               style={{
@@ -477,7 +633,7 @@ function SpeedSlider({
               }}
             />
 
-            {/*thumb */}
+            {/* thumb */}
             <View
               style={{
                 position: "absolute",
@@ -485,7 +641,14 @@ function SpeedSlider({
                 width: THUMB_SIZE,
                 height: THUMB_SIZE,
                 borderRadius: THUMB_SIZE / 2,
-                backgroundColor: primaryColor,
+                backgroundColor: isRainbow
+                  ? RAINBOW_STRIPE_COLORS[
+                      Math.floor(
+                        (position / Math.max(1, trackWidth)) *
+                          (RAINBOW_STRIPE_COLORS.length - 1),
+                      )
+                    ]
+                  : primaryColor,
                 borderWidth: 3,
                 borderColor: backgroundColor,
               }}
@@ -529,7 +692,7 @@ function SpeedSlider({
 
 export function ScanScreen() {
   const router = useRouter();
-  const { setLedPrimaryColor } = useLedColor();
+  const { setLedPrimaryColor, setLedStyle, setIsRainbowActive } = useLedColor();
   const [text, setText] = useState("TAP TO ENTER YOUR TEXT");
   const [speed, setSpeed] = useState(225);
   const [currentStyle, setCurrentStyle] = useState<LEDStyle>("neon");
@@ -549,6 +712,8 @@ export function ScanScreen() {
   const [pendingBgColor, setPendingBgColor] = useState<string>("#000000");
   const pendingTextColorRef = useRef<string>("#00FFFF");
   const pendingBgColorRef = useRef<string>("#000000");
+  const openingTextColorRef = useRef<string>("#00FFFF");
+  const openingBgColorRef = useRef<string>("#000000");
   const [modalWheelKey, setModalWheelKey] = useState(0);
   const [scrollEnabled, setScrollEnabled] = useState(true);
   const [currentFontFamily, setCurrentFontFamily] = useState("monospace");
@@ -623,6 +788,7 @@ export function ScanScreen() {
         glowColor: customColor + "99",
       }
     : baseTheme;
+  const isRainbow = currentStyle === "rainbow" && !customColor;
 
   // Initialize pending colors from committed state when modal opens
   useEffect(() => {
@@ -633,6 +799,8 @@ export function ScanScreen() {
       setPendingBgColor(bc);
       pendingTextColorRef.current = tc;
       pendingBgColorRef.current = bc;
+      openingTextColorRef.current = tc;
+      openingBgColorRef.current = bc;
     }
   }, [showColorModal]);
 
@@ -717,11 +885,14 @@ export function ScanScreen() {
     setCurrentStyle(style);
     setCustomColor(null);
     setLedPrimaryColor(LED_THEMES[style].primaryColor);
+    setLedStyle(style);
+    setIsRainbowActive(style === "rainbow");
   };
 
   const handleCustomColorComplete = (hex: string) => {
     setCustomColor(hex);
     setLedPrimaryColor(hex);
+    setIsRainbowActive(false);
     setShowColorModal(false);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   };
@@ -822,7 +993,15 @@ export function ScanScreen() {
           width: 99999,
         };
         const scrollText = (key: string) =>
-          hollowStroke ? (
+          isRainbow ? (
+            <ScanRainbowText
+              key={key}
+              text={displayText}
+              textStyle={sharedTextStyle}
+              hollow={hollowStroke}
+              hollowBgColor={bgColor}
+            />
+          ) : hollowStroke ? (
             <TextStroke key={key} color={textColor as string} stroke={2}>
               <Text style={sharedTextStyle}>{displayText}</Text>
             </TextStroke>
@@ -870,20 +1049,24 @@ export function ScanScreen() {
           outputRange: [0, -1.5],
         });
 
-        const waveInner = (
-          <Text
-            style={{
-              width: ledBoxWidth * 0.98,
-              fontSize: actualFontSize,
-              ...fontStyleProps,
-              color: hollowStroke ? bgColor : textColor,
-              letterSpacing: 2,
-              textAlign: "center",
-              lineHeight: actualFontSize * 1.2,
-            }}
-          >
-            {displayText}
-          </Text>
+        const waveTextStyle = {
+          width: ledBoxWidth * 0.98,
+          fontSize: actualFontSize,
+          ...fontStyleProps,
+          color: hollowStroke ? bgColor : textColor,
+          letterSpacing: 2,
+          textAlign: "center" as const,
+          lineHeight: actualFontSize * 1.2,
+        };
+        const waveInner = isRainbow ? (
+          <ScanRainbowText
+            text={displayText}
+            textStyle={waveTextStyle}
+            hollow={hollowStroke}
+            hollowBgColor={bgColor}
+          />
+        ) : (
+          <Text style={waveTextStyle}>{displayText}</Text>
         );
         return (
           <Animated.View
@@ -895,7 +1078,7 @@ export function ScanScreen() {
               ],
             }}
           >
-            {hollowStroke ? (
+            {hollowStroke && !isRainbow ? (
               <TextStroke color={textColor as string} stroke={2}>
                 {waveInner}
               </TextStroke>
@@ -906,40 +1089,36 @@ export function ScanScreen() {
         );
       }
 
+      const staticTextStyle = {
+        width: ledBoxWidth * 0.98,
+        fontSize: actualFontSize,
+        ...fontStyleProps,
+        letterSpacing: 2,
+        textAlign: "center" as const,
+        lineHeight: actualFontSize * 1.2,
+      };
+
+      if (isRainbow) {
+        return (
+          <ScanRainbowText
+            text={displayText}
+            textStyle={staticTextStyle}
+            hollow={hollowStroke}
+            hollowBgColor={bgColor}
+          />
+        );
+      }
+
       if (hollowStroke) {
         return (
           <TextStroke color={textColor as string} stroke={2}>
-            <Text
-              style={{
-                width: ledBoxWidth * 0.98,
-                fontSize: actualFontSize,
-                ...fontStyleProps,
-                color: bgColor,
-                letterSpacing: 2,
-                textAlign: "center",
-                lineHeight: actualFontSize * 1.2,
-              }}
-            >
+            <Text style={{ ...staticTextStyle, color: bgColor }}>
               {displayText}
             </Text>
           </TextStroke>
         );
       }
-
-      return (
-        <Text
-          style={{
-            width: ledBoxWidth * 0.98,
-            fontSize: actualFontSize,
-            ...fontStyleProps,
-            letterSpacing: 2,
-            textAlign: "center",
-            lineHeight: actualFontSize * 1.2,
-          }}
-        >
-          {displayText}
-        </Text>
-      );
+      return <Text style={staticTextStyle}>{displayText}</Text>;
     }
 
     // Fullscreen mode
@@ -989,10 +1168,7 @@ export function ScanScreen() {
   };
 
   return (
-    <SafeAreaView
-      style={[styles.container, { backgroundColor: theme.backgroundColor }]}
-      edges={["top"]}
-    >
+    <SafeAreaView style={styles.container} edges={["top"]}>
       <StatusBar style="light" />
 
       {/* Hidden off-screen node to measure true pixel width of one scroll text copy */}
@@ -1090,7 +1266,13 @@ export function ScanScreen() {
           >
             <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
               <LinearGradient
-                colors={[theme.primaryColor, theme.secondaryColor]}
+                colors={
+                  isRainbow
+                    ? (RAINBOW_STRIPE_COLORS as any)
+                    : [theme.primaryColor, theme.secondaryColor]
+                }
+                start={{ x: 0, y: 0 }}
+                end={{ x: 0, y: 1 }}
                 style={styles.headerIconContainer}
               >
                 <Ionicons name="tv" size={32} color={theme.backgroundColor} />
@@ -1103,9 +1285,21 @@ export function ScanScreen() {
             </Text>
           </PressableScale>
 
-          <Text style={[styles.headerTitle, { color: theme.primaryColor }]}>
-            LED BANNER
-          </Text>
+          {isRainbow ? (
+            <ScanRainbowText
+              text="LED BANNER"
+              textStyle={{
+                fontSize: 32,
+                fontWeight: "900" as const,
+                letterSpacing: 4,
+              }}
+              containerStyle={{ marginBottom: 6 }}
+            />
+          ) : (
+            <Text style={[styles.headerTitle, { color: theme.primaryColor }]}>
+              LED BANNER
+            </Text>
+          )}
           <Text
             style={[styles.headerSubtitle, { color: theme.secondaryColor }]}
           >
@@ -1125,21 +1319,43 @@ export function ScanScreen() {
         >
           <View style={styles.ledBorder}>
             {/* Corner lights */}
-            {[0, 1, 2, 3].map((corner) => (
-              <Animated.View
-                key={corner}
-                style={[
-                  styles.cornerLight,
-                  {
-                    backgroundColor: theme.primaryColor,
-                    shadowColor: theme.glowColor,
-                    transform: [{ scale: pulseAnim }],
-                    [corner === 0 || corner === 3 ? "top" : "bottom"]: 8,
-                    [corner === 0 || corner === 1 ? "left" : "right"]: 8,
-                  },
-                ]}
-              />
-            ))}
+            {[0, 1, 2, 3].map((corner) => {
+              const posStyle = {
+                transform: [{ scale: pulseAnim }],
+                [corner === 0 || corner === 3 ? "top" : "bottom"]: 8,
+                [corner === 0 || corner === 1 ? "left" : "right"]: 8,
+              };
+              return isRainbow ? (
+                <AnimatedLinearGradient
+                  key={corner}
+                  colors={RAINBOW_STRIPE_COLORS as any}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={[
+                    styles.cornerLight,
+                    {
+                      shadowColor:
+                        RAINBOW_STRIPE_COLORS[
+                          corner % RAINBOW_STRIPE_COLORS.length
+                        ],
+                      ...posStyle,
+                    },
+                  ]}
+                />
+              ) : (
+                <Animated.View
+                  key={corner}
+                  style={[
+                    styles.cornerLight,
+                    {
+                      backgroundColor: theme.primaryColor,
+                      shadowColor: theme.glowColor,
+                      ...posStyle,
+                    },
+                  ]}
+                />
+              );
+            })}
 
             {/* BG color palette button - top left */}
             <Pressable
@@ -1151,17 +1367,75 @@ export function ScanScreen() {
                 setShowColorModal(true);
               }}
             >
-              <View
-                style={[
-                  styles.bgColorSwatch,
-                  { backgroundColor: bgColor, borderColor: theme.primaryColor },
-                ]}
-              />
-              <Ionicons
-                name="color-palette-outline"
-                size={14}
-                color={theme.primaryColor}
-              />
+              {isRainbow ? (
+                <LinearGradient
+                  colors={RAINBOW_STRIPE_COLORS as any}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={{
+                    width: 14,
+                    height: 14,
+                    borderRadius: 7,
+                    padding: 1.5,
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <View
+                    style={{
+                      flex: 1,
+                      width: "100%",
+                      borderRadius: 5.5,
+                      backgroundColor: bgColor,
+                    }}
+                  />
+                </LinearGradient>
+              ) : (
+                <View
+                  style={[
+                    styles.bgColorSwatch,
+                    {
+                      backgroundColor: bgColor,
+                      borderColor: theme.primaryColor,
+                    },
+                  ]}
+                />
+              )}
+              {isRainbow ? (
+                (() => {
+                  const iconSize = 14;
+                  const stripeH = iconSize / RAINBOW_STRIPE_COLORS.length;
+                  return (
+                    <View style={{ width: iconSize, height: iconSize }}>
+                      {RAINBOW_STRIPE_COLORS.map((color, i) => (
+                        <View
+                          key={i}
+                          style={{ height: stripeH, overflow: "hidden" }}
+                        >
+                          <Ionicons
+                            name="color-palette-outline"
+                            size={iconSize}
+                            color={color}
+                            style={
+                              {
+                                marginTop: -(i * stripeH),
+                                lineHeight: iconSize,
+                                includeFontPadding: false,
+                              } as any
+                            }
+                          />
+                        </View>
+                      ))}
+                    </View>
+                  );
+                })()
+              ) : (
+                <Ionicons
+                  name="color-palette-outline"
+                  size={14}
+                  color={theme.primaryColor}
+                />
+              )}
             </Pressable>
 
             {/* Edit hint overlay */}
@@ -1170,11 +1444,14 @@ export function ScanScreen() {
                 <Ionicons
                   name="create-outline"
                   size={20}
-                  color={theme.primaryColor}
+                  color={isRainbow ? Colors.platinum : theme.primaryColor}
                   style={{ opacity: 0.5 }}
                 />
                 <Text
-                  style={[styles.editHintText, { color: theme.primaryColor }]}
+                  style={[
+                    styles.editHintText,
+                    { color: isRainbow ? Colors.platinum : theme.primaryColor },
+                  ]}
                 >
                   Tap to Edit
                 </Text>
@@ -1226,28 +1503,61 @@ export function ScanScreen() {
         {/* Quick Edit Input */}
         {isEditingText && (
           <Animated.View style={styles.quickEditContainer}>
-            <TextInput
-              ref={textInputRef}
-              style={[
-                styles.quickEditInput,
-                {
-                  borderColor: theme.primaryColor,
-                  color: Colors.platinum,
-                  fontSize: 16,
-                },
-              ]}
-              value={text}
-              onChangeText={setText}
-              placeholder="Enter your message..."
-              placeholderTextColor={Colors.smoke}
-              autoFocus
-              autoCapitalize="characters"
-              autoCorrect={false}
-              multiline
-              scrollEnabled
-              allowFontScaling={false}
-              onBlur={() => setIsEditingText(false)}
-            />
+            {isRainbow ? (
+              <LinearGradient
+                colors={RAINBOW_STRIPE_COLORS as any}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={{ borderRadius: 14, padding: 2, marginBottom: 12 }}
+              >
+                <TextInput
+                  ref={textInputRef}
+                  style={[
+                    styles.quickEditInput,
+                    {
+                      borderWidth: 0,
+                      marginBottom: 0,
+                      color: Colors.platinum,
+                      fontSize: 16,
+                    },
+                  ]}
+                  value={text}
+                  onChangeText={setText}
+                  placeholder="Enter your message..."
+                  placeholderTextColor={Colors.smoke}
+                  autoFocus
+                  autoCapitalize="characters"
+                  autoCorrect={false}
+                  multiline
+                  scrollEnabled
+                  allowFontScaling={false}
+                  onBlur={() => setIsEditingText(false)}
+                />
+              </LinearGradient>
+            ) : (
+              <TextInput
+                ref={textInputRef}
+                style={[
+                  styles.quickEditInput,
+                  {
+                    borderColor: theme.primaryColor,
+                    color: Colors.platinum,
+                    fontSize: 16,
+                  },
+                ]}
+                value={text}
+                onChangeText={setText}
+                placeholder="Enter your message..."
+                placeholderTextColor={Colors.smoke}
+                autoFocus
+                autoCapitalize="characters"
+                autoCorrect={false}
+                multiline
+                scrollEnabled
+                allowFontScaling={false}
+                onBlur={() => setIsEditingText(false)}
+              />
+            )}
             <View style={styles.quickEditActions}>
               <PressableScale
                 style={[
@@ -1262,6 +1572,17 @@ export function ScanScreen() {
                   );
                 }}
               >
+                {isRainbow && (
+                  <LinearGradient
+                    colors={RAINBOW_STRIPE_COLORS as any}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 0, y: 1 }}
+                    style={[
+                      StyleSheet.absoluteFillObject,
+                      { borderRadius: 12 },
+                    ]}
+                  />
+                )}
                 <Ionicons
                   name="checkmark"
                   size={20}
@@ -1297,77 +1618,56 @@ export function ScanScreen() {
 
         {/* Mode Toggle */}
         <View style={styles.controls}>
-          <PressableScale
-            style={[
-              styles.modeButton,
-              animationMode === "static" && {
-                backgroundColor: theme.primaryColor,
-              },
-            ]}
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-              setAnimationMode("static");
-            }}
-          >
-            <Ionicons
-              name="pause"
-              size={20}
-              color={
-                animationMode === "static"
-                  ? theme.backgroundColor
-                  : theme.primaryColor
-              }
-            />
-            <Text
+          {(["static", "scroll"] as const).map((mode) => (
+            <PressableScale
+              key={mode}
               style={[
-                styles.modeButtonText,
-                {
-                  color:
-                    animationMode === "static"
-                      ? theme.backgroundColor
-                      : theme.primaryColor,
-                },
+                styles.modeButton,
+                { overflow: "hidden" },
+                animationMode === mode &&
+                  !isRainbow && { backgroundColor: theme.primaryColor },
               ]}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                setAnimationMode(mode);
+              }}
             >
-              Static
-            </Text>
-          </PressableScale>
-
-          <PressableScale
-            style={[
-              styles.modeButton,
-              animationMode === "scroll" && {
-                backgroundColor: theme.primaryColor,
-              },
-            ]}
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-              setAnimationMode("scroll");
-            }}
-          >
-            <Ionicons
-              name="play"
-              size={20}
-              color={
-                animationMode === "scroll"
-                  ? theme.backgroundColor
-                  : theme.primaryColor
-              }
-            />
-            <Text
-              style={[
-                styles.modeButtonText,
-                {
-                  color:
-                    animationMode === "scroll"
-                      ? theme.backgroundColor
-                      : theme.primaryColor,
-                },
-              ]}
-            >
-              Scroll
-            </Text>
-          </PressableScale>
+              {isRainbow && animationMode === mode && (
+                <LinearGradient
+                  colors={RAINBOW_STRIPE_COLORS as any}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 0, y: 1 }}
+                  style={[StyleSheet.absoluteFillObject, { borderRadius: 12 }]}
+                />
+              )}
+              <Ionicons
+                name={mode === "static" ? "pause" : "play"}
+                size={20}
+                color={
+                  animationMode === mode
+                    ? theme.backgroundColor
+                    : isRainbow
+                      ? Colors.platinum
+                      : theme.primaryColor
+                }
+              />
+              <Text
+                style={[
+                  styles.modeButtonText,
+                  {
+                    color:
+                      animationMode === mode
+                        ? theme.backgroundColor
+                        : isRainbow
+                          ? Colors.platinum
+                          : theme.primaryColor,
+                  },
+                ]}
+              >
+                {mode === "static" ? "Static" : "Scroll"}
+              </Text>
+            </PressableScale>
+          ))}
         </View>
 
         {/* Speed Slider - Only visible in scroll mode */}
@@ -1380,85 +1680,187 @@ export function ScanScreen() {
             backgroundColor={theme.backgroundColor}
             onDragStart={() => setScrollEnabled(false)}
             onDragEnd={() => setScrollEnabled(true)}
+            isRainbow={isRainbow}
           />
         )}
 
         {/* 3D Wave Toggle - Only visible when Static is selected */}
         {animationMode === "static" && (
           <Animated.View style={styles.waveToggleContainer}>
-            <PressableScale
-              style={[
-                styles.waveToggleCard,
-                waveEnabled && {
-                  backgroundColor: `${theme.primaryColor}15`,
-                  borderColor: theme.primaryColor,
-                },
-              ]}
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                setWaveEnabled(!waveEnabled);
-              }}
-            >
-              <View style={styles.waveToggleContent}>
-                <View style={styles.waveToggleLeft}>
-                  <View
-                    style={[
-                      styles.waveToggleIcon,
-                      waveEnabled && {
-                        backgroundColor: `${theme.primaryColor}30`,
-                      },
-                    ]}
-                  >
-                    <Ionicons
-                      name="pulse"
-                      size={24}
-                      color={waveEnabled ? theme.primaryColor : Colors.smoke}
-                    />
+            {isRainbow && waveEnabled ? (
+              <LinearGradient
+                colors={RAINBOW_STRIPE_COLORS as any}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={{ borderRadius: 18, padding: 2 }}
+              >
+                <PressableScale
+                  style={[styles.waveToggleCard, { borderWidth: 0 }]}
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    setWaveEnabled(!waveEnabled);
+                  }}
+                >
+                  <View style={styles.waveToggleContent}>
+                    <View style={styles.waveToggleLeft}>
+                      <View
+                        style={[
+                          styles.waveToggleIcon,
+                          { backgroundColor: `${RAINBOW_STRIPE_COLORS[0]}25` },
+                        ]}
+                      >
+                        {(() => {
+                          const iconSize = 24;
+                          const stripeH =
+                            iconSize / RAINBOW_STRIPE_COLORS.length;
+                          return (
+                            <View style={{ width: iconSize, height: iconSize }}>
+                              {RAINBOW_STRIPE_COLORS.map((color, i) => (
+                                <View
+                                  key={i}
+                                  style={{
+                                    height: stripeH,
+                                    overflow: "hidden",
+                                  }}
+                                >
+                                  <Ionicons
+                                    name="pulse"
+                                    size={iconSize}
+                                    color={color}
+                                    style={
+                                      {
+                                        marginTop: -(i * stripeH),
+                                        lineHeight: iconSize,
+                                        includeFontPadding: false,
+                                      } as any
+                                    }
+                                  />
+                                </View>
+                              ))}
+                            </View>
+                          );
+                        })()}
+                      </View>
+                      <View>
+                        <ScanRainbowText
+                          text="Bass Pulse"
+                          textStyle={{
+                            fontSize: 14,
+                            fontWeight: "700" as const,
+                            letterSpacing: 0.3,
+                          }}
+                        />
+                        <Text
+                          style={[
+                            styles.waveToggleDesc,
+                            { color: Colors.smoke },
+                          ]}
+                        >
+                          Vibrating from club noise
+                        </Text>
+                      </View>
+                    </View>
+                    <LinearGradient
+                      colors={RAINBOW_STRIPE_COLORS as any}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                      style={[styles.toggleSwitch]}
+                    >
+                      <Animated.View
+                        style={[styles.toggleThumb, styles.toggleThumbActive]}
+                      />
+                    </LinearGradient>
                   </View>
-                  <View>
-                    <Text
+                </PressableScale>
+              </LinearGradient>
+            ) : (
+              <PressableScale
+                style={[
+                  styles.waveToggleCard,
+                  waveEnabled && {
+                    backgroundColor: `${theme.primaryColor}15`,
+                    borderColor: theme.primaryColor,
+                  },
+                ]}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  setWaveEnabled(!waveEnabled);
+                }}
+              >
+                <View style={styles.waveToggleContent}>
+                  <View style={styles.waveToggleLeft}>
+                    <View
                       style={[
-                        styles.waveToggleLabel,
-                        {
-                          color: waveEnabled
-                            ? theme.primaryColor
-                            : Colors.platinum,
+                        styles.waveToggleIcon,
+                        waveEnabled && {
+                          backgroundColor: `${theme.primaryColor}30`,
                         },
                       ]}
                     >
-                      Bass Pulse
-                    </Text>
-                    <Text
-                      style={[styles.waveToggleDesc, { color: Colors.smoke }]}
-                    >
-                      Vibrating from club noise
-                    </Text>
+                      <Ionicons
+                        name="pulse"
+                        size={24}
+                        color={waveEnabled ? theme.primaryColor : Colors.smoke}
+                      />
+                    </View>
+                    <View>
+                      <Text
+                        style={[
+                          styles.waveToggleLabel,
+                          {
+                            color: waveEnabled
+                              ? theme.primaryColor
+                              : Colors.platinum,
+                          },
+                        ]}
+                      >
+                        Bass Pulse
+                      </Text>
+                      <Text
+                        style={[styles.waveToggleDesc, { color: Colors.smoke }]}
+                      >
+                        Vibrating from club noise
+                      </Text>
+                    </View>
+                  </View>
+                  <View
+                    style={[
+                      styles.toggleSwitch,
+                      waveEnabled && { backgroundColor: theme.primaryColor },
+                    ]}
+                  >
+                    <Animated.View
+                      style={[
+                        styles.toggleThumb,
+                        waveEnabled && styles.toggleThumbActive,
+                      ]}
+                    />
                   </View>
                 </View>
-                <View
-                  style={[
-                    styles.toggleSwitch,
-                    waveEnabled && { backgroundColor: theme.primaryColor },
-                  ]}
-                >
-                  <Animated.View
-                    style={[
-                      styles.toggleThumb,
-                      waveEnabled && styles.toggleThumbActive,
-                    ]}
-                  />
-                </View>
-              </View>
-            </PressableScale>
+              </PressableScale>
+            )}
           </Animated.View>
         )}
 
         {/* Font Family Selector */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={[styles.sectionTitle, { color: theme.primaryColor }]}>
-              FONT FAMILY
-            </Text>
+            {isRainbow ? (
+              <ScanRainbowText
+                text="FONT FAMILY"
+                textStyle={{
+                  fontSize: 14,
+                  fontWeight: "900" as const,
+                  letterSpacing: 2,
+                }}
+              />
+            ) : (
+              <Text
+                style={[styles.sectionTitle, { color: theme.primaryColor }]}
+              >
+                FONT FAMILY
+              </Text>
+            )}
             <Pressable
               onPress={() => {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -1466,38 +1868,74 @@ export function ScanScreen() {
               }}
               style={{ flexDirection: "row", alignItems: "center", gap: 6 }}
             >
-              <Text
-                style={{
-                  fontSize: 11,
-                  fontWeight: "700",
-                  letterSpacing: 0.5,
-                  color: hollowStroke ? theme.primaryColor : Colors.smoke,
-                }}
-              >
-                HOLLOW
-              </Text>
-              <View
-                style={{
-                  width: 36,
-                  height: 20,
-                  borderRadius: 10,
-                  backgroundColor: hollowStroke
-                    ? theme.primaryColor
-                    : "rgba(255,255,255,0.12)",
-                  justifyContent: "center",
-                  paddingHorizontal: 2,
-                }}
-              >
-                <View
-                  style={{
-                    width: 16,
-                    height: 16,
-                    borderRadius: 8,
-                    backgroundColor: "#fff",
-                    transform: [{ translateX: hollowStroke ? 16 : 0 }],
+              {isRainbow && hollowStroke ? (
+                <ScanRainbowText
+                  text="HOLLOW"
+                  textStyle={{
+                    fontSize: 11,
+                    fontWeight: "700" as const,
+                    letterSpacing: 0.5,
                   }}
                 />
-              </View>
+              ) : (
+                <Text
+                  style={{
+                    fontSize: 11,
+                    fontWeight: "700",
+                    letterSpacing: 0.5,
+                    color: hollowStroke ? theme.primaryColor : Colors.smoke,
+                  }}
+                >
+                  HOLLOW
+                </Text>
+              )}
+              {isRainbow && hollowStroke ? (
+                <LinearGradient
+                  colors={RAINBOW_STRIPE_COLORS as any}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={{
+                    width: 36,
+                    height: 20,
+                    borderRadius: 10,
+                    justifyContent: "center",
+                    paddingHorizontal: 2,
+                  }}
+                >
+                  <View
+                    style={{
+                      width: 16,
+                      height: 16,
+                      borderRadius: 8,
+                      backgroundColor: "#fff",
+                      transform: [{ translateX: 16 }],
+                    }}
+                  />
+                </LinearGradient>
+              ) : (
+                <View
+                  style={{
+                    width: 36,
+                    height: 20,
+                    borderRadius: 10,
+                    backgroundColor: hollowStroke
+                      ? theme.primaryColor
+                      : "rgba(255,255,255,0.12)",
+                    justifyContent: "center",
+                    paddingHorizontal: 2,
+                  }}
+                >
+                  <View
+                    style={{
+                      width: 16,
+                      height: 16,
+                      borderRadius: 8,
+                      backgroundColor: "#fff",
+                      transform: [{ translateX: hollowStroke ? 16 : 0 }],
+                    }}
+                  />
+                </View>
+              )}
             </Pressable>
           </View>
           <ScrollView
@@ -1507,6 +1945,93 @@ export function ScanScreen() {
           >
             {FONT_FAMILIES.map((font) => {
               const isActive = currentFontFamily === font.key;
+              const useRainbowBorder = isRainbow && isActive;
+
+              const fontCardContent = (
+                <>
+                  <View
+                    style={[
+                      styles.fontStylePreview,
+                      { backgroundColor: theme.backgroundColor },
+                    ]}
+                  >
+                    {isRainbow ? (
+                      <ScanRainbowText
+                        text="Aa"
+                        textStyle={{ fontSize: 28, fontFamily: font.key }}
+                      />
+                    ) : (
+                      <Text
+                        style={{
+                          fontSize: 28,
+                          fontFamily: font.key,
+                          color: theme.primaryColor,
+                        }}
+                      >
+                        Aa
+                      </Text>
+                    )}
+                  </View>
+                  <View style={styles.fontStyleInfo}>
+                    <Text
+                      style={[
+                        styles.fontStyleLabel,
+                        { color: Colors.platinum },
+                      ]}
+                      numberOfLines={1}
+                    >
+                      {font.name}
+                    </Text>
+                  </View>
+                  {isActive &&
+                    (isRainbow ? (
+                      <LinearGradient
+                        colors={RAINBOW_STRIPE_COLORS as any}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 0 }}
+                        style={styles.activeIndicator}
+                      />
+                    ) : (
+                      <View
+                        style={[
+                          styles.activeIndicator,
+                          { backgroundColor: theme.primaryColor },
+                        ]}
+                      />
+                    ))}
+                </>
+              );
+
+              if (useRainbowBorder) {
+                return (
+                  <LinearGradient
+                    key={font.key}
+                    colors={RAINBOW_STRIPE_COLORS as any}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={{
+                      borderRadius: 14,
+                      padding: 2,
+                      marginRight: 12,
+                      overflow: "visible",
+                    }}
+                  >
+                    <PressableScale
+                      style={[
+                        styles.fontStyleCard,
+                        { marginRight: 0, borderWidth: 0 },
+                      ]}
+                      onPress={() => {
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        setCurrentFontFamily(font.key);
+                      }}
+                    >
+                      {fontCardContent}
+                    </PressableScale>
+                  </LinearGradient>
+                );
+              }
+
               return (
                 <PressableScale
                   key={font.key}
@@ -1522,41 +2047,7 @@ export function ScanScreen() {
                     setCurrentFontFamily(font.key);
                   }}
                 >
-                  <View
-                    style={[
-                      styles.fontStylePreview,
-                      { backgroundColor: theme.backgroundColor },
-                    ]}
-                  >
-                    <Text
-                      style={{
-                        fontSize: 28,
-                        fontFamily: font.key,
-                        color: theme.primaryColor,
-                      }}
-                    >
-                      Aa
-                    </Text>
-                  </View>
-                  <View style={styles.fontStyleInfo}>
-                    <Text
-                      style={[
-                        styles.fontStyleLabel,
-                        { color: Colors.platinum },
-                      ]}
-                      numberOfLines={1}
-                    >
-                      {font.name}
-                    </Text>
-                  </View>
-                  {isActive && (
-                    <View
-                      style={[
-                        styles.activeIndicator,
-                        { backgroundColor: theme.primaryColor },
-                      ]}
-                    />
-                  )}
+                  {fontCardContent}
                 </PressableScale>
               );
             })}
@@ -1566,9 +2057,22 @@ export function ScanScreen() {
         {/* Style Selector */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={[styles.sectionTitle, { color: theme.primaryColor }]}>
-              LED STYLE
-            </Text>
+            {isRainbow ? (
+              <ScanRainbowText
+                text="LED STYLE"
+                textStyle={{
+                  fontSize: 14,
+                  fontWeight: "900" as const,
+                  letterSpacing: 2,
+                }}
+              />
+            ) : (
+              <Text
+                style={[styles.sectionTitle, { color: theme.primaryColor }]}
+              >
+                LED STYLE
+              </Text>
+            )}
             <View
               style={{ flexDirection: "row", alignItems: "center", gap: 10 }}
             >
@@ -1610,6 +2114,74 @@ export function ScanScreen() {
             {(Object.keys(LED_THEMES) as LEDStyle[]).map((style) => {
               const styleTheme = LED_THEMES[style];
               const isActive = currentStyle === style && !customColor;
+              const useRainbowBorder = style === "rainbow" && isActive;
+
+              const styleCardContent = (
+                <>
+                  <LinearGradient
+                    colors={
+                      style === "rainbow"
+                        ? RAINBOW_STRIPE_COLORS
+                        : [styleTheme.primaryColor, styleTheme.secondaryColor]
+                    }
+                    start={{ x: 0, y: 0 }}
+                    end={style === "rainbow" ? { x: 0, y: 1 } : { x: 1, y: 1 }}
+                    style={styles.styleIconContainer}
+                  >
+                    <Ionicons
+                      name={styleTheme.icon as any}
+                      size={24}
+                      color="#fff"
+                    />
+                  </LinearGradient>
+                  <Text style={[styles.styleLabel, { color: Colors.platinum }]}>
+                    {styleTheme.name}
+                  </Text>
+                  {isActive &&
+                    (isRainbow ? (
+                      <LinearGradient
+                        colors={RAINBOW_STRIPE_COLORS as any}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 0 }}
+                        style={styles.activeIndicator}
+                      />
+                    ) : (
+                      <View
+                        style={[
+                          styles.activeIndicator,
+                          { backgroundColor: theme.primaryColor },
+                        ]}
+                      />
+                    ))}
+                </>
+              );
+
+              if (useRainbowBorder) {
+                return (
+                  <LinearGradient
+                    key={style}
+                    colors={RAINBOW_STRIPE_COLORS as any}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={{
+                      borderRadius: 14,
+                      padding: 2,
+                      marginRight: 12,
+                      overflow: "visible",
+                    }}
+                  >
+                    <PressableScale
+                      style={[
+                        styles.styleCard,
+                        { marginRight: 0, borderWidth: 0 },
+                      ]}
+                      onPress={() => handleStyleChange(style)}
+                    >
+                      {styleCardContent}
+                    </PressableScale>
+                  </LinearGradient>
+                );
+              }
 
               return (
                 <PressableScale
@@ -1623,83 +2195,12 @@ export function ScanScreen() {
                   ]}
                   onPress={() => handleStyleChange(style)}
                 >
-                  <LinearGradient
-                    colors={[
-                      styleTheme.primaryColor,
-                      styleTheme.secondaryColor,
-                    ]}
-                    style={styles.styleIconContainer}
-                  >
-                    <Ionicons
-                      name={styleTheme.icon as any}
-                      size={24}
-                      color={styleTheme.backgroundColor}
-                    />
-                  </LinearGradient>
-                  <Text style={[styles.styleLabel, { color: Colors.platinum }]}>
-                    {styleTheme.name}
-                  </Text>
-                  {isActive && (
-                    <View
-                      style={[
-                        styles.activeIndicator,
-                        { backgroundColor: styleTheme.primaryColor },
-                      ]}
-                    />
-                  )}
+                  {styleCardContent}
                 </PressableScale>
               );
             })}
           </ScrollView>
         </View>
-
-        {/* Saved Messages */}
-        {/* {savedMessages.length > 0 && (
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Text
-                style={[styles.sectionTitle, { color: theme.primaryColor }]}
-              >
-                YOUR MESSAGES
-              </Text>
-              <Text
-                style={[styles.sectionHint, { color: theme.secondaryColor }]}
-              >
-                {savedMessages.length} saved
-              </Text>
-            </View>
-            {savedMessages.map((message, index) => (
-              <View key={index} style={styles.savedMessageItem}>
-                <PressableScale
-                  style={styles.savedMessageButton}
-                  onPress={() => {
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                    setText(message);
-                  }}
-                >
-                  <Ionicons
-                    name="bookmark"
-                    size={16}
-                    color={theme.primaryColor}
-                  />
-                  <Text style={styles.savedMessageText} numberOfLines={1}>
-                    {message}
-                  </Text>
-                </PressableScale>
-                <PressableScale
-                  style={styles.deleteMessageButton}
-                  onPress={() => handleDeleteMessage(message)}
-                >
-                  <Ionicons
-                    name="trash-outline"
-                    size={18}
-                    color={Colors.smoke}
-                  />
-                </PressableScale>
-              </View>
-            ))}
-          </View>
-        )} */}
       </ScrollView>
 
       {/* Unified Color Picker Modal */}
@@ -1723,69 +2224,91 @@ export function ScanScreen() {
                 width: "100%",
               }}
             >
-              {(["text", "bg"] as const).map((tab) => (
-                <Pressable
-                  key={tab}
-                  onPress={() => {
-                    setColorModalTab(tab);
-                    setModalWheelKey((k) => k + 1);
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  }}
-                  style={{
-                    flex: 1,
-                    paddingVertical: 10,
-                    borderRadius: 10,
-                    alignItems: "center",
-                    backgroundColor:
-                      colorModalTab === tab
-                        ? theme.primaryColor
-                        : "transparent",
-                  }}
-                >
+              {(["text", "bg"] as const).map((tab) => {
+                const isActiveTab = colorModalTab === tab;
+                const tabContent = (
                   <Text
                     style={{
                       fontSize: 12,
                       fontWeight: "800",
                       letterSpacing: 1,
-                      color:
-                        colorModalTab === tab
-                          ? "#000"
-                          : "rgba(255,255,255,0.5)",
+                      color: isActiveTab ? "#000" : "rgba(255,255,255,0.5)",
                     }}
                   >
                     {tab === "text" ? "TEXT COLOR" : "BACKGROUND"}
                   </Text>
-                </Pressable>
-              ))}
+                );
+                return (
+                  <Pressable
+                    key={tab}
+                    onPress={() => {
+                      setColorModalTab(tab);
+                      setModalWheelKey((k) => k + 1);
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    }}
+                    style={{ flex: 1, borderRadius: 10, overflow: "hidden" }}
+                  >
+                    {isActiveTab && isRainbow ? (
+                      <LinearGradient
+                        colors={RAINBOW_STRIPE_COLORS as any}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 0, y: 1 }}
+                        style={{ paddingVertical: 10, alignItems: "center" }}
+                      >
+                        {tabContent}
+                      </LinearGradient>
+                    ) : (
+                      <View
+                        style={{
+                          paddingVertical: 10,
+                          alignItems: "center",
+                          backgroundColor: isActiveTab
+                            ? theme.primaryColor
+                            : "transparent",
+                        }}
+                      >
+                        {tabContent}
+                      </View>
+                    )}
+                  </Pressable>
+                );
+              })}
             </View>
 
-            {/* Reset to initial color — works for both text and bg tabs */}
-            <PressableScale
-              onPress={() => {
-                if (colorModalTab === "text") {
-                  const defaultColor = LED_THEMES[currentStyle].primaryColor;
-                  setPendingTextColor(defaultColor);
-                  pendingTextColorRef.current = defaultColor;
-                } else {
-                  setPendingBgColor("#000000");
-                  pendingBgColorRef.current = "#000000";
-                }
-                setModalWheelKey((k) => k + 1);
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              }}
-              style={{
-                alignSelf: "flex-end",
-                padding: 6,
-                marginBottom: 4,
-                marginTop: -8,
-              }}
-            >
-              <Ionicons
-                name="refresh-outline"
-                size={22}
-                color="rgba(255,255,255,0.6)"
-              />
-            </PressableScale>
+            {/* Revert button — text: shown when changed from opening colour; bg: shown when not black */}
+            {(colorModalTab === "text"
+              ? pendingTextColor !== openingTextColorRef.current
+              : pendingBgColor !== "#000000") && (
+              <PressableScale
+                onPress={() => {
+                  if (colorModalTab === "text") {
+                    setPendingTextColor(openingTextColorRef.current);
+                    pendingTextColorRef.current = openingTextColorRef.current;
+                  } else {
+                    setPendingBgColor("#000000");
+                    pendingBgColorRef.current = "#000000";
+                  }
+                  setModalWheelKey((k) => k + 1);
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                }}
+                style={{
+                  position: "absolute",
+                  top: 60,
+                  right: 30,
+                  width: 30,
+                  height: 30,
+                  zIndex: 10000000,
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <Ionicons
+                  name="refresh-outline"
+                  size={22}
+                  color="rgba(255,255,255,0.6)"
+                />
+              </PressableScale>
+            )}
 
             <ColorWheelPicker
               key={`wheel-${colorModalTab}-${modalWheelKey}`}
@@ -1808,6 +2331,12 @@ export function ScanScreen() {
               previewBgColor={
                 colorModalTab === "text" ? pendingBgColor : undefined
               }
+              isRainbow={
+                isRainbow &&
+                (colorModalTab === "text" ||
+                  pendingTextColor === openingTextColorRef.current)
+              }
+              tab={colorModalTab}
             />
 
             <Pressable
@@ -1815,27 +2344,50 @@ export function ScanScreen() {
                 setCustomColor(pendingTextColorRef.current);
                 setLedPrimaryColor(pendingTextColorRef.current);
                 setBgColor(pendingBgColorRef.current);
+                setIsRainbowActive(false);
                 setShowColorModal(false);
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               }}
-              style={{
-                marginTop: 20,
-                paddingHorizontal: 40,
-                paddingVertical: 12,
-                borderRadius: 16,
-                backgroundColor: theme.primaryColor,
-              }}
+              style={{ marginTop: 20, borderRadius: 16, overflow: "hidden" }}
             >
-              <Text
-                style={{
-                  color: "#000",
-                  fontWeight: "800",
-                  fontSize: 14,
-                  letterSpacing: 1,
-                }}
-              >
-                APPLY
-              </Text>
+              {isRainbow ? (
+                <LinearGradient
+                  colors={RAINBOW_STRIPE_COLORS as any}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 0, y: 1 }}
+                  style={{ paddingHorizontal: 40, paddingVertical: 12 }}
+                >
+                  <Text
+                    style={{
+                      color: "#000",
+                      fontWeight: "800",
+                      fontSize: 14,
+                      letterSpacing: 1,
+                    }}
+                  >
+                    APPLY
+                  </Text>
+                </LinearGradient>
+              ) : (
+                <View
+                  style={{
+                    paddingHorizontal: 40,
+                    paddingVertical: 12,
+                    backgroundColor: theme.primaryColor,
+                  }}
+                >
+                  <Text
+                    style={{
+                      color: "#000",
+                      fontWeight: "800",
+                      fontSize: 14,
+                      letterSpacing: 1,
+                    }}
+                  >
+                    APPLY
+                  </Text>
+                </View>
+              )}
             </Pressable>
           </View>
         </Modal>

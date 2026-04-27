@@ -16,8 +16,9 @@ import { StatusBar } from "expo-status-bar";
 import * as Haptics from "expo-haptics";
 import { Colors } from "@/constants/ui";
 import { clubsService, type Club } from "@/services/clubsService";
-import { strobeService, type StrobeApproval } from "@/services/strobeService";
+import { strobeService } from "@/services/strobeService";
 import { useDebounce } from "@/hooks/useDebounce";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 export default function RequestApprovalScreen() {
   const router = useRouter();
@@ -27,6 +28,7 @@ export default function RequestApprovalScreen() {
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounce(search, 300);
   const [requesting, setRequesting] = useState<string | null>(null);
+  const [revoking, setRevoking] = useState<Set<string>>(new Set());
   const [requested, setRequested] = useState<Set<string>>(new Set());
   const [approvedClubIds, setApprovedClubIds] = useState<Set<string>>(
     new Set(),
@@ -129,6 +131,44 @@ export default function RequestApprovalScreen() {
       });
   };
 
+  const handleRevoke = (clubId: string) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    // Optimistic update
+    setRevoking((prev) => new Set([...prev, clubId]));
+    setPendingClubIds((prev) => {
+      const next = new Set(prev);
+      next.delete(clubId);
+      return next;
+    });
+    setRequested((prev) => {
+      const next = new Set(prev);
+      next.delete(clubId);
+      return next;
+    });
+
+    strobeService
+      .cancelRequest(clubId)
+      .then(() => {
+        if (!isMountedRef.current) return;
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      })
+      .catch((err) => {
+        console.error("Failed to revoke request", err);
+        if (!isMountedRef.current) return;
+        // Revert on failure
+        setPendingClubIds((prev) => new Set([...prev, clubId]));
+        Alert.alert("Error", "Could not revoke request. Please try again.");
+      })
+      .finally(() => {
+        if (isMountedRef.current)
+          setRevoking((prev) => {
+            const next = new Set(prev);
+            next.delete(clubId);
+            return next;
+          });
+      });
+  };
+
   const filteredClubs = clubs.filter((c) =>
     c.name.toLowerCase().includes(debouncedSearch.toLowerCase()),
   );
@@ -180,13 +220,11 @@ export default function RequestApprovalScreen() {
           size="large"
         />
       ) : search.length === 0 ? (
-        <View style={styles.emptyCenter}>
-          <Ionicons name="search" size={48} color={Colors.smoke} />
-          <Text style={styles.emptyText}>Search for a club</Text>
-          <Text style={styles.emptySubtext}>
-            Start typing to find the club you're performing at
-          </Text>
-        </View>
+        <EmptyState
+          icon="search"
+          title="Search for a club"
+          subtitle="Start typing to find the club you're performing at"
+        />
       ) : (
         <FlatList
           data={filteredClubs}
@@ -195,20 +233,30 @@ export default function RequestApprovalScreen() {
           contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={
-            <View style={styles.empty}>
-              <Ionicons name="business" size={40} color={Colors.smoke} />
-              <Text style={styles.emptyText}>No clubs found</Text>
-            </View>
+            <EmptyState
+              icon="business"
+              title="No clubs found"
+              subtitle="Try a different search term"
+            />
           }
           renderItem={({ item: club }) => {
             const isRequesting = requesting === club.id;
+            const isRevoking = revoking.has(club.id);
             const isSentNow = requested.has(club.id);
             const isApproved = approvedClubIds.has(club.id);
             const isPending = pendingClubIds.has(club.id) || isSentNow;
             const isDisabled = isApproved || isPending || isRequesting;
 
             return (
-              <View style={styles.clubCard}>
+              <Pressable
+                style={[styles.clubCard, isApproved && styles.clubCardApproved]}
+                onPress={() => {
+                  if (isApproved) {
+                    router.push(`/strobe/dj?clubId=${club.id}` as any);
+                  }
+                }}
+                disabled={!isApproved}
+              >
                 <View style={styles.clubInfo}>
                   <Text style={styles.clubName}>{club.name}</Text>
                   {club.location?.name ? (
@@ -223,51 +271,67 @@ export default function RequestApprovalScreen() {
                   ) : null}
                 </View>
 
-                <Pressable
-                  style={[
-                    styles.requestBtn,
-                    isApproved && styles.requestBtnApproved,
-                    isPending && !isApproved && styles.requestBtnDone,
-                    isRequesting && styles.requestBtnLoading,
-                  ]}
-                  onPress={() => !isDisabled && handleRequest(club)}
-                  disabled={isDisabled}
-                >
-                  {isRequesting ? (
-                    <ActivityIndicator size="small" color={Colors.accent} />
-                  ) : isApproved ? (
-                    <>
-                      <Ionicons
-                        name="shield-checkmark"
-                        size={14}
-                        color="#00C853"
-                      />
-                      <Text
-                        style={[styles.requestBtnText, { color: "#00C853" }]}
-                      >
-                        APPROVED
-                      </Text>
-                    </>
-                  ) : isPending ? (
-                    <>
-                      <Ionicons name="time" size={14} color={Colors.accent} />
-                      <Text
-                        style={[
-                          styles.requestBtnText,
-                          { color: Colors.accent },
-                        ]}
-                      >
-                        PENDING
-                      </Text>
-                    </>
-                  ) : (
-                    <>
-                      <Ionicons name="send" size={14} color="#000" />
-                      <Text style={styles.requestBtnText}>REQUEST</Text>
-                    </>
+                <View style={styles.actions}>
+                  <Pressable
+                    style={[
+                      styles.requestBtn,
+                      isApproved && styles.requestBtnApproved,
+                      isPending && !isApproved && styles.requestBtnDone,
+                      isRequesting && styles.requestBtnLoading,
+                    ]}
+                    onPress={() => !isDisabled && handleRequest(club)}
+                    disabled={isDisabled}
+                  >
+                    {isRequesting ? (
+                      <ActivityIndicator size="small" color={Colors.accent} />
+                    ) : isApproved ? (
+                      <>
+                        <Ionicons
+                          name="shield-checkmark"
+                          size={14}
+                          color="#00C853"
+                        />
+                        <Text
+                          style={[styles.requestBtnText, { color: "#00C853" }]}
+                        >
+                          APPROVED
+                        </Text>
+                      </>
+                    ) : isPending ? (
+                      <>
+                        <Ionicons name="time" size={14} color={Colors.accent} />
+                        <Text
+                          style={[
+                            styles.requestBtnText,
+                            { color: Colors.accent },
+                          ]}
+                        >
+                          PENDING
+                        </Text>
+                      </>
+                    ) : (
+                      <>
+                        <Ionicons name="send" size={14} color="#000" />
+                        <Text style={styles.requestBtnText}>REQUEST</Text>
+                      </>
+                    )}
+                  </Pressable>
+
+                  {isPending && !isApproved && (
+                    <Pressable
+                      style={styles.revokeBtn}
+                      onPress={() => handleRevoke(club.id)}
+                      disabled={isRevoking}
+                    >
+                      {isRevoking ? (
+                        <ActivityIndicator size="small" color="#FF4444" />
+                      ) : (
+                        <Ionicons name="close" size={16} color="#FF4444" />
+                      )}
+                    </Pressable>
                   )}
-                </Pressable>
-              </View>
+                </View>
+              </Pressable>
             );
           }}
         />
@@ -363,6 +427,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.07)",
   },
+  clubCardApproved: {
+    borderColor: "rgba(0,200,83,0.25)",
+    backgroundColor: "rgba(0,200,83,0.05)",
+  },
   clubInfo: {
     flex: 1,
     gap: 3,
@@ -452,5 +520,20 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     color: Colors.accent,
     letterSpacing: 1.5,
+  },
+  actions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  revokeBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "rgba(255,68,68,0.1)",
+    borderWidth: 1,
+    borderColor: "rgba(255,68,68,0.3)",
+    alignItems: "center",
+    justifyContent: "center",
   },
 });

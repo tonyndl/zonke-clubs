@@ -161,8 +161,7 @@ export const AuthScreen = () => {
     setIsLoading(true);
     authLogin({ username: username.trim(), password })
       .then(() => {
-        // router.replace("/(tabs)");
-        router.replace("/screens/ProfileSetup");
+        router.replace("/(tabs)");
       })
       .catch((error) => {
         showError("Login Failed", error.message || "Invalid credentials");

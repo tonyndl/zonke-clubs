@@ -6,6 +6,7 @@ const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 export const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: Colors.bg,
   },
   content: {
     flex: 1,
@@ -154,6 +155,7 @@ export const styles = StyleSheet.create({
     gap: 12,
   },
   quickEditButton: {
+    position: "relative",
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
@@ -313,8 +315,7 @@ export const styles = StyleSheet.create({
     opacity: 0.6,
   },
   styleScroll: {
-    marginHorizontal: -16,
-    paddingHorizontal: 16,
+    marginHorizontal: 4,
     overflow: "visible",
   },
   styleCard: {
@@ -334,6 +335,7 @@ export const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 8,
+    overflow: "visible",
   },
   styleLabel: {
     fontSize: 10,

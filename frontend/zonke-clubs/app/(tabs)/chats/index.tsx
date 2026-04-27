@@ -12,6 +12,7 @@ import { getThreads } from "@/services/messageService";
 import { TextStroke } from "../../screens/Login/utils";
 import { websocketService } from "@/services/websocketService";
 import { styles } from "./styles";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 export default function ChatsScreen() {
   const [threads, setThreads] = useState<ChatThread[]>([]);
@@ -336,26 +337,23 @@ export default function ChatsScreen() {
   };
 
   const renderEmptyState = () => (
-    <View style={styles.emptyContainer}>
-      <View style={styles.emptyIcon}>
-        <Ionicons name="chatbubbles-outline" size={64} color={Colors.smoke} />
-      </View>
-      <Text style={styles.emptyTitle}>No Conversations Yet</Text>
-      <Text style={styles.emptyText}>
-        Connect with people looking to meet at clubs and start chatting!
-      </Text>
-      <PressableScale
-        style={styles.exploreButton}
-        onPress={() => {
-          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-          // Navigate to people browse with default club
-          router.replace("/(tabs)");
-        }}
-      >
-        <Ionicons name="people" size={20} color={Colors.bg} />
-        <Text style={styles.exploreText}>Discover People at Clubs</Text>
-      </PressableScale>
-    </View>
+    <EmptyState
+      icon="chatbubbles-outline"
+      title="No Conversations Yet"
+      subtitle="Connect with people looking to meet at clubs and start chatting!"
+      action={
+        <PressableScale
+          style={styles.exploreButton}
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            router.replace("/(tabs)");
+          }}
+        >
+          <Ionicons name="people" size={20} color={Colors.bg} />
+          <Text style={styles.exploreText}>Discover People at Clubs</Text>
+        </PressableScale>
+      }
+    />
   );
 
   return (
