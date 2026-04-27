@@ -8,22 +8,23 @@ export const FONT_FAMILIES: {
   sizeScale?: number;
 }[] = [
   { name: "Default", key: "monospace" },
+  { name: "Audiowide", key: "Audiowide_400Regular", wordGap: "  " },
+  { name: "Bungee Shade", key: "BungeeShade_400Regular", wordGap: "  " },
+  { name: "Nosifer", key: "Nosifer_400Regular", wordGap: "  " },
+  { name: "Monoton", key: "Monoton_400Regular", wordGap: "      " },
+
   { name: "Rubik Storm", key: "RubikStorm_400Regular", wordGap: "  " },
   { name: "Gelasio", key: "Gelasio_400Regular" },
-  { name: "Audiowide", key: "Audiowide_400Regular", wordGap: "  " },
 
   {
     name: "Rubik Distressed",
     key: "RubikDistressed_400Regular",
     wordGap: "  ",
   },
-  { name: "Rubik Gemstones", key: "RubikGemstones_400Regular", wordGap: "  " },
   { name: "Ewert", key: "Ewert_400Regular", wordGap: "  " },
   { name: "Bungee Outline", key: "BungeeOutline_400Regular", wordGap: "  " },
 
-  { name: "Bungee Shade", key: "BungeeShade_400Regular", wordGap: "  " },
   { name: "Wallpoet", key: "Wallpoet_400Regular", wordGap: "  " },
-  { name: "Monoton", key: "Monoton_400Regular", wordGap: "      " },
   { name: "Rubik Wet Paint", key: "RubikWetPaint_400Regular", wordGap: "   " },
   {
     name: "Rubik Marker Hatch",
@@ -43,7 +44,6 @@ export const FONT_FAMILIES: {
   { name: "Kablammo", key: "Kablammo_400Regular", wordGap: "  " },
   { name: "Matemasie", key: "Matemasie_400Regular", wordGap: "   " },
   { name: "Holtwood One SC", key: "HoltwoodOneSC_400Regular", wordGap: "  " },
-  { name: "Nosifer", key: "Nosifer_400Regular", wordGap: "  " },
   {
     name: "Saira Stencil One",
     key: "SairaStencilOne_400Regular",
@@ -53,6 +53,8 @@ export const FONT_FAMILIES: {
 
   { name: "Sixtyfour", key: "Sixtyfour_400Regular" },
   { name: "Miltonian", key: "Miltonian_400Regular", wordGap: "  " },
+  { name: "Rubik Gemstones", key: "RubikGemstones_400Regular", wordGap: "  " },
+
   { name: "Raleway Dots", key: "RalewayDots_400Regular", wordGap: "  " },
   { name: "Caesar Dressing", key: "CaesarDressing_400Regular", wordGap: "  " },
   { name: "Trade Winds", key: "TradeWinds_400Regular", wordGap: "  " },

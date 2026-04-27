@@ -24,6 +24,7 @@ import { PressableScale } from "@/components/ui/PressableScale";
 import { ClubVideo } from "@/services/clubsService";
 import { formatTimeAgo } from "@/data/clubVideos";
 import { styles } from "./styles";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 type VideoItem = ClubVideo & {
   clubId: string;
@@ -365,10 +366,11 @@ export const ClubVideoFeed: React.FC<Props> = ({ videos }) => {
 
   if (videos.length === 0) {
     return (
-      <View style={styles.emptyContainer}>
-        <Ionicons name="videocam-off-outline" size={64} color={Colors.smoke} />
-        <Text style={styles.emptyText}>No videos available</Text>
-      </View>
+      <EmptyState
+        icon="videocam-off-outline"
+        title="No Videos Available"
+        subtitle="Club videos will appear here"
+      />
     );
   }
 

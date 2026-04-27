@@ -1,6 +1,7 @@
 import { Tabs } from "expo-router";
 import React, { useEffect } from "react";
 import { View, Text, StyleSheet } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { HapticTab } from "@/components/haptic-tab";
@@ -13,7 +14,16 @@ import { useLedColor } from "@/contexts/LedColorContext";
 export default function TabLayout() {
   const { requestsCount, unreadCount } = useConnectionBadges();
   const insets = useSafeAreaInsets();
-  const { ledPrimaryColor } = useLedColor();
+  const { ledPrimaryColor, isRainbowActive } = useLedColor();
+  const RAINBOW_COLORS = [
+    "#FF0000",
+    "#FF8C00",
+    "#FFE000",
+    "#00CC00",
+    "#0066FF",
+    "#8B00FF",
+  ] as const;
+  const isRainbowLed = isRainbowActive;
 
   // Connect to WebSocket when tabs layout mounts (after login)
   useEffect(() => {
@@ -93,15 +103,31 @@ export default function TabLayout() {
           title: "",
           tabBarIcon: ({ focused }) => (
             <View style={styles.scanButtonContainer}>
-              <View
-                style={[
-                  styles.scanButton,
-                  focused && styles.scanButtonActive,
-                  { backgroundColor: focused ? ledPrimaryColor : Colors.gold },
-                ]}
-              >
-                <Ionicons size={32} name="add" color={Colors.bgCard} />
-              </View>
+              {isRainbowLed && focused ? (
+                <LinearGradient
+                  colors={RAINBOW_COLORS}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 0, y: 1 }}
+                  style={[
+                    styles.scanButton,
+                    focused && styles.scanButtonActive,
+                  ]}
+                >
+                  <Ionicons size={32} name="add" color="#fff" />
+                </LinearGradient>
+              ) : (
+                <View
+                  style={[
+                    styles.scanButton,
+                    focused && styles.scanButtonActive,
+                    {
+                      backgroundColor: focused ? ledPrimaryColor : Colors.gold,
+                    },
+                  ]}
+                >
+                  <Ionicons size={32} name="add" color={Colors.bgCard} />
+                </View>
+              )}
             </View>
           ),
         }}

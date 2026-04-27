@@ -7,6 +7,7 @@ import {
   Pressable,
   TouchableWithoutFeedback,
   Text,
+  Switch,
   PanResponder,
   StyleSheet,
 } from "react-native";
@@ -29,7 +30,8 @@ type LEDStyle =
   | "fire"
   | "pink"
   | "purple"
-  | "white";
+  | "white"
+  | "rainbow";
 type FontStyle = "solid" | "outline" | "shadow" | "neon" | "glitch" | "3d";
 
 interface LEDTheme {
@@ -93,7 +95,80 @@ const LED_THEMES: Record<LEDStyle, LEDTheme> = {
     glowColor: "#FFFFFF",
     backgroundColor: "#000000",
   },
+  rainbow: {
+    primaryColor: "#FF0000",
+    glowColor: "#FF0000",
+    backgroundColor: "#000000",
+  },
 };
+
+// Pride-flag stripe colors — rendered as horizontal bands within each letter
+const RAINBOW_STRIPE_COLORS = [
+  "#FF0000", // red
+  "#FF8C00", // orange
+  "#FFE000", // yellow
+  "#00CC00", // green
+  "#0066FF", // blue
+  "#8B00FF", // violet
+];
+
+// Horizontal rainbow stripes within each letter.
+// Uses normal-flow Views (not absolute) so overflow:hidden clips reliably on Android.
+function RainbowText({
+  text,
+  textStyle,
+  hollow,
+  hollowBgColor,
+}: {
+  text: string;
+  textStyle: any;
+  hollow?: boolean;
+  hollowBgColor?: string;
+}) {
+  const fontSize: number = textStyle.fontSize ?? 100;
+  const stripeH = fontSize / RAINBOW_STRIPE_COLORS.length;
+  const w: number | undefined = textStyle.width;
+  return (
+    <View style={w !== undefined ? { width: w } : undefined}>
+      {RAINBOW_STRIPE_COLORS.map((color, i) => {
+        const stripeText = (
+          <Text
+            style={
+              {
+                ...textStyle,
+                color: hollow ? hollowBgColor : color,
+                ...(hollow
+                  ? { position: "absolute" as const, top: -(i * stripeH) }
+                  : { marginTop: -(i * stripeH) }),
+                lineHeight: fontSize,
+                includeFontPadding: false,
+              } as any
+            }
+          >
+            {text}
+          </Text>
+        );
+        return (
+          <View
+            key={i}
+            style={[
+              { height: stripeH, overflow: "hidden" },
+              w !== undefined ? { width: w } : undefined,
+            ]}
+          >
+            {hollow ? (
+              <TextStroke color={color} stroke={3}>
+                {stripeText}
+              </TextStroke>
+            ) : (
+              stripeText
+            )}
+          </View>
+        );
+      })}
+    </View>
+  );
+}
 
 // Emoji detection
 const EMOJI_REGEX = /(\p{Emoji_Presentation}|\p{Extended_Pictographic})/gu;
@@ -178,8 +253,7 @@ function DraggableEmoji({
       onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: () => true,
       onPanResponderGrant: () => {
-        pan.setOffset(offset.current);
-        pan.setValue({ x: 0, y: 0 });
+        pan.extractOffset();
       },
       onPanResponderMove: (evt, gesture) => {
         const touches = evt.nativeEvent.touches;
@@ -232,6 +306,190 @@ function DraggableEmoji({
   );
 }
 
+interface DraggableWordProps {
+  word: string;
+  initialX: number;
+  initialY: number;
+  fontSize: number;
+  fontStyleProps: object;
+  fontFamily: string;
+  hollowStroke: boolean;
+  textColor: string;
+  bgColor: string;
+  waveEnabled: boolean;
+  pulseScale: Animated.AnimatedInterpolation<number>;
+  vibrateX: Animated.AnimatedInterpolation<number>;
+  vibrateY: Animated.AnimatedInterpolation<number>;
+  dragEnabled: boolean;
+  resizeEnabled: boolean;
+  centered: boolean;
+  isRainbow: boolean;
+}
+
+// Lives inside a 90° CW rotated container.
+// Screen gesture coords map to container coords as: containerDx = -dy, containerDy = dx
+function DraggableWord({
+  word,
+  initialX,
+  initialY,
+  fontSize,
+  fontStyleProps,
+  fontFamily,
+  hollowStroke,
+  textColor,
+  bgColor,
+  waveEnabled,
+  pulseScale,
+  vibrateX,
+  vibrateY,
+  dragEnabled,
+  resizeEnabled,
+  centered,
+  isRainbow,
+}: DraggableWordProps) {
+  const pan = useRef(
+    new Animated.ValueXY({ x: initialX, y: initialY }),
+  ).current;
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+  const currentScale = useRef(1);
+  const initialPinchDist = useRef(0);
+  const pinchScaleStart = useRef(1);
+  const initialMidpoint = useRef({ x: 0, y: 0 });
+  const dragEnabledRef = useRef(dragEnabled);
+  const resizeEnabledRef = useRef(resizeEnabled);
+
+  useEffect(() => {
+    dragEnabledRef.current = dragEnabled;
+  }, [dragEnabled]);
+  useEffect(() => {
+    resizeEnabledRef.current = resizeEnabled;
+  }, [resizeEnabled]);
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () =>
+        dragEnabledRef.current || resizeEnabledRef.current,
+      onMoveShouldSetPanResponder: (evt) =>
+        evt.nativeEvent.touches.length <= 2 &&
+        (dragEnabledRef.current || resizeEnabledRef.current),
+      onPanResponderGrant: () => {
+        pan.extractOffset();
+      },
+      onPanResponderTerminate: () => {
+        pan.flattenOffset();
+      },
+      onPanResponderMove: (evt, gesture) => {
+        const touches = evt.nativeEvent.touches;
+        if (touches && touches.length >= 2) {
+          if (!resizeEnabledRef.current) return;
+          const midX = (touches[0].pageX + touches[1].pageX) / 2;
+          const midY = (touches[0].pageY + touches[1].pageY) / 2;
+          const dx = touches[0].pageX - touches[1].pageX;
+          const dy = touches[0].pageY - touches[1].pageY;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          if (initialPinchDist.current === 0) {
+            initialPinchDist.current = dist;
+            pinchScaleStart.current = currentScale.current;
+            initialMidpoint.current = { x: midX, y: midY };
+          } else {
+            const next =
+              pinchScaleStart.current * (dist / initialPinchDist.current);
+            const clamped = Math.max(0.1, Math.min(10, next));
+            currentScale.current = clamped;
+            scaleAnim.setValue(clamped);
+            const mdx = midX - initialMidpoint.current.x;
+            const mdy = midY - initialMidpoint.current.y;
+            pan.x.setValue(mdy);
+            pan.y.setValue(-mdx);
+          }
+        } else {
+          if (!dragEnabledRef.current) return;
+          pan.x.setValue(gesture.dy);
+          pan.y.setValue(-gesture.dx);
+        }
+      },
+      onPanResponderRelease: () => {
+        initialPinchDist.current = 0;
+        pan.flattenOffset();
+      },
+    }),
+  ).current;
+
+  const textStyle: any = {
+    fontSize,
+    lineHeight: fontSize,
+    ...(fontFamily === "monospace" ? { fontWeight: "900" as const } : {}),
+    fontFamily,
+    letterSpacing: 1,
+    // When alone on a line, use full availW + center so actual rendered width drives position
+    ...(centered
+      ? { textAlign: "center" as const, width: SCREEN_HEIGHT * 0.98 }
+      : {}),
+  };
+
+  // Strip fontFamily/fontWeight from fontStyleProps — those come from textStyle.
+  // fontWeight:"900" on custom fonts causes RN to look for a non-existent bold
+  // variant and fall back to the system font.
+  const {
+    fontFamily: _ff,
+    fontWeight: _fw,
+    ...visualProps
+  } = fontStyleProps as any;
+
+  const wordNode = isRainbow ? (
+    <RainbowText
+      text={word}
+      textStyle={textStyle}
+      hollow={hollowStroke}
+      hollowBgColor={bgColor}
+    />
+  ) : hollowStroke ? (
+    <TextStroke color={textColor} stroke={3}>
+      <Text style={{ ...textStyle, color: bgColor }}>{word}</Text>
+    </TextStroke>
+  ) : (
+    <Text style={{ ...textStyle, ...visualProps }}>{word}</Text>
+  );
+
+  const inner = waveEnabled ? (
+    <Animated.View
+      style={{
+        transform: [
+          { scale: pulseScale },
+          { translateX: vibrateX },
+          { translateY: vibrateY },
+        ],
+      }}
+    >
+      {wordNode}
+    </Animated.View>
+  ) : (
+    wordNode
+  );
+
+  const gesturesActive = dragEnabled || resizeEnabled;
+
+  return (
+    <Animated.View
+      style={{
+        position: "absolute",
+        // Explicit width matches the container's available width so the Text
+        // always has room to render on a single line without character-breaking.
+        width: SCREEN_HEIGHT,
+        transform: [
+          { translateX: pan.x },
+          { translateY: pan.y },
+          { scale: scaleAnim },
+        ],
+      }}
+      pointerEvents={gesturesActive ? "auto" : "none"}
+      {...(gesturesActive ? panResponder.panHandlers : {})}
+    >
+      {inner}
+    </Animated.View>
+  );
+}
+
 export function LEDFullscreenView({
   text,
   style = "neon",
@@ -267,6 +525,9 @@ export function LEDFullscreenView({
   const [staticMeasuredWidth, setStaticMeasuredWidth] = useState<number | null>(
     null,
   );
+  const [longestWordMeasuredWidth, setLongestWordMeasuredWidth] = useState<
+    number | null
+  >(null);
   const [lineHeightMult, setLineHeightMult] = useState(1.3);
   const [textBlockHeight, setTextBlockHeight] = useState<number | null>(null);
 
@@ -275,6 +536,60 @@ export function LEDFullscreenView({
     Array<{ id: string; emoji: string; x: number; y: number }>
   >([]);
   const emojiIdCounter = useRef(0);
+  const [showGestureMenu, setShowGestureMenu] = useState(false);
+  const [wordResetKey, setWordResetKey] = useState(0);
+  const [wordDragEnabled, setWordDragEnabled] = useState(false);
+  const [wordResizeEnabled, setWordResizeEnabled] = useState(false);
+  const [groupGestureEnabled, setGroupGestureEnabled] = useState(false);
+  const wordDragRef = useRef(false);
+  const wordResizeRef = useRef(false);
+  const groupGestureRef = useRef(false);
+
+  // Group transform for 2-finger pan + scale of all words simultaneously
+  const groupPan = useRef(new Animated.ValueXY({ x: 0, y: 0 })).current;
+  const groupScaleAnim = useRef(new Animated.Value(1)).current;
+  const groupCurrentScale = useRef(1);
+  const groupInitialPinchDist = useRef(0);
+  const groupPinchScaleStart = useRef(1);
+  const groupInitialMidpoint = useRef({ x: 0, y: 0 });
+
+  const groupPanResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => false,
+      onMoveShouldSetPanResponder: () => false,
+      onMoveShouldSetPanResponderCapture: (evt) =>
+        groupGestureRef.current && evt.nativeEvent.touches.length >= 3,
+      onPanResponderGrant: () => {
+        groupPan.extractOffset();
+      },
+      onPanResponderMove: (evt) => {
+        const touches = evt.nativeEvent.touches;
+        if (touches.length < 2) return;
+        const midX = (touches[0].pageX + touches[1].pageX) / 2;
+        const midY = (touches[0].pageY + touches[1].pageY) / 2;
+        const ddx = touches[0].pageX - touches[1].pageX;
+        const ddy = touches[0].pageY - touches[1].pageY;
+        const dist = Math.sqrt(ddx * ddx + ddy * ddy);
+        if (groupInitialPinchDist.current === 0) {
+          groupInitialPinchDist.current = dist;
+          groupPinchScaleStart.current = groupCurrentScale.current;
+          groupInitialMidpoint.current = { x: midX, y: midY };
+        } else {
+          const next =
+            groupPinchScaleStart.current *
+            (dist / groupInitialPinchDist.current);
+          groupCurrentScale.current = Math.max(0.1, Math.min(5, next));
+          groupScaleAnim.setValue(groupCurrentScale.current);
+          groupPan.x.setValue(midX - groupInitialMidpoint.current.x);
+          groupPan.y.setValue(midY - groupInitialMidpoint.current.y);
+        }
+      },
+      onPanResponderRelease: () => {
+        groupInitialPinchDist.current = 0;
+        groupPan.flattenOffset();
+      },
+    }),
+  ).current;
 
   const emojisInText = useMemo(() => extractEmojis(baseText), [baseText]);
   const hasEmojis = emojisInText.length > 0;
@@ -284,6 +599,12 @@ export function LEDFullscreenView({
   );
   const activeDisplayText = emojiMode ? textWithoutEmojis : displayText;
 
+  // Longest word — used for accurate per-character width estimation in static mode
+  const longestStaticWord = useMemo(() => {
+    const ws = activeDisplayText.split(" ").filter(Boolean);
+    return ws.reduce((a, b) => (a.length >= b.length ? a : b), ws[0] ?? "A");
+  }, [activeDisplayText]);
+
   // Reference font size used for static measurement
   const STATIC_REF_FONT = 100;
 
@@ -291,6 +612,7 @@ export function LEDFullscreenView({
   const theme = customColor
     ? { ...baseTheme, primaryColor: customColor, glowColor: customColor }
     : baseTheme;
+  const isRainbow = currentStyle === "rainbow" && !customColor;
 
   const getTextStyleForFont = (baseColor: any) => {
     const baseStyle: any = {
@@ -392,24 +714,25 @@ export function LEDFullscreenView({
     }
   }, [activeDisplayText, fontSize, animationMode, fontFamily]);
 
-  // Reset static measurement and line height when text/font/mode changes
+  // Reset static measurement, line height, and group transform when text/font/mode changes
   useEffect(() => {
     if (animationMode !== "scroll") {
       setStaticMeasuredWidth(null);
+      setLongestWordMeasuredWidth(null);
       setLineHeightMult(1.3);
       setTextBlockHeight(null);
+      groupPan.setValue({ x: 0, y: 0 });
+      groupScaleAnim.setValue(1);
+      groupCurrentScale.current = 1;
     }
   }, [activeDisplayText, animationMode, fontFamily]);
 
   // Detect overflow and reduce line height until it fits
   useEffect(() => {
     if (animationMode === "scroll" || textBlockHeight === null) return;
-    const availH = SCREEN_WIDTH;
+    const availH = SCREEN_WIDTH * 0.98;
     const isOverflowing = textBlockHeight > availH;
-    console.log("Text overlapping:", isOverflowing);
     if (isOverflowing && lineHeightMult > 0.9) {
-      // 0.95 safety factor ensures convergence even when decorative glyphs
-      // extend beyond the line box and don't shrink with lineHeight
       const newMult = (availH / textBlockHeight) * lineHeightMult * 0.95;
       setLineHeightMult(Math.max(0.9, newMult));
     }
@@ -541,10 +864,15 @@ export function LEDFullscreenView({
   if (animationMode === "scroll") {
     // Cap so line height fits within SCREEN_WIDTH after 90° rotation
     actualFontSize = Math.min(
-      fontSize * 7,
+      fontSize * 8,
       Math.floor(SCREEN_WIDTH / lineHeightMult),
     );
-  } else if (staticMeasuredWidth != null && staticMeasuredWidth > 0) {
+  } else if (
+    staticMeasuredWidth != null &&
+    staticMeasuredWidth > 0 &&
+    longestWordMeasuredWidth != null &&
+    longestWordMeasuredWidth > 0
+  ) {
     // After 90° rotation:
     //   text "width"  (before rotation) → vertical extent on screen  (≤ SCREEN_HEIGHT)
     //   text "height" (before rotation) → horizontal extent on screen (≤ SCREEN_WIDTH)
@@ -553,22 +881,41 @@ export function LEDFullscreenView({
     // Average char width at F = (measuredSingleLineWidth * F / REF) / charCount
     // Lines needed           = ceil(charCount / floor(availW / charWidthAtF))
     // Total block height     = lines * F * LINE_HEIGHT_RATIO  ← must fit SCREEN_WIDTH
-    const availW = SCREEN_HEIGHT * 0.94; // container width before rotation
-    const availH = SCREEN_WIDTH * 0.93; // container height before rotation
-    const LINE_HEIGHT_RATIO = 1.15;
+    const availW = SCREEN_HEIGHT * 0.98;
+    const availH = SCREEN_WIDTH * 0.98;
     const charCount = activeDisplayText.length;
+    const staticWords = activeDisplayText.split(" ").filter(Boolean);
 
     let low = 20,
-      high = 600,
+      high = 1200,
       best = 30;
     while (low <= high) {
       const mid = Math.floor((low + high) / 2);
+      // Average charWidth across full text — accurate for wrapping decisions
       const charWidthAtMid =
         (staticMeasuredWidth * mid) / STATIC_REF_FONT / charCount;
       const charsPerLine = Math.max(1, Math.floor(availW / charWidthAtMid));
-      const numLines = Math.ceil(charCount / charsPerLine);
-      const totalHeight = numLines * mid * LINE_HEIGHT_RATIO;
-      if (totalHeight <= availH) {
+
+      // Simulate word-boundary wrapping — same logic as the layout below
+      let numLines = 1;
+      let lineChars = 0;
+      for (const w of staticWords) {
+        const needed = lineChars > 0 ? 1 + w.length : w.length;
+        if (lineChars + needed >= charsPerLine && lineChars > 0) {
+          numLines++;
+          lineChars = w.length;
+        } else {
+          lineChars += needed;
+        }
+      }
+
+      // Accurate overflow check: uses the longest word's actual measured width
+      // (not the average) so proportional fonts with wide characters don't overflow.
+      const longestWordFits =
+        (longestWordMeasuredWidth! * mid) / STATIC_REF_FONT <= availW;
+
+      const totalHeight = numLines * mid;
+      if (totalHeight <= availH && longestWordFits) {
         best = mid;
         low = mid + 1;
       } else {
@@ -610,18 +957,7 @@ export function LEDFullscreenView({
     outputRange: [0, -2],
   });
 
-  // Compute transform explicitly to ensure it's evaluated on initial render
-  const textTransform =
-    animationMode === "scroll"
-      ? [{ translateY: scrollY }, { rotate: "90deg" }]
-      : animationMode === "static" && waveEnabled
-        ? [
-            { rotate: "90deg" },
-            { scale: pulseScale },
-            { translateX: vibrateX },
-            { translateY: vibrateY },
-          ]
-        : [{ rotate: "90deg" }];
+  const textTransform = [{ translateY: scrollY }, { rotate: "90deg" as const }];
 
   return (
     <SafeAreaView
@@ -630,7 +966,10 @@ export function LEDFullscreenView({
     >
       <StatusBar style="light" hidden />
 
-      <View style={[styles.ledContainer, { backgroundColor: bgColor }]}>
+      <View
+        style={[styles.ledContainer, { backgroundColor: bgColor }]}
+        {...(animationMode !== "scroll" ? groupPanResponder.panHandlers : {})}
+      >
         {/* Background touch handler */}
         <TouchableWithoutFeedback
           onPress={handleDoubleTap}
@@ -687,7 +1026,7 @@ export function LEDFullscreenView({
           </View>
         )}
 
-        {/* Hidden node to measure true single-line text width for static mode */}
+        {/* Full-text width — used for average charWidth (wrapping decisions) */}
         {animationMode !== "scroll" && staticMeasuredWidth === null && (
           <View
             style={{ position: "absolute", opacity: 0, width: 99999 }}
@@ -711,66 +1050,201 @@ export function LEDFullscreenView({
           </View>
         )}
 
-        {/* Visible animated text — hidden until measurement is ready in scroll mode */}
-        {(animationMode === "scroll"
-          ? measuredTextWidth !== null
-          : staticMeasuredWidth !== null) &&
+        {/* Longest-word width — used only for the overflow (longestWordFits) check */}
+        {animationMode !== "scroll" && longestWordMeasuredWidth === null && (
+          <View
+            style={{ position: "absolute", opacity: 0, width: 99999 }}
+            pointerEvents="none"
+          >
+            <Text
+              numberOfLines={1}
+              onLayout={(e) =>
+                setLongestWordMeasuredWidth(e.nativeEvent.layout.width)
+              }
+              style={{
+                fontSize: STATIC_REF_FONT,
+                fontFamily,
+                fontWeight: fontFamily === "monospace" ? "900" : "normal",
+                letterSpacing: 1,
+                alignSelf: "center",
+              }}
+            >
+              {longestStaticWord}
+            </Text>
+          </View>
+        )}
+
+        {/* Scroll mode — single animated text strip */}
+        {animationMode === "scroll" &&
+          measuredTextWidth !== null &&
           (() => {
             const lineHeight = actualFontSize * lineHeightMult;
-            const textNode =
-              currentFontStyle === "outline" || hollowStroke ? (
-                <TextStroke color={textColor as string} stroke={3}>
-                  <Text
-                    style={{
-                      width: textWidth,
-                      fontSize: actualFontSize,
-                      lineHeight,
-                      color: bgColor,
-                      letterSpacing: 1,
-                      ...(fontFamily === "monospace"
-                        ? { fontWeight: "900" as const }
-                        : {}),
-                      fontFamily,
-                      textAlign: "center",
-                    }}
-                  >
-                    {activeDisplayText}
-                  </Text>
-                </TextStroke>
-              ) : (
+            const scrollBaseStyle = {
+              width: textWidth,
+              fontSize: actualFontSize,
+              lineHeight,
+              ...fontStyleProps,
+              fontFamily,
+              fontWeight:
+                fontFamily === "monospace"
+                  ? ("400" as const)
+                  : ("normal" as const),
+              letterSpacing: 1,
+              textAlign: "center" as const,
+            };
+            const textNode = isRainbow ? (
+              <RainbowText
+                text={activeDisplayText}
+                textStyle={scrollBaseStyle}
+                hollow={hollowStroke}
+                hollowBgColor={bgColor}
+              />
+            ) : currentFontStyle === "outline" || hollowStroke ? (
+              <TextStroke color={textColor as string} stroke={3}>
                 <Text
                   style={{
                     width: textWidth,
                     fontSize: actualFontSize,
                     lineHeight,
-                    ...fontStyleProps,
-                    fontFamily,
-                    fontWeight: fontFamily === "monospace" ? "400" : "normal",
+                    color: bgColor,
                     letterSpacing: 1,
+                    ...(fontFamily === "monospace"
+                      ? { fontWeight: "900" as const }
+                      : {}),
+                    fontFamily,
                     textAlign: "center",
                   }}
                 >
                   {activeDisplayText}
                 </Text>
-              );
+              </TextStroke>
+            ) : (
+              <Text style={scrollBaseStyle}>{activeDisplayText}</Text>
+            );
+            return (
+              <Animated.View
+                style={{
+                  position: "absolute",
+                  top: (SCREEN_HEIGHT - lineHeight) / 2,
+                  transform: textTransform,
+                }}
+                pointerEvents="none"
+              >
+                {textNode}
+              </Animated.View>
+            );
+          })()}
+
+        {/* Static mode — individual DraggableWord per word, inside rotated container */}
+        {animationMode !== "scroll" &&
+          staticMeasuredWidth !== null &&
+          longestWordMeasuredWidth !== null &&
+          (() => {
+            const availW = SCREEN_HEIGHT * 0.98;
+            const charCount = activeDisplayText.length;
+            const lineHeight = actualFontSize; // binary search uses numLines × fontSize with no ratio
+            // Average charWidth — matches binary search wrapping logic
+            const charWidth =
+              (staticMeasuredWidth * actualFontSize) /
+              STATIC_REF_FONT /
+              charCount;
+            const charsPerLine = Math.max(1, Math.floor(availW / charWidth));
+
+            // Group words into lines using the same wrapping logic as the binary search
+            const words = activeDisplayText.split(" ").filter(Boolean);
+            const lines: string[][] = [];
+            let currentLine: string[] = [];
+            let currentChars = 0;
+            for (const w of words) {
+              const needed = currentLine.length > 0 ? 1 + w.length : w.length;
+              if (
+                currentChars + needed >= charsPerLine &&
+                currentLine.length > 0
+              ) {
+                lines.push(currentLine);
+                currentLine = [w];
+                currentChars = w.length;
+              } else {
+                currentLine.push(w);
+                currentChars += needed;
+              }
+            }
+            if (currentLine.length > 0) lines.push(currentLine);
+
+            const blockHeight = lines.length * lineHeight;
+
+            // Word positions within the block (container coords)
+            const wordPositions: {
+              word: string;
+              x: number;
+              y: number;
+              alone: boolean;
+            }[] = [];
+            lines.forEach((lineWords, li) => {
+              const alone = lineWords.length === 1;
+              if (alone) {
+                wordPositions.push({
+                  word: lineWords[0],
+                  x: 0,
+                  y: li * lineHeight,
+                  alone: true,
+                });
+              } else {
+                // Multiple words: use estimated char-width offsets
+                const lineText = lineWords.join(" ");
+                const lineWidth = lineText.length * charWidth;
+                let wordX = Math.max(0, (availW - lineWidth) / 2);
+                lineWords.forEach((w) => {
+                  wordPositions.push({
+                    word: w,
+                    x: wordX,
+                    y: li * lineHeight,
+                    alone: false,
+                  });
+                  wordX += (w.length + 1) * charWidth;
+                });
+              }
+            });
 
             return (
               <Animated.View
                 style={{
                   position: "absolute",
-                  ...(animationMode === "scroll"
-                    ? { top: (SCREEN_HEIGHT - lineHeight) / 2 }
-                    : {}),
-                  transform: textTransform,
+                  width: availW,
+                  height: blockHeight,
+                  left: SCREEN_WIDTH / 2 - availW / 2,
+                  top: SCREEN_HEIGHT / 2 - blockHeight / 2,
+                  transform: [
+                    { translateX: groupPan.x },
+                    { translateY: groupPan.y },
+                    { scale: groupScaleAnim },
+                    { rotate: "90deg" },
+                  ],
                 }}
-                pointerEvents="none"
-                onLayout={(e) => {
-                  if (animationMode !== "scroll") {
-                    setTextBlockHeight(e.nativeEvent.layout.height);
-                  }
-                }}
+                pointerEvents="box-none"
               >
-                {textNode}
+                {wordPositions.map((wp, i) => (
+                  <DraggableWord
+                    key={`${wp.word}-${i}-${wordResetKey}`}
+                    word={wp.word}
+                    initialX={wp.x}
+                    initialY={wp.y}
+                    fontSize={actualFontSize}
+                    fontStyleProps={fontStyleProps}
+                    fontFamily={fontFamily}
+                    hollowStroke={hollowStroke}
+                    textColor={textColor}
+                    bgColor={bgColor}
+                    waveEnabled={waveEnabled}
+                    pulseScale={pulseScale}
+                    vibrateX={vibrateX}
+                    vibrateY={vibrateY}
+                    dragEnabled={wordDragEnabled}
+                    resizeEnabled={wordResizeEnabled}
+                    centered={wp.alone}
+                    isRainbow={isRainbow}
+                  />
+                ))}
               </Animated.View>
             );
           })()}
@@ -783,10 +1257,182 @@ export function LEDFullscreenView({
         </Pressable>
       )}
 
-      {/* Exit hint - press to exit */}
+      {/* Three-dot menu button — static mode only */}
+      {animationMode !== "scroll" && (
+        <Pressable
+          style={menuStyles.dotsBtn}
+          onPress={() => setShowGestureMenu((v) => !v)}
+        >
+          <Ionicons name="ellipsis-vertical" size={20} color="white" />
+        </Pressable>
+      )}
+
+      {/* Gesture menu popup */}
+      {showGestureMenu && (
+        <>
+          <Pressable
+            style={StyleSheet.absoluteFillObject}
+            onPress={() => setShowGestureMenu(false)}
+          />
+          <View style={menuStyles.card}>
+            <Text style={menuStyles.heading}>GESTURES</Text>
+
+            {(
+              [
+                {
+                  fingers: "1",
+                  action: "Move word",
+                  value: wordDragEnabled,
+                  onToggle: (v: boolean) => {
+                    wordDragRef.current = v;
+                    setWordDragEnabled(v);
+                  },
+                },
+                {
+                  fingers: "2",
+                  action: "Resize & move word",
+                  value: wordResizeEnabled,
+                  onToggle: (v: boolean) => {
+                    wordResizeRef.current = v;
+                    setWordResizeEnabled(v);
+                  },
+                },
+                {
+                  fingers: "3+",
+                  action: "Move all words",
+                  value: groupGestureEnabled,
+                  onToggle: (v: boolean) => {
+                    groupGestureRef.current = v;
+                    setGroupGestureEnabled(v);
+                  },
+                },
+              ] as const
+            ).map((row) => (
+              <View key={row.fingers} style={menuStyles.row}>
+                <View style={menuStyles.badge}>
+                  <Text style={menuStyles.badgeNum}>{row.fingers}</Text>
+                  <Text style={menuStyles.badgeSub}>
+                    {row.fingers === "1" ? "finger" : "fingers"}
+                  </Text>
+                </View>
+                <Text style={menuStyles.action}>{row.action}</Text>
+                <Switch
+                  value={row.value}
+                  onValueChange={row.onToggle}
+                  trackColor={{
+                    false: "rgba(255,255,255,0.15)",
+                    true: "rgba(57,243,255,0.5)",
+                  }}
+                  thumbColor={row.value ? "#39F3FF" : "rgba(255,255,255,0.6)"}
+                  ios_backgroundColor="rgba(255,255,255,0.15)"
+                />
+              </View>
+            ))}
+
+            <Pressable
+              style={menuStyles.resetBtn}
+              onPress={() => {
+                setWordResetKey((k) => k + 1);
+                groupPan.setValue({ x: 0, y: 0 });
+                groupScaleAnim.setValue(1);
+                groupCurrentScale.current = 1;
+                setShowGestureMenu(false);
+              }}
+            >
+              <Ionicons name="refresh-outline" size={15} color="#000" />
+              <Text style={menuStyles.resetText}>Reset Positions</Text>
+            </Pressable>
+          </View>
+        </>
+      )}
     </SafeAreaView>
   );
 }
+
+const menuStyles = StyleSheet.create({
+  dotsBtn: {
+    position: "absolute",
+    top: 40,
+    right: 16,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  card: {
+    position: "absolute",
+    top: 88,
+    right: 16,
+    backgroundColor: "rgba(10,10,15,0.97)",
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "rgba(57,243,255,0.2)",
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    minWidth: 230,
+  },
+  heading: {
+    color: "rgba(255,255,255,0.4)",
+    fontSize: 11,
+    fontWeight: "700",
+    letterSpacing: 1.5,
+    marginBottom: 12,
+  },
+  row: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    paddingVertical: 8,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: "rgba(255,255,255,0.07)",
+  },
+  badge: {
+    minWidth: 44,
+    borderRadius: 6,
+    backgroundColor: "rgba(57,243,255,0.12)",
+    borderWidth: 1,
+    borderColor: "rgba(57,243,255,0.3)",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 4,
+    paddingHorizontal: 6,
+  },
+  badgeNum: {
+    color: "#39F3FF",
+    fontSize: 13,
+    fontWeight: "800",
+    lineHeight: 16,
+  },
+  badgeSub: {
+    color: "#39F3FF",
+    fontSize: 9,
+    fontWeight: "600",
+    opacity: 0.8,
+    lineHeight: 11,
+  },
+  action: {
+    flex: 1,
+    color: "rgba(255,255,255,0.85)",
+    fontSize: 14,
+  },
+  resetBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    marginTop: 14,
+    backgroundColor: "#39F3FF",
+    borderRadius: 8,
+    paddingVertical: 9,
+  },
+  resetText: {
+    color: "#000",
+    fontSize: 13,
+    fontWeight: "700",
+  },
+});
 
 // Default export wrapper for route screen usage
 export default function LEDFullscreenScreen() {

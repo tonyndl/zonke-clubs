@@ -6,6 +6,7 @@ import { useRouter } from "expo-router";
 import { Colors } from "@/constants/ui";
 import { PressableScale } from "@/components/ui/PressableScale";
 import { styles } from "./styles";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 function formatAmount(value: number): string {
   const [whole, dec] = value.toFixed(2).split(".");
@@ -378,10 +379,12 @@ export const BeerLeaderboard = () => {
         {filteredLeaderboard.length > 0 ? (
           filteredLeaderboard.map((entry, index) => renderItem(entry, index))
         ) : (
-          <View style={styles.emptyState}>
-            <Ionicons name="search-outline" size={48} color={Colors.smoke} />
-            <Text style={styles.emptyText}>No entries for this club</Text>
-          </View>
+          <EmptyState
+            icon="search-outline"
+            title="No Entries Yet"
+            subtitle="No entries for this club"
+            style={{ flex: 0, paddingVertical: 60 }}
+          />
         )}
       </View>
     </View>

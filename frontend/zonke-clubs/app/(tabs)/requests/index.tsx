@@ -26,6 +26,7 @@ import { websocketService } from "@/services/websocketService";
 import { TextStroke } from "../../screens/Login/utils";
 import { Toast } from "@/components/ui/Toast";
 import { styles } from "./styles";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 type TabType = "received" | "sent";
 type StatusFilter = "all" | "pending" | "accepted";
@@ -612,28 +613,24 @@ export default function RequestsScreen() {
   };
 
   const renderEmptyState = (isSent: boolean) => (
-    <Animated.View entering={FadeIn.delay(200)} style={styles.emptyContainer}>
-      <View style={styles.emptyIcon}>
-        <Ionicons
-          name={isSent ? "paper-plane-outline" : "people-outline"}
-          size={64}
-          color={Colors.smoke}
-        />
-      </View>
-      <Text style={styles.emptyTitle}>
-        {statusFilter !== "all"
-          ? `No ${statusFilter === "accepted" ? "Approved" : "Pending"} Requests`
-          : isSent
-            ? "No Sent Requests"
-            : "No Pending Requests"}
-      </Text>
-      <Text style={styles.emptyText}>
-        {statusFilter !== "all"
-          ? "Try a different filter to see more requests."
-          : isSent
-            ? "You haven't sent any connection requests yet. Start connecting with people at clubs!"
-            : "When someone sends you a connection request, it will appear here."}
-      </Text>
+    <Animated.View entering={FadeIn.delay(200)} style={{ flex: 1 }}>
+      <EmptyState
+        icon={isSent ? "paper-plane-outline" : "people-outline"}
+        title={
+          statusFilter !== "all"
+            ? `No ${statusFilter === "accepted" ? "Approved" : "Pending"} Requests`
+            : isSent
+              ? "No Sent Requests"
+              : "No Pending Requests"
+        }
+        subtitle={
+          statusFilter !== "all"
+            ? "Try a different filter to see more requests."
+            : isSent
+              ? "You haven't sent any connection requests yet. Start connecting with people at clubs!"
+              : "When someone sends you a connection request, it will appear here."
+        }
+      />
     </Animated.View>
   );
 

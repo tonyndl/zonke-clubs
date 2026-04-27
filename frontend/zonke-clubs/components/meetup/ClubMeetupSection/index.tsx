@@ -13,6 +13,7 @@ import {
   formatPlannedDate,
 } from "@/types/meetup";
 import { styles } from "./styles";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 interface Props {
   clubId: string;
@@ -315,20 +316,19 @@ export function ClubMeetupSection({
           }
         </>
       ) : otherIntentions.length === 0 ? (
-        <View style={styles.emptyState}>
-          <Ionicons name="people-outline" size={40} color={Colors.smoke} />
-          <Text style={styles.emptyTitle}>No one here yet</Text>
-          <Text style={styles.emptySubtitle}>
-            Be the first to let others know you want to meet!
-          </Text>
-        </View>
+        <EmptyState
+          icon="people-outline"
+          title="No one here yet"
+          subtitle="Be the first to let others know you want to meet!"
+          style={{ flex: 0, paddingVertical: 32 }}
+        />
       ) : (
-        <View style={styles.emptyState}>
-          <Text style={styles.emptyTitle}>No matches for this filter</Text>
-          <Text style={styles.emptySubtitle}>
-            Try selecting a different day or activity
-          </Text>
-        </View>
+        <EmptyState
+          icon="filter-outline"
+          title="No matches for this filter"
+          subtitle="Try selecting a different day or activity"
+          style={{ flex: 0, paddingVertical: 32 }}
+        />
       )}
     </Animated.View>
   );

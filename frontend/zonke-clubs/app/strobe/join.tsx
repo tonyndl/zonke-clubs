@@ -30,6 +30,7 @@ import {
   type StrobeEffect,
   type StrobeSessionInfo,
 } from "@/services/strobeService";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 export default function JoinStrobeScreen() {
   const router = useRouter();
@@ -600,15 +601,11 @@ export default function JoinStrobeScreen() {
             size="large"
           />
         ) : activeSessions.length === 0 ? (
-          <View style={styles.emptyPicker}>
-            <Ionicons name="flash-off" size={48} color={Colors.smoke} />
-            <Text style={styles.emptyPickerText}>
-              No active strobes right now
-            </Text>
-            <Text style={styles.emptyPickerSub}>
-              Ask the DJ at your club to start a strobe session
-            </Text>
-          </View>
+          <EmptyState
+            icon="flash-off"
+            title="No active strobes right now"
+            subtitle="Ask the DJ at your club to start a strobe session"
+          />
         ) : (
           <FlatList
             data={activeSessions}

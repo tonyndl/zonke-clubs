@@ -13,6 +13,7 @@ export const styles = StyleSheet.create({
     backgroundColor: "#000000",
     alignItems: "center",
     justifyContent: "center",
+    overflow: "hidden",
   },
   backButton: {
     position: "absolute",

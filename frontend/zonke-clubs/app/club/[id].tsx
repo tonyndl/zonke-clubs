@@ -47,6 +47,7 @@ import { AddPostModal } from "@/components/post/AddPostModal";
 import { MediaAsset, ClubPost } from "@/types/post";
 import * as Haptics from "expo-haptics";
 import { Toast } from "@/components/ui/Toast";
+import { EmptyState } from "@/components/ui/EmptyState";
 import {
   clubsService,
   Club as ApiClub,
@@ -1173,21 +1174,12 @@ export default function ClubScreen() {
                 )}
               </View>
               {upcomingGigs.length === 0 && (
-                <View style={styles.noEventsContainer}>
-                  <View style={styles.noEventsIconWrap}>
-                    <Ionicons
-                      name="calendar-outline"
-                      size={28}
-                      color={Colors.gold}
-                    />
-                  </View>
-                  <Text style={styles.noEventsTitle}>
-                    Nothing scheduled yet
-                  </Text>
-                  <Text style={styles.noEventsSub}>
-                    Big events will appear here when they're announced
-                  </Text>
-                </View>
+                <EmptyState
+                  icon="calendar-outline"
+                  title="Nothing scheduled yet"
+                  subtitle="Big events will appear here when they're announced"
+                  style={{ flex: 0, paddingVertical: 28 }}
+                />
               )}
               {upcomingGigs.length > 0 && (
                 <FlatList
@@ -2122,25 +2114,25 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   noEventsIconWrap: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: "rgba(57,243,255,0.07)",
-    borderWidth: 1,
-    borderColor: "rgba(57,243,255,0.18)",
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: "rgba(57, 243, 255, 0.05)",
+    borderWidth: 2,
+    borderColor: "rgba(57, 243, 255, 0.1)",
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 4,
+    marginBottom: 14,
   },
   noEventsTitle: {
     color: Colors.platinum,
-    fontSize: 15,
+    fontSize: 20,
     fontWeight: "700",
-    letterSpacing: 0.2,
+    textAlign: "center",
   },
   noEventsSub: {
     color: Colors.smoke,
-    fontSize: 12,
+    fontSize: 14,
     textAlign: "center",
     lineHeight: 18,
     paddingHorizontal: 16,

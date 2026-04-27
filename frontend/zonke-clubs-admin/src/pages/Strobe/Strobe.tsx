@@ -96,9 +96,26 @@ export const Strobe: React.FC = () => {
     const handleRequestCancelled = (payload: any) => {
       if (!payload?.dj_user_id) return;
       setApprovals((prev) =>
-        prev.filter(
-          (a) => a.dj_user_id !== payload.dj_user_id || a.status !== "pending",
-        ),
+        prev.filter((a) => a.dj_user_id !== payload.dj_user_id),
+      );
+    };
+
+    const handleApprovalApproved = (payload: any) => {
+      if (!payload?.approval) return;
+      const updated: DJApproval = payload.approval;
+      setApprovals((prev) => {
+        const exists = prev.some((a) => a.id === updated.id);
+        if (exists) return prev.map((a) => (a.id === updated.id ? updated : a));
+        return prev
+          .filter((a) => a.dj_user_id !== updated.dj_user_id)
+          .concat(updated);
+      });
+    };
+
+    const handleApprovalRevoked = (payload: any) => {
+      if (!payload?.dj_user_id) return;
+      setApprovals((prev) =>
+        prev.filter((a) => a.dj_user_id !== payload.dj_user_id),
       );
     };
 
@@ -107,10 +124,20 @@ export const Strobe: React.FC = () => {
       "dj_request_cancelled",
       handleRequestCancelled,
     );
+    const unsub3 = adminSocketService.on(
+      "dj_approval_approved",
+      handleApprovalApproved,
+    );
+    const unsub4 = adminSocketService.on(
+      "dj_approval_revoked",
+      handleApprovalRevoked,
+    );
 
     return () => {
       unsub1();
       unsub2();
+      unsub3();
+      unsub4();
     };
   }, []);
 

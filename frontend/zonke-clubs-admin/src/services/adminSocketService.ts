@@ -45,13 +45,19 @@ class AdminSocketService {
 
     // Attach listeners BEFORE joining so we don't miss broadcasts
     this.strobeChannel.on("new_dj_request", (payload: any) => {
-      console.log("[AdminSocket] new_dj_request received", payload);
       this.emit("new_dj_request", payload);
     });
 
     this.strobeChannel.on("dj_request_cancelled", (payload: any) => {
-      console.log("[AdminSocket] dj_request_cancelled received", payload);
       this.emit("dj_request_cancelled", payload);
+    });
+
+    this.strobeChannel.on("dj_approval_approved", (payload: any) => {
+      this.emit("dj_approval_approved", payload);
+    });
+
+    this.strobeChannel.on("dj_approval_revoked", (payload: any) => {
+      this.emit("dj_approval_revoked", payload);
     });
 
     this.strobeChannel

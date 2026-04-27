@@ -14,6 +14,7 @@ import { Colors } from "@/constants/ui";
 import { PressableScale } from "@/components/ui/PressableScale";
 import { ClubPost, MediaAsset } from "@/types/post";
 import { styles, GRID_SPACING } from "./styles";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 // Responsive columns based on screen width
 const getColumns = (width: number) => {
@@ -188,37 +189,24 @@ export function UserMediaGrid({
             })}
           </View>
         ) : (
-          <View style={[styles.emptyState, { flex: 1 }]}>
-            <Ionicons
-              name={
-                activeTab === "photos"
-                  ? "images-outline"
-                  : activeTab === "videos"
-                    ? "videocam-outline"
-                    : "image-outline"
-              }
-              size={48}
-              color={Colors.smoke}
-            />
-            <Text style={styles.emptyText}>
-              No{" "}
-              {activeTab === "photos"
-                ? "photos"
+          <EmptyState
+            icon={
+              activeTab === "photos"
+                ? "images-outline"
                 : activeTab === "videos"
-                  ? "videos"
-                  : "posts"}{" "}
-              yet
-            </Text>
-            <Text style={styles.emptySubtext}>
-              Share your club moments to build your vibe collection
-            </Text>
-
-            {onAddPost && (
-              <Pressable style={styles.addPostBtn} onPress={onAddPost}>
-                <Text style={styles.addPostBtnText}>Add Post</Text>
-              </Pressable>
-            )}
-          </View>
+                  ? "videocam-outline"
+                  : "image-outline"
+            }
+            title={`No ${activeTab === "photos" ? "Photos" : activeTab === "videos" ? "Videos" : "Posts"} Yet`}
+            subtitle="Share your club moments to build your vibe collection"
+            action={
+              onAddPost ? (
+                <Pressable style={styles.addPostBtn} onPress={onAddPost}>
+                  <Text style={styles.addPostBtnText}>Add Post</Text>
+                </Pressable>
+              ) : undefined
+            }
+          />
         )}
       </Animated.View>
     </View>

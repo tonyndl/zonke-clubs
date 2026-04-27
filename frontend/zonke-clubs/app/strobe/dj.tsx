@@ -10,7 +10,7 @@ import {
 } from "react-native";
 import { BlurView } from "expo-blur";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter, useFocusEffect } from "expo-router";
+import { useRouter, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { StatusBar } from "expo-status-bar";
 import { CameraView, useCameraPermissions } from "expo-camera";
@@ -24,6 +24,7 @@ import {
   type StrobeApproval,
   type StrobeEffect,
 } from "@/services/strobeService";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 const EFFECTS: {
   id: StrobeEffect;
@@ -136,6 +137,9 @@ const previewStyles = StyleSheet.create({
 
 export default function DJStrobeScreen() {
   const router = useRouter();
+  const { clubId: preselectedClubId } = useLocalSearchParams<{
+    clubId?: string;
+  }>();
 
   const [approvals, setApprovals] = useState<StrobeApproval[]>([]);
   const [loading, setLoading] = useState(true);
@@ -235,10 +239,15 @@ export default function DJStrobeScreen() {
       .then((data) => {
         if (!isMountedRef.current) return;
         setApprovals(data);
-        // Auto-select first approved club
+        // Auto-select: prefer the club passed as a param, then fall back to only-one-approved
         const approved = data.filter((a) => a.status === "approved");
-        if (approved.length === 1 && !selectedClub) {
-          setSelectedClub(approved[0]);
+        if (!selectedClub) {
+          const target = preselectedClubId
+            ? approved.find((a) => a.club_id === preselectedClubId)
+            : approved.length === 1
+              ? approved[0]
+              : null;
+          if (target) setSelectedClub(target);
         }
       })
       .catch((err) => console.error("Failed to load approvals", err))
@@ -587,33 +596,48 @@ export default function DJStrobeScreen() {
         {/* Pending requests banner */}
         {pendingApprovals.length > 0 && (
           <View style={styles.pendingBanner}>
-            <Ionicons name="time" size={16} color={Colors.accent} />
-            <Text style={styles.pendingText}>
-              {pendingApprovals.length} pending approval
-              {pendingApprovals.length > 1 ? "s" : ""}:{" "}
-              {pendingApprovals.map((a) => a.club?.name ?? "Club").join(", ")}
-            </Text>
+            <View style={styles.pendingHeader}>
+              <Ionicons name="time" size={16} color={Colors.accent} />
+              <Text style={styles.pendingText}>
+                {pendingApprovals.length} pending approval
+                {pendingApprovals.length > 1 ? "s" : ""}
+              </Text>
+            </View>
+            {pendingApprovals.map((a) => (
+              <View key={a.id} style={styles.pendingRow}>
+                <Text style={styles.pendingClubName}>
+                  {a.club?.name ?? "Club"}
+                </Text>
+                <Pressable
+                  style={styles.pendingRevokeBtn}
+                  onPress={() => revokeOwnApproval(a)}
+                >
+                  <Ionicons name="close" size={14} color="#FF4444" />
+                  <Text style={styles.pendingRevokeBtnText}>REVOKE</Text>
+                </Pressable>
+              </View>
+            ))}
           </View>
         )}
 
         {/* No approved clubs */}
         {approvedApprovals.length === 0 && (
-          <View style={styles.emptyCard}>
-            <Ionicons name="flash-off" size={48} color={Colors.smoke} />
-            <Text style={styles.emptyTitle}>No Active Approvals</Text>
-            <Text style={styles.emptyDesc}>
-              Ask a club admin to approve your strobe request.
-            </Text>
-            <Pressable
-              style={styles.requestApprovalBtn}
-              onPress={() => router.push("/strobe/request-approval" as any)}
-            >
-              <Ionicons name="send" size={16} color="#000" />
-              <Text style={styles.requestApprovalBtnText}>
-                REQUEST APPROVAL
-              </Text>
-            </Pressable>
-          </View>
+          <EmptyState
+            icon="flash-off"
+            title="No Active Approvals"
+            subtitle="Ask a club admin to approve your strobe request."
+            action={
+              <Pressable
+                style={styles.requestApprovalBtn}
+                onPress={() => router.push("/strobe/request-approval" as any)}
+              >
+                <Ionicons name="send" size={16} color="#000" />
+                <Text style={styles.requestApprovalBtnText}>
+                  REQUEST APPROVAL
+                </Text>
+              </Pressable>
+            }
+          />
         )}
 
         {/* Club selection */}
@@ -1123,8 +1147,6 @@ const styles = StyleSheet.create({
     paddingBottom: 120,
   },
   pendingBanner: {
-    flexDirection: "row",
-    alignItems: "center",
     gap: 8,
     backgroundColor: "rgba(57,243,255,0.07)",
     borderRadius: 10,
@@ -1134,10 +1156,45 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(57,243,255,0.2)",
   },
+  pendingHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
   pendingText: {
     flex: 1,
     fontSize: 12,
     color: Colors.smoke,
+  },
+  pendingRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingTop: 6,
+    borderTopWidth: 1,
+    borderTopColor: "rgba(57,243,255,0.1)",
+  },
+  pendingClubName: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: Colors.platinum,
+  },
+  pendingRevokeBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "rgba(255,68,68,0.1)",
+    borderWidth: 1,
+    borderColor: "rgba(255,68,68,0.3)",
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  pendingRevokeBtnText: {
+    fontSize: 11,
+    fontWeight: "800",
+    color: "#FF4444",
+    letterSpacing: 0.5,
   },
   emptyCard: {
     flex: 1,
@@ -1166,7 +1223,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingHorizontal: 20,
     paddingVertical: 14,
-    marginTop: 8,
+    marginTop: 18,
   },
   requestApprovalBtnText: {
     fontSize: 13,

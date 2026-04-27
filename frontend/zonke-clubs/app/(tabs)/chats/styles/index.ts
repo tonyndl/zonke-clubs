@@ -7,7 +7,6 @@ export const styles = StyleSheet.create({
     backgroundColor: Colors.bg,
   },
   header: {
-    flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 20,
@@ -17,6 +16,7 @@ export const styles = StyleSheet.create({
     fontSize: 32,
     fontWeight: "800",
     letterSpacing: 1.4,
+    textAlign: "center",
   },
   badge: {
     position: "absolute",
@@ -210,6 +210,7 @@ export const styles = StyleSheet.create({
     flexDirection: "row",
     borderRadius: 14,
     paddingHorizontal: 20,
+    marginTop: 20,
     paddingVertical: 14,
     gap: 8,
     backgroundColor: Colors.gold,

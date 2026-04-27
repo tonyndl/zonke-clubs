@@ -13,6 +13,7 @@ import { PressableScale } from "@/components/ui/PressableScale";
 import { MediaGridModal } from "../MediaGridModal";
 import { ClubPost, MediaAsset } from "@/types/post";
 import { styles } from "./styles";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 const GRID_SPACING = 8;
 
@@ -225,28 +226,18 @@ export function ClubMediaGrid({
             )}
           </>
         ) : (
-          <View style={styles.emptyState}>
-            <Ionicons
-              name={
-                activeTab === "photos"
-                  ? "images-outline"
-                  : activeTab === "videos"
-                    ? "videocam-outline"
-                    : "image-outline"
-              }
-              size={48}
-              color={Colors.smoke}
-            />
-            <Text style={styles.emptyText}>
-              No{" "}
-              {activeTab === "photos"
-                ? "photos"
+          <EmptyState
+            icon={
+              activeTab === "photos"
+                ? "images-outline"
                 : activeTab === "videos"
-                  ? "videos"
-                  : "media"}{" "}
-              yet
-            </Text>
-          </View>
+                  ? "videocam-outline"
+                  : "image-outline"
+            }
+            title={`No ${activeTab === "photos" ? "Photos" : activeTab === "videos" ? "Videos" : "Media"} Yet`}
+            subtitle={`${activeTab === "photos" ? "Photos" : activeTab === "videos" ? "Videos" : "Media"} from this club will appear here`}
+            style={{ flex: 0, paddingVertical: 48 }}
+          />
         )}
       </View>
 
