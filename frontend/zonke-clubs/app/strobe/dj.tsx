@@ -61,16 +61,24 @@ function StrobePreview({
   bpm,
   customOnMs,
   customOffMs,
+  customRhythmSet,
 }: {
   effect: StrobeEffect;
   bpm: number;
   customOnMs?: number;
   customOffMs?: number;
+  customRhythmSet?: boolean;
 }) {
   const [flashing, setFlashing] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const shouldFlash = effect !== "custom" || customRhythmSet;
+
   useEffect(() => {
+    if (!shouldFlash) {
+      setFlashing(false);
+      return;
+    }
     const pattern = getEffectPattern(effect, bpm, customOnMs, customOffMs);
     let stepIdx = 0;
     let cancelled = false;
@@ -95,7 +103,7 @@ function StrobePreview({
       if (timerRef.current) clearTimeout(timerRef.current);
       setFlashing(false);
     };
-  }, [effect, bpm, customOnMs, customOffMs]);
+  }, [effect, bpm, customOnMs, customOffMs, shouldFlash]);
 
   return (
     <View
@@ -152,6 +160,7 @@ export default function DJStrobeScreen() {
   const [customOffMs, setCustomOffMs] = useState(100);
   const [tapping, setTapping] = useState(false);
   const [tapCount, setTapCount] = useState(0);
+  const [customRhythmSet, setCustomRhythmSet] = useState(false);
   const [overriding, setOverriding] = useState(false);
 
   const tapPressStartRef = useRef(0);
@@ -412,6 +421,7 @@ export default function DJStrobeScreen() {
 
   const changeEffect = (newEffect: StrobeEffect) => {
     setEffect(newEffect);
+    if (newEffect !== "custom") setCustomRhythmSet(false);
     if (isRunning) updateStrobe(BPM, newEffect);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   };
@@ -469,6 +479,7 @@ export default function DJStrobeScreen() {
       setCustomOnMs(newOn);
       setCustomOffMs(newOff);
       setTapCount(onSamples.length);
+      setCustomRhythmSet(true);
       if (isRunning) updateStrobe(BPM, "custom", newOn, newOff);
     } else {
       setTapCount(onSamples.length);
@@ -522,8 +533,10 @@ export default function DJStrobeScreen() {
     const idx = patternIndexRef.current % pattern.length;
     const [onMs, offMs] = pattern[idx];
 
-    // Re-sync to beat grid only at the start of each pattern cycle
-    const delay = idx === 0 ? getNextBeatDelay(anchorTime, BPM) : 0;
+    // Re-sync to beat grid at the start of each pattern cycle — skip for custom
+    // (custom runs at its own tapped rate with no BPM alignment)
+    const delay =
+      idx === 0 && effect !== "custom" ? getNextBeatDelay(anchorTime, BPM) : 0;
 
     beatTimerRef.current = setTimeout(() => {
       if (!isMountedRef.current) return;
@@ -871,6 +884,7 @@ export default function DJStrobeScreen() {
                 bpm={BPM}
                 customOnMs={effect === "custom" ? customOnMs : undefined}
                 customOffMs={effect === "custom" ? customOffMs : undefined}
+                customRhythmSet={customRhythmSet}
               />
             </View>
           </>
@@ -1507,7 +1521,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    padding: 20,
+    paddingHorizontal: 20,
     paddingBottom: 36,
     backgroundColor: Colors.bg,
   },

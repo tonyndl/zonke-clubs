@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useDebounce } from "@/hooks/useDebounce";
 import {
   View,
@@ -293,6 +293,14 @@ export default function ProfileScreen() {
   }>();
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
+  const scrollRef = useRef<any>(null);
+
+  useEffect(() => {
+    const unsubscribe = (navigation as any).addListener("tabPress", () => {
+      scrollRef.current?.scrollToPosition(0, 0, true);
+    });
+    return unsubscribe;
+  }, [navigation]);
 
   // Get authenticated user from context
   const { user: authUser, isLoading: authLoading, refreshUser } = useAuth();
@@ -1241,6 +1249,7 @@ export default function ProfileScreen() {
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
       <KeyboardAwareScrollView
+        ref={scrollRef}
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
@@ -1493,7 +1502,6 @@ export default function ProfileScreen() {
                         multiline
                         maxLength={200}
                         placeholder="Tell people about yourself..."
-                        placeholderTextColor={Colors.lightGrey}
                       />
                       <Text style={styles.charCount}>{bio.length}/200</Text>
                     </View>

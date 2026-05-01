@@ -9,9 +9,6 @@ export const DatePickerContainer = styled.div`
 export const DateInput = styled.div<{ hasValue: boolean; isOpen: boolean }>`
   padding: ${theme.spacing.md};
   background: ${theme.colors.background};
-  // border: 1px solid
-  //   ${(props) =>
-    props.isOpen ? theme.colors.primary : theme.colors.border};
   border-radius: ${theme.borderRadius.lg};
   color: ${(props) =>
     props.hasValue ? theme.colors.textPrimary : theme.colors.textSecondary};
@@ -46,17 +43,6 @@ export const CalendarDropdown = styled.div<{
   border-radius: ${theme.borderRadius.xl};
   box-shadow: ${theme.shadows.xl};
   overflow: hidden;
-
-  &::before {
-    content: "";
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 3px;
-    background: ${theme.gradients.primary};
-    z-index: 1;
-  }
 `;
 
 export const CalendarHeader = styled.div`

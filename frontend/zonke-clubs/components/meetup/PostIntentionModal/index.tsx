@@ -272,7 +272,6 @@ export function PostIntentionModal({
         <TextInput
           style={styles.input}
           placeholder="Tell others a bit about yourself..."
-          placeholderTextColor={Colors.smoke}
           value={message}
           onChangeText={setMessage}
           multiline

@@ -264,25 +264,22 @@ export const styles = StyleSheet.create({
     fontSize: 12,
   },
   beerCountContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-    borderRadius: 14,
+    flexDirection: "column",
+    alignItems: "flex-end",
+    gap: 2,
+    minWidth: 90,
   },
   beerEmoji: {
     fontSize: 20,
   },
   beerCount: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: "800",
     color: Colors.gold,
   },
   litresLabel: {
     fontSize: 11,
-    color: Colors.white,
-    marginTop: 2,
+    color: Colors.smoke,
     letterSpacing: 0.6,
   },
 });

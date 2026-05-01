@@ -311,6 +311,7 @@ interface DraggableWordProps {
   initialX: number;
   initialY: number;
   fontSize: number;
+  lineHeight: number;
   fontStyleProps: object;
   fontFamily: string;
   hollowStroke: boolean;
@@ -333,6 +334,7 @@ function DraggableWord({
   initialX,
   initialY,
   fontSize,
+  lineHeight,
   fontStyleProps,
   fontFamily,
   hollowStroke,
@@ -417,7 +419,7 @@ function DraggableWord({
 
   const textStyle: any = {
     fontSize,
-    lineHeight: fontSize,
+    lineHeight,
     ...(fontFamily === "monospace" ? { fontWeight: "900" as const } : {}),
     fontFamily,
     letterSpacing: 1,
@@ -530,6 +532,9 @@ export function LEDFullscreenView({
   >(null);
   const [lineHeightMult, setLineHeightMult] = useState(1.3);
   const [textBlockHeight, setTextBlockHeight] = useState<number | null>(null);
+  const [measuredLineHeight, setMeasuredLineHeight] = useState<number | null>(
+    null,
+  );
 
   const [emojiMode, setEmojiMode] = useState(false);
   const [detachedEmojis, setDetachedEmojis] = useState<
@@ -719,6 +724,7 @@ export function LEDFullscreenView({
     if (animationMode !== "scroll") {
       setStaticMeasuredWidth(null);
       setLongestWordMeasuredWidth(null);
+      setMeasuredLineHeight(null);
       setLineHeightMult(1.3);
       setTextBlockHeight(null);
       groupPan.setValue({ x: 0, y: 0 });
@@ -871,7 +877,9 @@ export function LEDFullscreenView({
     staticMeasuredWidth != null &&
     staticMeasuredWidth > 0 &&
     longestWordMeasuredWidth != null &&
-    longestWordMeasuredWidth > 0
+    longestWordMeasuredWidth > 0 &&
+    measuredLineHeight != null &&
+    measuredLineHeight > 0
   ) {
     // After 90° rotation:
     //   text "width"  (before rotation) → vertical extent on screen  (≤ SCREEN_HEIGHT)
@@ -885,15 +893,28 @@ export function LEDFullscreenView({
     const availH = SCREEN_WIDTH * 0.98;
     const charCount = activeDisplayText.length;
     const staticWords = activeDisplayText.split(" ").filter(Boolean);
+    const fontEntry = FONT_FAMILIES.find((f) => f.key === fontFamily);
+    const sizeScale = fontEntry?.sizeScale ?? 1.0;
+    // lineHeightFactor: actual rendered line height relative to font size.
+    // Measured directly so every font uses its real metrics automatically.
+    // Per-font lineHeightRatio can override when decorations exceed font metrics.
+    const measuredFactor = measuredLineHeight / STATIC_REF_FONT;
+    const lineHeightFactor = Math.max(
+      measuredFactor,
+      fontEntry?.lineHeightRatio ?? 1.0,
+    );
 
     let low = 20,
       high = 1200,
       best = 30;
     while (low <= high) {
       const mid = Math.floor((low + high) / 2);
+      // Apply sizeScale so overflow checks reflect the actual rendered size
+      const scaledMid = Math.floor(mid * sizeScale);
+
       // Average charWidth across full text — accurate for wrapping decisions
       const charWidthAtMid =
-        (staticMeasuredWidth * mid) / STATIC_REF_FONT / charCount;
+        (staticMeasuredWidth * scaledMid) / STATIC_REF_FONT / charCount;
       const charsPerLine = Math.max(1, Math.floor(availW / charWidthAtMid));
 
       // Simulate word-boundary wrapping — same logic as the layout below
@@ -912,9 +933,9 @@ export function LEDFullscreenView({
       // Accurate overflow check: uses the longest word's actual measured width
       // (not the average) so proportional fonts with wide characters don't overflow.
       const longestWordFits =
-        (longestWordMeasuredWidth! * mid) / STATIC_REF_FONT <= availW;
+        (longestWordMeasuredWidth! * scaledMid) / STATIC_REF_FONT <= availW;
 
-      const totalHeight = numLines * mid;
+      const totalHeight = numLines * scaledMid * lineHeightFactor;
       if (totalHeight <= availH && longestWordFits) {
         best = mid;
         low = mid + 1;
@@ -922,8 +943,6 @@ export function LEDFullscreenView({
         high = mid - 1;
       }
     }
-    const sizeScale =
-      FONT_FAMILIES.find((f) => f.key === fontFamily)?.sizeScale ?? 1.0;
     actualFontSize = Math.floor(best * sizeScale);
   } else {
     // Placeholder while measurement node hasn't fired yet — show nothing (hidden by render gate)
@@ -1074,6 +1093,32 @@ export function LEDFullscreenView({
           </View>
         )}
 
+        {/* Natural line-height measurement — one character at STATIC_REF_FONT, no explicit lineHeight */}
+        {animationMode !== "scroll" && measuredLineHeight === null && (
+          <View
+            style={{ position: "absolute", opacity: 0 }}
+            pointerEvents="none"
+          >
+            <Text
+              numberOfLines={1}
+              onLayout={(e) =>
+                setMeasuredLineHeight(e.nativeEvent.layout.height)
+              }
+              style={{
+                fontSize: STATIC_REF_FONT,
+                fontFamily,
+                ...(fontFamily === "monospace"
+                  ? { fontWeight: "900" as const }
+                  : {}),
+                letterSpacing: 1,
+                alignSelf: "flex-start",
+              }}
+            >
+              A
+            </Text>
+          </View>
+        )}
+
         {/* Scroll mode — single animated text strip */}
         {animationMode === "scroll" &&
           measuredTextWidth !== null &&
@@ -1142,7 +1187,14 @@ export function LEDFullscreenView({
           (() => {
             const availW = SCREEN_HEIGHT * 0.98;
             const charCount = activeDisplayText.length;
-            const lineHeight = actualFontSize; // binary search uses numLines × fontSize with no ratio
+            const _fontEntry = FONT_FAMILIES.find((f) => f.key === fontFamily);
+            const _measuredFactor =
+              (measuredLineHeight ?? STATIC_REF_FONT) / STATIC_REF_FONT;
+            const _lineHeightFactor = Math.max(
+              _measuredFactor,
+              _fontEntry?.lineHeightRatio ?? 1.0,
+            );
+            const lineHeight = actualFontSize * _lineHeightFactor;
             // Average charWidth — matches binary search wrapping logic
             const charWidth =
               (staticMeasuredWidth * actualFontSize) /
@@ -1211,7 +1263,8 @@ export function LEDFullscreenView({
                 style={{
                   position: "absolute",
                   width: availW,
-                  height: blockHeight,
+                  alignItems: "center",
+                  height: SCREEN_WIDTH,
                   left: SCREEN_WIDTH / 2 - availW / 2,
                   top: SCREEN_HEIGHT / 2 - blockHeight / 2,
                   transform: [
@@ -1230,6 +1283,7 @@ export function LEDFullscreenView({
                     initialX={wp.x}
                     initialY={wp.y}
                     fontSize={actualFontSize}
+                    lineHeight={lineHeight}
                     fontStyleProps={fontStyleProps}
                     fontFamily={fontFamily}
                     hollowStroke={hollowStroke}

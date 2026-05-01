@@ -1,11 +1,17 @@
-// wordGap:   replacement for each space between words in scroll mode. Default " ".
-// sizeScale: multiplier applied to the binary-searched static font size. Default 1.0.
-//            Use < 1.0 for fonts with tall ascenders/descenders that overflow the screen.
+// wordGap:         replacement for each space between words in scroll mode. Default " ".
+// sizeScale:       multiplier applied to the binary-searched static font size. Default 1.0.
+//                  Use < 1.0 for fonts with wide characters that overflow the screen width.
+// lineHeightRatio: multiplies the row height/spacing in static mode. Default 1.0.
+//                  Use > 1.0 for fonts whose decorations (drips, spikes, etc.) extend
+//                  beyond the nominal character bounding box. The binary search also
+//                  multiplies the height constraint by this value so the total block
+//                  still fits on screen.
 export const FONT_FAMILIES: {
   name: string;
   key: string;
   wordGap?: string;
   sizeScale?: number;
+  lineHeightRatio?: number;
 }[] = [
   { name: "Default", key: "monospace" },
   { name: "Audiowide", key: "Audiowide_400Regular", wordGap: "  " },

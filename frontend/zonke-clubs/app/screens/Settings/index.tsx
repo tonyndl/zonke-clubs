@@ -485,7 +485,6 @@ export default function SettingsScreen() {
                       }}
                       secureTextEntry={!showCurrentPassword}
                       placeholder="Enter current password"
-                      placeholderTextColor={Colors.lightGrey}
                     />
                     <TouchableOpacity
                       onPress={() =>
@@ -526,7 +525,6 @@ export default function SettingsScreen() {
                       }}
                       secureTextEntry={!showNewPassword}
                       placeholder="Enter new password"
-                      placeholderTextColor={Colors.lightGrey}
                     />
                     <TouchableOpacity
                       onPress={() => setShowNewPassword(!showNewPassword)}
@@ -565,7 +563,6 @@ export default function SettingsScreen() {
                       }}
                       secureTextEntry={!showConfirmPassword}
                       placeholder="Confirm new password"
-                      placeholderTextColor={Colors.lightGrey}
                     />
                     <TouchableOpacity
                       onPress={() =>

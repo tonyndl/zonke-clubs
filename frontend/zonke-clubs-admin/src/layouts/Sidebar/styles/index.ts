@@ -23,18 +23,6 @@ export const SidebarContainer = styled.aside<{ collapsed?: boolean }>`
   flex-shrink: 0;
   overflow: hidden;
   transition: width ${theme.transitions.normal};
-
-  &::before {
-    content: "";
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 1px;
-    background: ${theme.gradients.accent};
-    animation: ${shimmer} 3s linear infinite;
-    background-size: 200% 100%;
-  }
 `;
 
 export const LogoSection = styled.div<{ collapsed?: boolean }>`
@@ -378,7 +366,7 @@ export const LogoutButton = styled.button<{ collapsed?: boolean }>`
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: ${theme.spacing.sm};
+  gap: ${({ collapsed }) => (collapsed ? "0" : theme.spacing.sm)};
 
   &::before {
     content: "";

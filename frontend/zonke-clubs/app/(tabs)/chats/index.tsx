@@ -1,7 +1,8 @@
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
 import { View, Text, ScrollView, RefreshControl, Image } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useFocusEffect } from "expo-router";
+import { useScrollToTop } from "@react-navigation/native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
@@ -18,6 +19,8 @@ export default function ChatsScreen() {
   const [threads, setThreads] = useState<ChatThread[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const scrollRef = useRef<ScrollView>(null);
+  useScrollToTop(scrollRef);
   const [_unreadCount, setUnreadCount] = useState(0);
 
   const loadThreads = useCallback(() => {
@@ -367,6 +370,7 @@ export default function ChatsScreen() {
 
       {/* Content */}
       <ScrollView
+        ref={scrollRef}
         style={styles.content}
         contentContainerStyle={[
           styles.contentContainer,
