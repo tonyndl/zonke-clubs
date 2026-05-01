@@ -544,7 +544,8 @@ export default function JoinStrobeScreen() {
     const idx = patternIndexRef.current % pattern.length;
     const [onMs, offMs] = pattern[idx];
 
-    const delay = idx === 0 ? getNextBeatDelay(anchorTime, bpm) : 0;
+    const delay =
+      idx === 0 && effect !== "custom" ? getNextBeatDelay(anchorTime, bpm) : 0;
 
     beatTimerRef.current = setTimeout(() => {
       if (!isMountedRef.current) return;

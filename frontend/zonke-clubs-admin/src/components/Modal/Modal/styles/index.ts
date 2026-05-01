@@ -38,17 +38,6 @@ export const ModalContainer = styled.div<{
   opacity: ${(props) => (props.isOpen ? 1 : 0)};
   transition: all ${theme.transitions.normal};
 
-  &::before {
-    content: "";
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 4px;
-    background: ${theme.gradients.primary};
-    z-index: 2;
-  }
-
   /* Custom scrollbar styling */
   &::-webkit-scrollbar {
     width: 12px;

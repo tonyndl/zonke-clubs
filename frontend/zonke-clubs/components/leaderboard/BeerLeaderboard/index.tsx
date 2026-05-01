@@ -284,7 +284,9 @@ export const BeerLeaderboard = () => {
 
             {/* User info */}
             <View style={styles.userInfo}>
-              <Text style={styles.userName}>{entry.username}</Text>
+              <Text style={styles.userName} numberOfLines={1}>
+                {entry.username}
+              </Text>
               <Text style={styles.clubName} numberOfLines={1}>
                 {entry.clubName}
               </Text>

@@ -21,11 +21,6 @@ export default function PeopleBrowseScreen() {
   const params = useLocalSearchParams<{ clubId?: string }>();
   const paramClubId = params.clubId;
 
-  console.log(
-    "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB",
-    paramClubId,
-  );
-
   const [clubId] = useState<string | null>(paramClubId || null);
   const [intentions, setIntentions] = useState<MeetupIntention[]>([]);
   const [connectionStatuses, setConnectionStatuses] = useState<

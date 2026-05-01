@@ -22,6 +22,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
+import { useScrollToTop } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
 import Animated, {
   FadeInDown,
@@ -708,6 +709,7 @@ export const HomeScreen = () => {
   } | null>(null);
 
   const listRef = useRef<FlatList>(null);
+  useScrollToTop(listRef);
 
   useEffect(() => {
     Location.requestForegroundPermissionsAsync()

@@ -83,18 +83,6 @@ export const SetupCard = styled.div`
   @media (max-width: ${({ theme }) => theme.breakpoints.mobile}) {
     padding: ${({ theme }) => theme.spacing.xl};
   }
-
-  &::before {
-    content: "";
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 2px;
-    background: ${({ theme }) => theme.gradients.primary};
-    border-radius: ${({ theme }) => theme.borderRadius.xl}
-      ${({ theme }) => theme.borderRadius.xl} 0 0;
-  }
 `;
 
 export const Header = styled.div`

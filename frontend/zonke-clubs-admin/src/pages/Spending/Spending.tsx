@@ -272,27 +272,6 @@ export const Spending: React.FC = () => {
               </FilterTab>
             </FilterTabs>
           </FilterGroup>
-
-          {/* <FilterGroup>
-            <FilterLabel>Trending</FilterLabel>
-            <FilterTabs>
-              <FilterTab active={trendingFilter === 'all'} onClick={() => setTrendingFilter('all')}>
-                All
-              </FilterTab>
-              <FilterTab active={trendingFilter === 'rising'} onClick={() => setTrendingFilter('rising')}>
-                🔥 Rising Stars
-              </FilterTab>
-              <FilterTab active={trendingFilter === 'falling'} onClick={() => setTrendingFilter('falling')}>
-                📉 Falling
-              </FilterTab>
-              <FilterTab active={trendingFilter === 'stable'} onClick={() => setTrendingFilter('stable')}>
-                ➖ Stable
-              </FilterTab>
-              <FilterTab active={trendingFilter === 'new'} onClick={() => setTrendingFilter('new')}>
-                ⭐ New Entries
-              </FilterTab>
-            </FilterTabs>
-          </FilterGroup> */}
         </FilterSection>
 
         {!isLoading && rankedRecords.length > 0 ? (

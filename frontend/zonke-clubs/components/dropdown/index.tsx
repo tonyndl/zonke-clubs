@@ -56,7 +56,7 @@ export const DropdownInput = <T extends FieldValues>({
   name,
   setValue,
   required,
-  placeholderTextColor = Colors.lightGrey,
+  placeholderTextColor,
   value,
 }: DropdownInputProps<T>) => {
   const [open, setOpen] = useState(false);
