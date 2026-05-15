@@ -49,15 +49,14 @@ defmodule BackendWeb.Admin.SpendingRecordJSON do
 
   defp leaderboard_data(entry) do
     %{
+      record_id: entry.record_id,
       rank: entry.rank,
       user_id: entry.user_id,
       username: entry.username,
       avatar_url: entry.avatar_url,
       amount: entry.amount,
       visit_date: entry.visit_date,
-      position_change: entry.position_change,
-      time_on_chart: entry.time_on_chart,
-      time_unit: entry.time_unit
+      position_change: entry.position_change
     }
   end
 end

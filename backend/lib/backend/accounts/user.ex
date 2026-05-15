@@ -7,7 +7,6 @@ defmodule Backend.Accounts.User do
     :email,
     :phone,
     :bio,
-    :vibes,
     :favorite_drinks,
     :onboarding_complete,
     :avatar_url,
@@ -26,7 +25,6 @@ defmodule Backend.Accounts.User do
 
     # Profile fields
     field :bio, :string
-    field :vibes, {:array, :string}
     field :favorite_drinks, {:array, :string}
     field :avatar_url, :string
     field :location, :map
@@ -63,12 +61,12 @@ defmodule Backend.Accounts.User do
   end
 
   @doc """
-  Changeset for updating profile setup data (bio, vibes, favorite_drinks, etc).
+  Changeset for updating profile setup data (bio, favorite_drinks, etc).
   Only validates profile-specific fields.
   """
   def profile_changeset(user, attrs) do
     user
-    |> cast(attrs, [:bio, :vibes, :favorite_drinks, :avatar_url, :location, :onboarding_complete, :spending_visible])
+    |> cast(attrs, [:bio, :favorite_drinks, :avatar_url, :location, :onboarding_complete, :spending_visible])
     |> validate_length(:bio, max: 500)
     |> validate_location()
   end

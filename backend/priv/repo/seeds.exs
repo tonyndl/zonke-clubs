@@ -56,8 +56,6 @@ clubs_data = [
     location: %{"name" => "Granger Bay Blvd, Victoria & Alfred Waterfront, Cape Town, 8002"},
     phone: "+27 21 425 0551",
     email: "info@grandafrica.com",
-    vibes: ["Beachfront", "Upscale", "Energetic", "Sunset Views"],
-    music_genres: ["House", "Afro House", "Deep House", "Commercial"],
     dress_code: "Smart Casual - No flip-flops or sportswear",
     entry_fee: "R100-R200 (varies by event)",
     image: "grand_africa.jpg"
@@ -69,8 +67,6 @@ clubs_data = [
     location: %{"name" => "Pepper St, Cape Town City Centre, Cape Town, 8001"},
     phone: "+27 21 422 2330",
     email: "bookings@kong.co.za",
-    vibes: ["Urban", "Trendy", "Multi-Level", "Celebrity Hotspot"],
-    music_genres: ["Hip Hop", "R&B", "Trap", "Afrobeats"],
     dress_code: "Smart Casual - No sportswear",
     entry_fee: "R80-R150",
     image: "kong.jpg"
@@ -82,8 +78,6 @@ clubs_data = [
     location: %{"name" => "Nelson Mandela Square, Sandton, Johannesburg, 2196"},
     phone: "+27 11 784 1527",
     email: "info@era.co.za",
-    vibes: ["Luxurious", "Elite", "High-Energy", "Sophisticated"],
-    music_genres: ["House", "Deep House", "Tech House", "Afro House"],
     dress_code: "Strictly Smart - No sneakers or jeans",
     entry_fee: "R150-R300",
     image: "era.jpg"
@@ -95,8 +89,6 @@ clubs_data = [
     location: %{"name" => "Rivonia Rd, Sandhurst, Sandton, 2196"},
     phone: "+27 11 883 3452",
     email: "bookings@taboo.co.za",
-    vibes: ["Energetic", "VIP Experience", "Glamorous", "Party Central"],
-    music_genres: ["Commercial House", "Hip Hop", "Afrobeats", "Dance"],
     dress_code: "Smart Casual to Smart",
     entry_fee: "R100-R250",
     image: "taboo.jpg"
@@ -108,8 +100,6 @@ clubs_data = [
     location: %{"name" => "18 Windermere Rd, Morningside, Durban, 4001"},
     phone: "+27 31 303 4501",
     email: "info@origindbn.com",
-    vibes: ["Modern", "Electronic", "Underground", "Immersive"],
-    music_genres: ["Techno", "Tech House", "Progressive House", "Trance"],
     dress_code: "Smart Casual - No sportswear",
     entry_fee: "R80-R150",
     image: "origin.jpg"
@@ -121,8 +111,6 @@ clubs_data = [
     location: %{"name" => "Chartwell Dr, Umhlanga Ridge, Umhlanga, 4319"},
     phone: "+27 31 561 5847",
     email: "bookings@thechairman.co.za",
-    vibes: ["Upmarket", "Sophisticated", "Lounge Atmosphere", "Cocktail Bar"],
-    music_genres: ["House", "Deep House", "R&B", "Soul"],
     dress_code: "Smart - No sneakers",
     entry_fee: "R100-R200",
     image: "chairman.jpg"
@@ -134,8 +122,6 @@ clubs_data = [
     location: %{"name" => "Waterfall Corner, Midrand, Johannesburg, 1686"},
     phone: "+27 11 549 1010",
     email: "info@cubana.co.za",
-    vibes: ["Latin", "Tropical", "Vibrant", "Dancing"],
-    music_genres: ["Salsa", "Latin", "Reggaeton", "Commercial"],
     dress_code: "Smart Casual",
     entry_fee: "R80-R150",
     image: "cubana.jpg"
@@ -147,8 +133,6 @@ clubs_data = [
     location: %{"name" => "50 De Korte St, Braamfontein, Johannesburg, 2001"},
     phone: "+27 11 403 1630",
     email: "info@rockets.co.za",
-    vibes: ["Alternative", "Live Music", "Indie", "Underground"],
-    music_genres: ["Rock", "Indie", "Alternative", "Live Bands"],
     dress_code: "Casual - Come as you are",
     entry_fee: "R50-R100",
     image: "rockets.jpg"
@@ -160,8 +144,6 @@ clubs_data = [
     location: %{"name" => "Cnr Burnett & Festival St, Hatfield, Pretoria, 0083"},
     phone: "+27 12 362 3344",
     email: "bookings@ayepyep.co.za",
-    vibes: ["Energetic", "Afrocentric", "High-Energy", "Young Crowd"],
-    music_genres: ["Afro House", "Amapiano", "Hip Hop", "Gqom"],
     dress_code: "Smart Casual",
     entry_fee: "R80-R120",
     image: "ayepyep.jpg"
@@ -173,8 +155,6 @@ clubs_data = [
     location: %{"name" => "123 Lilian Ngoyi St, Pretoria Central, Pretoria, 0002"},
     phone: "+27 12 004 0300",
     email: "info@arcadeempire.co.za",
-    vibes: ["Unique", "Gaming", "Retro", "Fun"],
-    music_genres: ["Commercial", "Hip Hop", "Pop", "Dance"],
     dress_code: "Casual to Smart Casual",
     entry_fee: "R60-R100",
     image: "arcade_empire.jpg"
@@ -186,8 +166,6 @@ clubs_data = [
     location: %{"name" => "Shop 27, Victoria Wharf, V&A Waterfront, Cape Town, 8001"},
     phone: "+27 21 433 2125",
     email: "info@tigersmilk.co.za",
-    vibes: ["Beachfront", "Casual", "Family-Friendly Early", "Party Late"],
-    music_genres: ["Pop", "Commercial", "House", "Dance"],
     dress_code: "Casual",
     entry_fee: "Free entry (restaurant converts to club)",
     image: "tigers_milk.jpg"
@@ -199,8 +177,6 @@ clubs_data = [
     location: %{"name" => "70 Main Rd, Green Point, Cape Town, 8005"},
     phone: "+27 21 418 8686",
     email: "bookings@cococapetown.com",
-    vibes: ["Exclusive", "Premium", "International", "Elite"],
-    music_genres: ["House", "Tech House", "Deep House", "International DJs"],
     dress_code: "Strictly Smart - Dress to impress",
     entry_fee: "R150-R300",
     image: "coco.jpg"
@@ -212,8 +188,6 @@ clubs_data = [
     location: %{"name" => "8 Canterbury St, Observatory, Cape Town, 7925"},
     phone: "+27 21 448 3773",
     email: "info@modular.co.za",
-    vibes: ["Underground", "Authentic", "Electronic", "Music-Focused"],
-    music_genres: ["Techno", "House", "Experimental", "Electronic"],
     dress_code: "Casual - All about the music",
     entry_fee: "R50-R120",
     image: "modular.jpg"
@@ -225,8 +199,6 @@ clubs_data = [
     location: %{"name" => "Maude St, Sandown, Sandton, 2196"},
     phone: "+27 11 784 5527",
     email: "info@fiction.co.za",
-    vibes: ["Premium", "Luxurious", "World-Class", "VIP Experience"],
-    music_genres: ["House", "Deep House", "Afro House", "Commercial"],
     dress_code: "Strictly Smart - Designer preferred",
     entry_fee: "R200-R400",
     image: "fiction.jpg"
@@ -238,8 +210,6 @@ clubs_data = [
     location: %{"name" => "Tyrwhitt Ave, Rosebank, Johannesburg, 2196"},
     phone: "+27 11 447 4794",
     email: "bookings@theavenue.co.za",
-    vibes: ["Rooftop", "Sophisticated", "After-Work Drinks", "Live Music"],
-    music_genres: ["Jazz", "House", "R&B", "Live Acts"],
     dress_code: "Smart Casual",
     entry_fee: "R80-R150",
     image: "avenue.jpg"
@@ -251,8 +221,6 @@ clubs_data = [
     location: %{"name" => "45 Florence Nzama St, Durban Central, Durban, 4001"},
     phone: "+27 31 303 1305",
     email: "info@selectivelive.com",
-    vibes: ["Electronic", "Intimate", "Quality Sound", "Music Lovers"],
-    music_genres: ["House", "Techno", "Deep House", "Progressive"],
     dress_code: "Smart Casual",
     entry_fee: "R80-R150",
     image: "selective_live.jpg"
@@ -264,8 +232,6 @@ clubs_data = [
     location: %{"name" => "Corner Tyrwhitt & Sturdee Ave, Rosebank, Johannesburg, 2196"},
     phone: "+27 11 447 7471",
     email: "info@clico.co.za",
-    vibes: ["Boutique", "Exclusive", "Luxurious", "Hotel + Club"],
-    music_genres: ["House", "Afro House", "Deep House", "R&B"],
     dress_code: "Smart to Elegant",
     entry_fee: "R120-R200",
     image: "clico.jpg"
@@ -277,8 +243,6 @@ clubs_data = [
     location: %{"name" => "Grayston Dr, Sandton, Johannesburg, 2196"},
     phone: "+27 11 784 5588",
     email: "bookings@sutra.co.za",
-    vibes: ["Opulent", "Oriental", "Theatrical", "VIP Focused"],
-    music_genres: ["House", "Commercial", "Hip Hop", "Dance"],
     dress_code: "Elegant - Dress to impress",
     entry_fee: "R150-R300",
     image: "sutra.jpg"
@@ -290,8 +254,6 @@ clubs_data = [
     location: %{"name" => "61 Harrington St, Cape Town City Centre, Cape Town, 8001"},
     phone: "+27 21 465 7286",
     email: "info@assembly.co.za",
-    vibes: ["Massive", "Events", "Concerts", "Warehouse"],
-    music_genres: ["Various - Event Dependent", "House", "Trance", "EDM"],
     dress_code: "Casual to Smart Casual",
     entry_fee: "R100-R500 (varies by event)",
     image: "assembly.jpg"
@@ -303,8 +265,6 @@ clubs_data = [
     location: %{"name" => "33 Somerset Rd, Green Point, Cape Town, 8005"},
     phone: "+27 21 300 1906",
     email: "info@propaganda.bar",
-    vibes: ["Inclusive", "LGBTQ+ Friendly", "Themed Parties", "Vibrant"],
-    music_genres: ["Pop", "Dance", "House", "Commercial"],
     dress_code: "Casual - Be yourself",
     entry_fee: "R50-R100",
     image: "propaganda.jpg"
@@ -322,8 +282,6 @@ Enum.each(clubs_data, fn club_data ->
       location: club_data.location,
       phone: club_data.phone,
       email: club_data.email,
-      vibes: club_data.vibes,
-      music_genres: club_data.music_genres,
       dress_code: club_data.dress_code,
       entry_fee: club_data.entry_fee,
       active: true,

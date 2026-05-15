@@ -86,14 +86,9 @@ export default function RequestsScreen() {
     loadRequests();
 
     const handleNewRequest = (payload: any) => {
-      try {
-        const transformedRequest = transformRequest(payload.request);
-        setReceivedRequests((prev) => [transformedRequest, ...prev]);
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      } catch (error) {
-        console.error("Error transforming request:", error);
-        loadRequests();
-      }
+      const transformedRequest = transformRequest(payload.request);
+      setReceivedRequests((prev) => [transformedRequest, ...prev]);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     };
 
     const handleRequestAccepted = (payload: any) => {

@@ -131,10 +131,8 @@ export interface SpendingRecord {
   amount: number;
   visit_date: string;
   notes?: string;
-  rank?: number; // Ranking position in leaderboards (handles ties)
-  position_change?: number | "new"; // Rank change from previous period, or 'new' if first time on chart
-  time_on_chart?: number | null; // Duration on chart (value), null when showing "new"
-  time_unit?: "days" | "weeks" | "new"; // Unit for time_on_chart (days/weeks for duration, "new" for very recent)
+  rank?: number;
+  position_change?: number | "new";
   inserted_at: string;
   updated_at: string;
 }

@@ -14,7 +14,6 @@ defmodule BackendWeb.API.UserJSON do
       phone: user.phone,
       role: user.role,
       bio: user.bio,
-      vibes: user.vibes,
       favorite_drinks: user.favorite_drinks,
       avatar_url: user.avatar_url,
       location: user.location,

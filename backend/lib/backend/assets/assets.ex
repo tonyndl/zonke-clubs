@@ -335,4 +335,17 @@ defmodule Backend.Assets do
     |> where([a], a.club_id == ^club_id)
     |> Repo.one()
   end
+
+  @doc """
+  Creates or replaces a club's banner image.
+  If the club already has an asset, replaces it; otherwise creates a new one.
+  """
+  def upsert_club_banner(club_id, %{file: _} = params) do
+    upload_params = Map.put(params, :club_id, club_id)
+
+    case get_club_asset(club_id) do
+      nil -> upload_and_save(upload_params)
+      existing -> update_asset_with_file(existing, upload_params)
+    end
+  end
 end

@@ -78,6 +78,29 @@ defmodule BackendWeb.Admin.SpendingRecordController do
     end
   end
 
+  @doc "Updates a spending record."
+  def update(conn, %{"id" => id} = params, session) do
+    with {:ok, _club_id} <- get_admin_club_id(session),
+         {:ok, record} <- SpendingRecords.get_spending_record(id),
+         attrs = Map.take(params, ["amount", "visit_date", "notes"]),
+         {:ok, updated} <- SpendingRecords.update_spending_record(record, attrs) do
+      conn
+      |> put_status(:ok)
+      |> render(:show, spending_record: updated)
+    end
+  end
+
+  @doc "Deletes a spending record."
+  def delete(conn, %{"id" => id}, session) do
+    with {:ok, _club_id} <- get_admin_club_id(session),
+         {:ok, record} <- SpendingRecords.get_spending_record(id),
+         {:ok, _} <- SpendingRecords.delete_spending_record(record) do
+      conn
+      |> put_status(:no_content)
+      |> json(%{})
+    end
+  end
+
   # Helper function to get the club_id from admin session
   defp get_admin_club_id(session) do
     # Query to find the club owned by this admin

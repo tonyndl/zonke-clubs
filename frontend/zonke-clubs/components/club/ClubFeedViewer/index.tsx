@@ -6,7 +6,6 @@ import {
   StatusBar,
   Dimensions,
   FlatList,
-  Image,
   Pressable,
   ScrollView,
   NativeScrollEvent,
@@ -14,6 +13,7 @@ import {
   PanResponder,
   StyleSheet,
 } from "react-native";
+import { ImageZoom } from "@likashefqet/react-native-image-zoom";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { VideoView, useVideoPlayer } from "expo-video";
 import { LinearGradient } from "expo-linear-gradient";
@@ -453,10 +453,14 @@ function FeedItem({
               ) : isCurrentVideo ? (
                 <View style={styles.media} />
               ) : (
-                <Image
+                <ImageZoom
                   source={{ uri: media.url }}
                   style={styles.media}
                   resizeMode="contain"
+                  minScale={1}
+                  maxScale={5}
+                  doubleTapScale={2.5}
+                  isDoubleTapEnabled
                 />
               )}
             </View>
@@ -510,13 +514,9 @@ function FeedItem({
         </Animated.View>
       )}
 
-      {/* Menu button — top right, owner only */}
-      {showControls && currentUserId && post.user?.id === currentUserId && (
-        <Animated.View
-          entering={FadeIn.duration(200)}
-          exiting={FadeOut.duration(200)}
-          style={[styles.menuButton, { top: insets.top + 8 }]}
-        >
+      {/* Menu button — top right, owner only — always visible */}
+      {currentUserId && post.user?.id === currentUserId && (
+        <View style={[styles.menuButton, { top: insets.top + 8 }]}>
           <PopupMenu
             options={
               post.pinnedAt
@@ -534,7 +534,7 @@ function FeedItem({
               />
             </View>
           </PopupMenu>
-        </Animated.View>
+        </View>
       )}
 
       {/* Bottom info overlay */}

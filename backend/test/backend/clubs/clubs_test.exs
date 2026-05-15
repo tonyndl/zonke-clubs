@@ -56,8 +56,6 @@ defmodule Backend.ClubsTest do
         "user_id" => user.id,
         "email" => "info@nightowl.com",
         "phone" => "+27123456789",
-        "vibes" => ["energetic", "upscale"],
-        "music_genres" => ["house", "techno"],
         "dress_code" => "Smart casual",
         "entry_fee" => "R200",
         "opening_hours" => %{
@@ -68,7 +66,6 @@ defmodule Backend.ClubsTest do
 
       assert {:ok, club} = Clubs.create_club(attrs)
       assert club.email == "info@nightowl.com"
-      assert club.vibes == ["energetic", "upscale"]
       assert club.opening_hours["friday"]["open"] == "22:00"
     end
 

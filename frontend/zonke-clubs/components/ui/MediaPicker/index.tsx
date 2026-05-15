@@ -158,14 +158,13 @@ export function MediaPicker({
     }
   };
 
-  const uploadMedia = async (
+  const uploadMedia = (
     asset: ExpoImagePicker.ImagePickerAsset,
     type: "image" | "video",
   ) => {
     setIsUploading(true);
 
     const formData = new FormData();
-
     const fileUri = asset.uri;
     const filename =
       fileUri.split("/").pop() || `${type}.${type === "video" ? "mp4" : "jpg"}`;
@@ -180,7 +179,6 @@ export function MediaPicker({
       name: filename,
       type: mimeType,
     } as any);
-
     formData.append(`${entityType}_id`, entityId);
     formData.append(
       "meta",
@@ -190,36 +188,29 @@ export function MediaPicker({
       }),
     );
 
-    try {
-      const response = await fetch(
-        `${process.env.EXPO_PUBLIC_API_URL}/api/assets`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "multipart/form-data",
-          },
-          body: formData,
-        },
-      );
-
-      if (!response.ok) {
-        throw new Error("Upload failed");
-      }
-
-      const data = await response.json();
-      setIsUploading(false);
-      onUploadSuccess(data);
-      Alert.alert(
-        "Success",
-        `${type === "video" ? "Video" : "Image"} uploaded successfully!`,
-      );
-    } catch (error) {
-      setIsUploading(false);
-      console.error("Upload error:", error);
-      Alert.alert("Error", `Failed to upload ${type}. Please try again.`);
-      setMediaUri(existingMediaUrl || null);
-      setMediaTypeSelected(null);
-    }
+    fetch(`${process.env.EXPO_PUBLIC_API_URL}/api/assets`, {
+      method: "POST",
+      headers: { "Content-Type": "multipart/form-data" },
+      body: formData,
+    })
+      .then((response) => {
+        if (!response.ok) throw new Error("Upload failed");
+        return response.json();
+      })
+      .then((data) => {
+        setIsUploading(false);
+        onUploadSuccess(data);
+        Alert.alert(
+          "Success",
+          `${type === "video" ? "Video" : "Image"} uploaded successfully!`,
+        );
+      })
+      .catch(() => {
+        setIsUploading(false);
+        Alert.alert("Error", `Failed to upload ${type}. Please try again.`);
+        setMediaUri(existingMediaUrl || null);
+        setMediaTypeSelected(null);
+      });
   };
 
   const showMediaOptions = () => {

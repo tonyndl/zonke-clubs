@@ -3,6 +3,7 @@ defmodule BackendWeb.Admin.ClubController do
   action_fallback BackendWeb.FallbackController
 
   alias Backend.Clubs
+  alias Backend.Assets
 
   @doc """
   Setup or update admin's club profile.
@@ -34,6 +35,19 @@ defmodule BackendWeb.Admin.ClubController do
       conn
       |> put_status(:ok)
       |> render(:show, club: club)
+    end
+  end
+
+  @doc """
+  Upload or replace the club's banner image.
+  """
+  def upload_banner(conn, params, session) do
+    with {:ok, club} <- Clubs.get_admin_club(session.id),
+         {:ok, _asset} <- Assets.upsert_club_banner(club.id, %{file: params["file"]}),
+         {:ok, updated_club} <- Clubs.get_admin_club(session.id) do
+      conn
+      |> put_status(:ok)
+      |> render(:show, club: updated_club)
     end
   end
 end

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   clubInfoSchema,
   phoneNumberSchema,
@@ -17,6 +17,7 @@ import {
   RiPencilLine,
   RiCheckLine,
   RiCloseLine,
+  RiImageAddLine,
 } from "react-icons/ri";
 import { apiService } from "../../../services/api";
 import { LocationAutocomplete } from "../../../components/LocationAutocomplete";
@@ -40,6 +41,9 @@ import {
 
 export const ClubInfo: React.FC = () => {
   const toast = useToast();
+  const bannerInputRef = useRef<HTMLInputElement>(null);
+  const [bannerImageUrl, setBannerImageUrl] = useState<string | null>(null);
+  const [isUploadingBanner, setIsUploadingBanner] = useState(false);
   const [newReservationNumber, setNewReservationNumber] = useState("");
   const [phoneError, setPhoneError] = useState("");
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
@@ -53,8 +57,6 @@ export const ClubInfo: React.FC = () => {
     location: string | { name: string; latitude: number; longitude: number };
     phone: string;
     email: string;
-    vibes: string[];
-    music_genres: string[];
     dress_code: string;
     entry_fee: string;
     table_reservation_numbers: string[];
@@ -64,8 +66,6 @@ export const ClubInfo: React.FC = () => {
     location: "",
     phone: "",
     email: "",
-    vibes: [],
-    music_genres: [],
     dress_code: "",
     entry_fee: "",
     table_reservation_numbers: [],
@@ -92,14 +92,13 @@ export const ClubInfo: React.FC = () => {
           location: response.location || "",
           phone: response.phone || "",
           email: response.email || cachedAdmin?.email || "",
-          vibes: response.vibes || [],
-          music_genres: response.music_genres || [],
           dress_code: response.dress_code || "",
           entry_fee: response.entry_fee || "",
           table_reservation_numbers: response.table_reservation_numbers || [],
         };
         setFormData(data);
         setOriginalFormData(data);
+        setBannerImageUrl(response.banner_image_url || null);
         setIsLoading(false);
       })
       .catch((error) => {
@@ -114,8 +113,6 @@ export const ClubInfo: React.FC = () => {
               location: "",
               phone: "",
               email,
-              vibes: [],
-              music_genres: [],
               dress_code: "",
               entry_fee: "",
               table_reservation_numbers: [],
@@ -142,6 +139,26 @@ export const ClubInfo: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const handleBannerChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsUploadingBanner(true);
+    apiService
+      .uploadClubBanner(file)
+      .then((response) => {
+        setBannerImageUrl(response.banner_image_url || null);
+        clearError("banner");
+        toast.success("Banner image updated!");
+      })
+      .catch(() => {
+        toast.error("Failed to upload banner image");
+      })
+      .finally(() => {
+        setIsUploadingBanner(false);
+        if (bannerInputRef.current) bannerInputRef.current.value = "";
+      });
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -154,6 +171,13 @@ export const ClubInfo: React.FC = () => {
     });
     if (!result.success) {
       setErrors(parseZodErrors(result.error));
+      return;
+    }
+    if (!bannerImageUrl) {
+      setErrors((prev) => ({
+        ...prev,
+        banner: "A banner image is required before saving.",
+      }));
       return;
     }
     setErrors({});
@@ -177,14 +201,13 @@ export const ClubInfo: React.FC = () => {
           location: response.location || "",
           phone: response.phone || "",
           email: response.email || "",
-          vibes: response.vibes || [],
-          music_genres: response.music_genres || [],
           dress_code: response.dress_code || "",
           entry_fee: response.entry_fee || "",
           table_reservation_numbers: response.table_reservation_numbers || [],
         };
         setFormData(data);
         setOriginalFormData(data);
+        setBannerImageUrl(response.banner_image_url || null);
 
         // Dispatch event to update sidebar club name
         window.dispatchEvent(new Event("clubUpdated"));
@@ -302,6 +325,115 @@ export const ClubInfo: React.FC = () => {
           Manage your club's public profile and contact information.
         </PageDescription>
       </PageHeader>
+
+      <FormCard style={{ marginBottom: theme.spacing.lg }}>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: theme.spacing.xs,
+            marginBottom: theme.spacing.md,
+          }}
+        >
+          <CardTitle style={{ margin: 0 }}>Club Banner Image</CardTitle>
+          <span
+            style={{
+              color: theme.colors.error || "#ef4444",
+              fontSize: theme.typography.fontSize.sm,
+              fontWeight: 600,
+            }}
+          >
+            *
+          </span>
+        </div>
+        <p
+          style={{
+            color: theme.colors.textSecondary,
+            fontSize: theme.typography.fontSize.sm,
+            margin: `0 0 ${theme.spacing.md}`,
+          }}
+        >
+          This image is shown on the mobile app when users scroll the list of
+          clubs. Required before saving.
+        </p>
+
+        <div
+          style={{
+            width: "100%",
+            height: 200,
+            borderRadius: theme.borderRadius.lg,
+            overflow: "hidden",
+            position: "relative",
+            background: theme.colors.background,
+            border: `1px dashed ${errors.banner ? theme.colors.error || "#ef4444" : theme.colors.border}`,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            marginBottom: theme.spacing.md,
+          }}
+        >
+          {bannerImageUrl ? (
+            <img
+              src={bannerImageUrl}
+              alt="Club banner"
+              style={{
+                width: "100%",
+                height: "100%",
+                objectFit: "cover",
+              }}
+            />
+          ) : (
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                gap: theme.spacing.xs,
+                color: theme.colors.textSecondary,
+              }}
+            >
+              {React.createElement(
+                RiImageAddLine as React.ComponentType<{ size?: number }>,
+                { size: 36 },
+              )}
+              <span style={{ fontSize: theme.typography.fontSize.sm }}>
+                No banner image set
+              </span>
+            </div>
+          )}
+        </div>
+
+        <input
+          ref={bannerInputRef}
+          type="file"
+          accept="image/*"
+          style={{ display: "none" }}
+          onChange={handleBannerChange}
+        />
+        <PrimaryButton
+          type="button"
+          onClick={() => bannerInputRef.current?.click()}
+          disabled={isUploadingBanner}
+          style={{ width: "auto" }}
+        >
+          {isUploadingBanner
+            ? "Uploading..."
+            : bannerImageUrl
+              ? "Change Banner"
+              : "Upload Banner"}
+        </PrimaryButton>
+        {errors.banner && (
+          <p
+            style={{
+              color: theme.colors.error || "#ef4444",
+              fontSize: "12px",
+              margin: `${theme.spacing.xs} 0 0`,
+            }}
+          >
+            {errors.banner}
+          </p>
+        )}
+      </FormCard>
 
       <FormCard>
         <CardTitle style={{ marginBottom: theme.spacing.lg }}>

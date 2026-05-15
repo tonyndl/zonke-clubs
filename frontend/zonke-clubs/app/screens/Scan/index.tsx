@@ -1866,7 +1866,12 @@ export function ScanScreen() {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                 setHollowStroke((v) => !v);
               }}
-              style={{ flexDirection: "row", alignItems: "center", gap: 6 }}
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 6,
+              }}
             >
               {isRainbow && hollowStroke ? (
                 <ScanRainbowText
@@ -1966,6 +1971,7 @@ export function ScanScreen() {
                           fontSize: 28,
                           fontFamily: font.key,
                           color: theme.primaryColor,
+                          includeFontPadding: false,
                         }}
                       >
                         Aa

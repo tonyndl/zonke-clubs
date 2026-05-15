@@ -43,7 +43,6 @@ export interface User {
   // Optional profile fields
   bio?: string;
   favoriteDrinks?: string[];
-  vibes?: string[];
   favoriteClubIds?: string[];
   avatar_url?: string;
   location?: {

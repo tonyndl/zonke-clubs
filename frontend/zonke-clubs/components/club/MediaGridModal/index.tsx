@@ -311,7 +311,7 @@ function MediaGridItem({ media, onPress }: MediaGridItemProps) {
             <Ionicons
               name={media.isLiked ? "heart" : "heart-outline"}
               size={12}
-              color={media.isLiked ? "#FF4458" : Colors.platinum}
+              color={media.isLiked ? "#FF4458" : Colors.white}
             />
             <Text style={styles.likeText}>{media.likeCount}</Text>
           </View>

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import styled from "styled-components";
 import { Card, CardTitle, CardDescription } from "../../components/Card";
 import { PrimaryButton, OutlineButton } from "../../components/Buttons";
 import { theme } from "../../styles/theme";
@@ -12,15 +13,9 @@ import {
   HiHeart,
   HiArrowTrendingUp,
   HiTrophy,
-  HiArrowUp,
-  HiArrowDown,
-  HiMinus,
   HiSparkles,
-  HiFire,
-  HiBolt,
-  HiClock,
-  HiUsers,
   HiHashtag,
+  HiUser,
 } from "react-icons/hi2";
 
 import {
@@ -83,12 +78,43 @@ import {
   EmptyLeaderboardSubtitle,
 } from "./styles";
 
+const AvatarFallback = styled.div<{ rank: number }>`
+  width: 48px;
+  height: 48px;
+  border-radius: ${theme.borderRadius.lg};
+  border: 2px solid
+    ${(props) => {
+      if (props.rank === 1) return theme.colors.primary;
+      if (props.rank === 2) return "#c0c0c0";
+      if (props.rank === 3) return "#cd7f32";
+      return theme.colors.border;
+    }};
+  box-shadow: ${(props) =>
+    props.rank === 1 ? theme.shadows.glow : theme.shadows.md};
+  background: ${theme.colors.sidebarActiveBg};
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: ${theme.colors.textSecondary};
+  flex-shrink: 0;
+
+  svg {
+    width: 26px;
+    height: 26px;
+  }
+`;
+
 export const Dashboard: React.FC = () => {
   const navigate = useNavigate();
   const [stats, setStats] = useState<any>(null);
   const [dashboardStats, setDashboardStats] = useState<any>(null);
   const [topSpenders, setTopSpenders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+
+  console.log(
+    "QQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQ",
+    topSpenders,
+  );
 
   useEffect(() => {
     // Load dashboard data
@@ -121,6 +147,7 @@ export const Dashboard: React.FC = () => {
           club_favorites: 0,
           upcoming_events: 0,
           total_posts: 0,
+          approved_posts: 0,
           pending_posts: 0,
         });
         setTopSpenders([]);
@@ -257,9 +284,9 @@ export const Dashboard: React.FC = () => {
             </StatIcon>
           </StatHeader>
           <StatValue>
-            {dashboardStats?.total_posts?.toLocaleString() || 0}
+            {dashboardStats?.approved_posts?.toLocaleString() || 0}
           </StatValue>
-          <StatLabel>Total Posts</StatLabel>
+          <StatLabel>Approved Posts</StatLabel>
         </StatCard>
 
         <StatCard onClick={() => navigate("/content")}>
@@ -368,11 +395,17 @@ export const Dashboard: React.FC = () => {
                 </RankBadge>
 
                 <UserSection>
-                  <UserAvatar
-                    src={spender.user_avatar}
-                    alt={spender.username}
-                    rank={rank}
-                  />
+                  {spender.avatar_url ? (
+                    <UserAvatar
+                      src={spender.avatar_url}
+                      alt={spender.username}
+                      rank={rank}
+                    />
+                  ) : (
+                    <AvatarFallback rank={rank}>
+                      {React.createElement(HiUser as React.ComponentType)}
+                    </AvatarFallback>
+                  )}
                   <UserInfo>
                     <Username>{spender.username}</Username>
                   </UserInfo>
@@ -395,11 +428,6 @@ export const Dashboard: React.FC = () => {
                     });
                   })()}
                 </NightDate>
-
-                <MiniStatValue highlight>
-                  {spender.weeksOnChart}{" "}
-                  {spender.weeksOnChart === 1 ? "week" : "weeks"}
-                </MiniStatValue>
               </SpenderItem>
             );
           })}

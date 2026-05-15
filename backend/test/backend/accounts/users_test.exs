@@ -44,12 +44,10 @@ defmodule Backend.Accounts.UsersTest do
       assert {:ok, updated} =
                Users.update_profile(user, %{
                  bio: "Love nightlife!",
-                 vibes: ["energetic", "friendly"],
                  favorite_drinks: ["mojito", "whiskey"]
                })
 
       assert updated.bio == "Love nightlife!"
-      assert updated.vibes == ["energetic", "friendly"]
       assert updated.favorite_drinks == ["mojito", "whiskey"]
     end
 
@@ -98,13 +96,10 @@ defmodule Backend.Accounts.UsersTest do
       assert "must include a name field" in errors_on(changeset).location
     end
 
-    test "accepts empty arrays for vibes and favorite_drinks" do
-      user = insert(:user, vibes: ["energetic"], favorite_drinks: ["beer"])
+    test "accepts empty array for favorite_drinks" do
+      user = insert(:user, favorite_drinks: ["beer"])
 
-      assert {:ok, updated} =
-               Users.update_profile(user, %{vibes: [], favorite_drinks: []})
-
-      assert updated.vibes == []
+      assert {:ok, updated} = Users.update_profile(user, %{favorite_drinks: []})
       assert updated.favorite_drinks == []
     end
 

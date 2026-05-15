@@ -14,9 +14,18 @@ import {
   RiFileTextLine,
   RiAddLine,
   RiArrowUpLine,
+  RiEditLine,
+  RiDeleteBinLine,
 } from "react-icons/ri";
 import { HiSparkles } from "react-icons/hi2";
-import { HiArrowUp, HiArrowDown, HiMinus, HiTrophy } from "react-icons/hi2";
+import {
+  HiArrowUp,
+  HiArrowDown,
+  HiMinus,
+  HiTrophy,
+  HiUser,
+} from "react-icons/hi2";
+import styled from "styled-components";
 import {
   SpendingContainer,
   PageHeader,
@@ -24,12 +33,6 @@ import {
   PageTitle,
   PageDescription,
   HeaderActions,
-  StatsRow,
-  StatCard,
-  StatHeader,
-  StatIcon,
-  StatValue,
-  StatLabel,
   TableCard,
   TableHeader,
   FilterSection,
@@ -37,26 +40,47 @@ import {
   FilterLabel,
   FilterTabs,
   FilterTab,
+  EmptyState,
+} from "./styles";
+
+// Card internals shared with Dashboard — import directly so they are pixel-identical
+import {
   RecordsList,
-  RecordCard,
+  SpenderItem as RecordCard,
   UserSection,
   UserAvatar,
   UserInfo,
   Username,
-  UserId,
   RankBadge,
-  NightSpendSection,
-  NightLabel,
   NightAmount,
   NightDate,
-  NightTag,
-  StatsGrid,
-  MiniStat,
-  MiniStatLabel,
-  MiniStatValue,
-  RankPosition,
-  EmptyState,
-} from "./styles";
+} from "../Dashboard/styles";
+
+const AvatarFallback = styled.div<{ rank: number }>`
+  width: 48px;
+  height: 48px;
+  border-radius: ${theme.borderRadius.lg};
+  border: 2px solid
+    ${(props) => {
+      if (props.rank === 1) return theme.colors.primary;
+      if (props.rank === 2) return "#c0c0c0";
+      if (props.rank === 3) return "#cd7f32";
+      return theme.colors.border;
+    }};
+  box-shadow: ${(props) =>
+    props.rank === 1 ? theme.shadows.glow : theme.shadows.md};
+  background: ${theme.colors.sidebarActiveBg};
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: ${theme.colors.textSecondary};
+  flex-shrink: 0;
+
+  svg {
+    width: 26px;
+    height: 26px;
+  }
+`;
 
 export const Spending: React.FC = () => {
   const [leaderboard, setLeaderboard] = useState<any[]>([]);
@@ -64,6 +88,10 @@ export const Spending: React.FC = () => {
   const [enableGroupMode, setEnableGroupMode] = useState(false);
   const [timePeriod, setTimePeriod] = useState<"week" | "month" | "all">("all");
   const [isLoading, setIsLoading] = useState(true);
+  const [editingRecord, setEditingRecord] = useState<any | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<any | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   // Fetch leaderboard data
   useEffect(() => {
@@ -84,6 +112,11 @@ export const Spending: React.FC = () => {
         setIsLoading(false);
       });
   };
+
+  console.log(
+    "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW",
+    leaderboard,
+  );
 
   const handleAddRecord = (formData: SpendingRecordFormData) => {
     if (
@@ -131,6 +164,40 @@ export const Spending: React.FC = () => {
     setEnableGroupMode(false);
   };
 
+  const handleEdit = (record: any) => setEditingRecord({ ...record });
+
+  const handleEditSave = () => {
+    if (!editingRecord?.record_id) return;
+    setIsSaving(true);
+    apiService
+      .updateSpendingRecord(editingRecord.record_id, {
+        amount: parseFloat(editingRecord.amount),
+        visit_date: editingRecord.visit_date,
+        notes: editingRecord.notes,
+      })
+      .then(() => {
+        setEditingRecord(null);
+        fetchLeaderboard();
+      })
+      .catch((err: any) => console.error("Update failed:", err))
+      .finally(() => setIsSaving(false));
+  };
+
+  const handleDelete = (record: any) => setDeleteConfirm(record);
+
+  const confirmDelete = () => {
+    if (!deleteConfirm?.record_id) return;
+    setIsDeleting(true);
+    apiService
+      .deleteSpendingRecord(deleteConfirm.record_id)
+      .then(() => {
+        setDeleteConfirm(null);
+        fetchLeaderboard();
+      })
+      .catch((err: any) => console.error("Delete failed:", err))
+      .finally(() => setIsDeleting(false));
+  };
+
   const formatCurrency = (amount: number) => {
     const fixed = amount.toFixed(2);
     const [integer, decimal] = fixed.split(".");
@@ -138,24 +205,19 @@ export const Spending: React.FC = () => {
     return `R${spacedInteger}.${decimal}`;
   };
 
-  // Add ranking information to leaderboard
-  const rankedRecords = leaderboard.map((entry, index) => {
-    const fullName = entry.username ? entry.username : entry.username;
-
-    return {
-      id: entry.user_id,
-      user_id: entry.user_id,
-      username: fullName,
-      user_avatar: entry.avatar_url || "https://i.pravatar.cc/150?img=0",
-      amount: parseFloat(entry.amount),
-      visit_date: entry.visit_date,
-      rank: entry.rank || index + 1, // Use backend rank (handles ties), fallback to index
-      positionChange:
-        entry.position_change !== undefined ? entry.position_change : 0,
-      timeOnChart: entry.time_on_chart || 1,
-      timeUnit: entry.time_unit || "weeks",
-    };
-  });
+  const rankedRecords = leaderboard.map((entry, index) => ({
+    record_id: entry.record_id,
+    id: entry.user_id,
+    user_id: entry.user_id,
+    username: entry.username,
+    user_avatar: entry.avatar_url,
+    amount: parseFloat(entry.amount),
+    visit_date: entry.visit_date,
+    notes: entry.notes || "",
+    rank: entry.rank || index + 1,
+    positionChange:
+      entry.position_change !== undefined ? entry.position_change : 0,
+  }));
 
   return (
     <SpendingContainer>
@@ -289,11 +351,17 @@ export const Spending: React.FC = () => {
                   </RankBadge>
 
                   <UserSection>
-                    <UserAvatar
-                      src={record.user_avatar}
-                      alt={record.username}
-                      rank={record.rank}
-                    />
+                    {record.user_avatar ? (
+                      <UserAvatar
+                        src={record.user_avatar}
+                        alt={record.username}
+                        rank={record.rank}
+                      />
+                    ) : (
+                      <AvatarFallback rank={record.rank}>
+                        {React.createElement(HiUser as React.ComponentType)}
+                      </AvatarFallback>
+                    )}
                     <UserInfo>
                       <Username>{record.username}</Username>
                     </UserInfo>
@@ -317,18 +385,20 @@ export const Spending: React.FC = () => {
                     })()}
                   </NightDate>
 
-                  <MiniStatValue highlight>
-                    {record.timeUnit === "new" ? (
-                      <>⭐ New</>
-                    ) : (
-                      <>
-                        {record.timeOnChart}{" "}
-                        {record.timeOnChart === 1
-                          ? record.timeUnit?.slice(0, -1)
-                          : record.timeUnit}
-                      </>
-                    )}
-                  </MiniStatValue>
+                  <RecordActions>
+                    <ActionBtn title="Edit" onClick={() => handleEdit(record)}>
+                      {React.createElement(RiEditLine as React.ComponentType)}
+                    </ActionBtn>
+                    <ActionBtn
+                      title="Delete"
+                      danger
+                      onClick={() => handleDelete(record)}
+                    >
+                      {React.createElement(
+                        RiDeleteBinLine as React.ComponentType,
+                      )}
+                    </ActionBtn>
+                  </RecordActions>
                 </RecordCard>
               );
             })}
@@ -355,6 +425,261 @@ export const Spending: React.FC = () => {
           </EmptyState>
         )}
       </TableCard>
+      {/* Edit Modal */}
+      {editingRecord && (
+        <ModalOverlay onClick={() => setEditingRecord(null)}>
+          <ModalBox onClick={(e) => e.stopPropagation()}>
+            <ModalHead>
+              <ModalTitle>Edit Record — {editingRecord.username}</ModalTitle>
+              <CloseBtn onClick={() => setEditingRecord(null)}>✕</CloseBtn>
+            </ModalHead>
+            <ModalBody>
+              <FormField>
+                <FormLabel>Amount (R)</FormLabel>
+                <FormInput
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={editingRecord.amount}
+                  onChange={(e) =>
+                    setEditingRecord({
+                      ...editingRecord,
+                      amount: e.target.value,
+                    })
+                  }
+                />
+              </FormField>
+              <FormField>
+                <FormLabel>Visit Date</FormLabel>
+                <FormInput
+                  type="date"
+                  value={editingRecord.visit_date}
+                  onChange={(e) =>
+                    setEditingRecord({
+                      ...editingRecord,
+                      visit_date: e.target.value,
+                    })
+                  }
+                />
+              </FormField>
+              <FormField>
+                <FormLabel>Notes</FormLabel>
+                <FormInput
+                  type="text"
+                  value={editingRecord.notes}
+                  onChange={(e) =>
+                    setEditingRecord({
+                      ...editingRecord,
+                      notes: e.target.value,
+                    })
+                  }
+                />
+              </FormField>
+            </ModalBody>
+            <ModalFooter>
+              <OutlineButton onClick={() => setEditingRecord(null)}>
+                Cancel
+              </OutlineButton>
+              <PrimaryButton onClick={handleEditSave} disabled={isSaving}>
+                {isSaving ? "Saving…" : "Save Changes"}
+              </PrimaryButton>
+            </ModalFooter>
+          </ModalBox>
+        </ModalOverlay>
+      )}
+
+      {/* Delete Confirmation */}
+      {deleteConfirm && (
+        <ModalOverlay onClick={() => setDeleteConfirm(null)}>
+          <ModalBox
+            onClick={(e) => e.stopPropagation()}
+            style={{ maxWidth: 420 }}
+          >
+            <ModalHead>
+              <ModalTitle>Delete Record</ModalTitle>
+              <CloseBtn onClick={() => setDeleteConfirm(null)}>✕</CloseBtn>
+            </ModalHead>
+            <ModalBody>
+              <p style={{ color: theme.colors.textSecondary, lineHeight: 1.6 }}>
+                Remove{" "}
+                <strong style={{ color: theme.colors.textPrimary }}>
+                  {deleteConfirm.username}
+                </strong>
+                's{" "}
+                <strong style={{ color: theme.colors.textPrimary }}>
+                  {formatCurrency(deleteConfirm.amount)}
+                </strong>{" "}
+                entry from the leaderboard? This cannot be undone.
+              </p>
+            </ModalBody>
+            <ModalFooter>
+              <OutlineButton onClick={() => setDeleteConfirm(null)}>
+                Cancel
+              </OutlineButton>
+              <DangerButton onClick={confirmDelete} disabled={isDeleting}>
+                {isDeleting ? "Deleting…" : "Delete"}
+              </DangerButton>
+            </ModalFooter>
+          </ModalBox>
+        </ModalOverlay>
+      )}
     </SpendingContainer>
   );
 };
+
+// ── Local styled components for edit/delete UI ──────────────────────────────
+
+const RecordActions = styled.div`
+  display: flex;
+  gap: 6px;
+  margin-left: auto;
+  opacity: 0;
+  transition: opacity 0.15s;
+
+  ${RecordCard}:hover & {
+    opacity: 1;
+  }
+`;
+
+const ActionBtn = styled.button<{ danger?: boolean }>`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid
+    ${({ danger }) => (danger ? "rgba(239,68,68,0.4)" : "rgba(57,243,255,0.3)")};
+  background: ${({ danger }) =>
+    danger ? "rgba(239,68,68,0.1)" : "rgba(57,243,255,0.08)"};
+  color: ${({ danger }) => (danger ? "#ef4444" : "#39f3ff")};
+  cursor: pointer;
+  font-size: 15px;
+  transition: all 0.15s;
+
+  &:hover {
+    background: ${({ danger }) =>
+      danger ? "rgba(239,68,68,0.2)" : "rgba(57,243,255,0.18)"};
+  }
+`;
+
+const ModalOverlay = styled.div`
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+`;
+
+const ModalBox = styled.div`
+  background: #0f1628;
+  border: 1px solid rgba(57, 243, 255, 0.2);
+  border-radius: 16px;
+  width: 100%;
+  max-width: 520px;
+  box-shadow: 0 0 40px rgba(57, 243, 255, 0.08);
+`;
+
+const ModalHead = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+`;
+
+const ModalTitle = styled.h3`
+  font-size: 18px;
+  font-weight: 700;
+  color: #e2e8f0;
+  margin: 0;
+`;
+
+const CloseBtn = styled.button`
+  background: none;
+  border: none;
+  color: #64748b;
+  font-size: 18px;
+  cursor: pointer;
+  line-height: 1;
+  padding: 4px;
+  &:hover {
+    color: #e2e8f0;
+  }
+`;
+
+const ModalBody = styled.div`
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+`;
+
+const ModalFooter = styled.div`
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  padding: 16px 24px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+`;
+
+const FormField = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+`;
+
+const FormLabel = styled.label`
+  font-size: 13px;
+  font-weight: 600;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+`;
+
+const FormInput = styled.input`
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  padding: 10px 14px;
+  color: #e2e8f0;
+  font-size: 15px;
+  outline: none;
+  transition: border-color 0.15s;
+
+  &:focus {
+    border-color: rgba(57, 243, 255, 0.5);
+  }
+
+  &::-webkit-outer-spin-button,
+  &::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  &[type="number"] {
+    -moz-appearance: textfield;
+  }
+`;
+
+const DangerButton = styled.button`
+  padding: 10px 20px;
+  border-radius: 10px;
+  background: #ef4444;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  border: none;
+  cursor: pointer;
+  transition: background 0.15s;
+
+  &:hover:not(:disabled) {
+    background: #dc2626;
+  }
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+`;

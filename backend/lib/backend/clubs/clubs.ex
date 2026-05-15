@@ -7,6 +7,7 @@ defmodule Backend.Clubs do
   alias Backend.Clubs.Club
   alias Backend.Clubs.ClubLike
   alias Backend.PaginateHelper
+  alias Backend.Assets
 
   @doc """
   Lists clubs with pagination. Returns {clubs, paginate_metadata}.
@@ -27,7 +28,8 @@ defmodule Backend.Clubs do
       end
 
     page = query |> Repo.paginate(PaginateHelper.prep_params(params))
-    {page.entries, PaginateHelper.prep_paginate(page)}
+    clubs = page.entries |> Repo.preload(:asset) |> Enum.map(&attach_banner_url/1)
+    {clubs, PaginateHelper.prep_paginate(page)}
   end
 
   @doc """
@@ -36,7 +38,9 @@ defmodule Backend.Clubs do
   def get_club(id) do
     case Repo.get(Club, id) do
       nil -> {:error, :not_found}
-      club -> {:ok, club}
+      club ->
+        club = club |> Repo.preload(:asset) |> attach_banner_url()
+        {:ok, club}
     end
   end
 
@@ -114,7 +118,9 @@ defmodule Backend.Clubs do
   def get_admin_club(admin_id) do
     case Repo.get_by(Club, admin_id: admin_id) do
       nil -> {:error, :not_found}
-      club -> {:ok, club}
+      club ->
+        club = club |> Repo.preload(:asset) |> attach_banner_url()
+        {:ok, club}
     end
   end
 
@@ -187,6 +193,8 @@ defmodule Backend.Clubs do
     |> where([c], c.active == true)
     |> order_by([c, cl], desc: cl.inserted_at)
     |> Repo.all()
+    |> Repo.preload(:asset)
+    |> Enum.map(&attach_banner_url/1)
   end
 
   def get_user_favorite_clubs(nil), do: []
@@ -216,4 +224,11 @@ defmodule Backend.Clubs do
   end
 
   def list_clubs_with_likes(nil, params), do: list_clubs(params)
+
+  defp attach_banner_url(%Club{asset: %Backend.Assets.Asset{filename: filename}} = club) do
+    url = Assets.prepare_url(filename, %{public: true})
+    Map.put(club, :banner_image_url, url)
+  end
+
+  defp attach_banner_url(club), do: Map.put(club, :banner_image_url, nil)
 end

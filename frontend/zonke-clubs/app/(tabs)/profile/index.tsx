@@ -180,13 +180,6 @@ const getPlaceholderImage = (index: number) => {
   return images[index % images.length];
 };
 
-const VIBE_OPTIONS = [
-  { emoji: "💃", name: "Dancing" },
-  { emoji: "🎉", name: "High Energy" },
-  { emoji: "✨", name: "VIP Lounges" },
-  { emoji: "😌", name: "Chilled" },
-];
-
 // Mock current user ID - in real app, get from auth context
 const CURRENT_USER_ID = "current-user";
 
@@ -199,7 +192,6 @@ const MOCK_USER_PROFILES: Record<string, any> = {
     age: 26,
     bio: "Weekend warrior with a passion for good music and great vibes. Always down for a spontaneous night out!",
     favoriteDrinks: ["Black Label", "Hennessy", "Jameson"],
-    vibes: ["Dancing", "High Energy", "VIP Lounges"],
     favoriteClubIds: ["1", "2", "5"],
   },
   user_1: {
@@ -209,7 +201,6 @@ const MOCK_USER_PROFILES: Record<string, any> = {
     age: 24,
     bio: "Music lover and dance enthusiast. Always looking for new places to explore and great people to meet!",
     favoriteDrinks: ["Aperol Spritz", "Champagne", "Mojito"],
-    vibes: ["Dancing", "High Energy", "Chilled"],
     favoriteClubIds: ["1", "3"],
   },
   user_2: {
@@ -219,7 +210,6 @@ const MOCK_USER_PROFILES: Record<string, any> = {
     age: 28,
     bio: "Tech enthusiast who loves mixing business with pleasure. You'll find me at the best clubs every Friday!",
     favoriteDrinks: ["Whiskey", "Gin & Tonic", "Craft Beer"],
-    vibes: ["VIP Lounges", "High Energy", "Chilled"],
     favoriteClubIds: ["2", "4", "6"],
   },
   user_3: {
@@ -229,7 +219,6 @@ const MOCK_USER_PROFILES: Record<string, any> = {
     age: 25,
     bio: "Party planner by day, party-goer by night. Let's make some unforgettable memories!",
     favoriteDrinks: ["Vodka", "Tequila", "Margarita"],
-    vibes: ["Dancing", "High Energy", "Live Music"],
     favoriteClubIds: ["1", "2", "3"],
   },
   user_4: {
@@ -239,7 +228,6 @@ const MOCK_USER_PROFILES: Record<string, any> = {
     age: 27,
     bio: "DJ and music producer. Always on the hunt for the next big sound and vibe.",
     favoriteDrinks: ["Red Bull", "Vodka", "Corona"],
-    vibes: ["Live Music", "Dancing", "High Energy"],
     favoriteClubIds: ["3", "4", "5"],
   },
   user_5: {
@@ -249,7 +237,6 @@ const MOCK_USER_PROFILES: Record<string, any> = {
     age: 23,
     bio: "Fashion student living for the weekend. Love dressing up and hitting the town with good people!",
     favoriteDrinks: ["Rosé", "Prosecco", "Cosmopolitan"],
-    vibes: ["VIP Lounges", "Chilled", "High Energy"],
     favoriteClubIds: ["5", "6"],
   },
   user_6: {
@@ -259,7 +246,6 @@ const MOCK_USER_PROFILES: Record<string, any> = {
     age: 29,
     bio: "Finance guy who knows how to unwind. Premium vibes only!",
     favoriteDrinks: ["Champagne", "Johnny Walker Blue", "Cognac"],
-    vibes: ["VIP Lounges", "Chilled", "High Energy"],
     favoriteClubIds: ["5", "6"],
   },
 };
@@ -279,7 +265,6 @@ const getUserProfile = (userId: string) => {
     age: 25,
     bio: "New to the club scene. Looking to connect and have a great time!",
     favoriteDrinks: ["Beer", "Vodka"],
-    vibes: ["Dancing", "High Energy"],
     favoriteClubIds: ["1"],
   };
 };
@@ -355,7 +340,6 @@ export default function ProfileScreen() {
           age: 26, // This would come from backend if we add it
           bio: authUser.bio || "",
           favoriteDrinks: authUser.favorite_drinks || [],
-          vibes: authUser.vibes || [],
           favoriteClubIds: [],
         }
       : viewingUser
@@ -366,7 +350,6 @@ export default function ProfileScreen() {
             age: 26,
             bio: viewingUser.bio || "",
             favoriteDrinks: viewingUser.favorite_drinks || [],
-            vibes: viewingUser.vibes || [],
             favoriteClubIds: [],
           }
         : {
@@ -376,7 +359,6 @@ export default function ProfileScreen() {
             age: 25,
             bio: "",
             favoriteDrinks: [],
-            vibes: ["Dancing", "High Energy", "Live Music"], // Default dummy vibes
             favoriteClubIds: [],
           };
 
@@ -428,9 +410,6 @@ export default function ProfileScreen() {
   const [favoriteDrinks, setFavoriteDrinks] = useState<string[]>(
     userProfileData.favoriteDrinks,
   );
-  const [selectedVibes, setSelectedVibes] = useState<string[]>(
-    userProfileData.vibes,
-  );
   const [location, setLocation] = useState<Location | null>(
     authUser?.location || null,
   );
@@ -451,9 +430,6 @@ export default function ProfileScreen() {
   const [originalBio, setOriginalBio] = useState(userProfileData.bio);
   const [originalDrinks, setOriginalDrinks] = useState<string[]>(
     userProfileData.favoriteDrinks,
-  );
-  const [originalVibes, setOriginalVibes] = useState<string[]>(
-    userProfileData.vibes,
   );
   const [originalLocation, setOriginalLocation] = useState<Location | null>(
     authUser?.location || null,
@@ -715,14 +691,11 @@ export default function ProfileScreen() {
     if (isOwnProfile && authUser) {
       setBio(authUser.bio || "");
       setFavoriteDrinks(authUser.favorite_drinks || []);
-      setSelectedVibes(authUser.vibes || []);
       setOriginalBio(authUser.bio || "");
       setOriginalDrinks(authUser.favorite_drinks || []);
-      setOriginalVibes(authUser.vibes || []);
     } else if (viewingUser) {
       setBio(viewingUser.bio || "");
       setFavoriteDrinks(viewingUser.favorite_drinks || []);
-      setSelectedVibes(viewingUser.vibes || []);
     }
   }, [authUser, viewingUser, isOwnProfile]);
 
@@ -946,42 +919,36 @@ export default function ProfileScreen() {
     );
   };
 
-  const handleSendConnectionRequest = async () => {
+  const handleSendConnectionRequest = () => {
     if (requestSent) return;
 
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setIsRequestSending(true);
 
-    try {
-      // Use clubId from params, or fallback to default club
-      const clubId = params.clubId || "3f1b5bd3-a899-44c1-bfda-ee83f940accb"; // The Grand Africa Café & Beach (default)
+    const clubId = params.clubId || "3f1b5bd3-a899-44c1-bfda-ee83f940accb";
 
-      await connectionService.createRequest({
+    connectionService
+      .createRequest({
         receiver_id: viewingUserId,
         message: undefined,
         club_id: clubId,
+      })
+      .then(() => {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        setRequestSent(true);
+        setToastMessage("Request sent!");
+        setToastType("success");
+        setToastVisible(true);
+      })
+      .catch(() => {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+        setToastMessage("Failed to send request");
+        setToastType("error");
+        setToastVisible(true);
+      })
+      .finally(() => {
+        setIsRequestSending(false);
       });
-
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      setRequestSent(true);
-      setToastMessage("Request sent!");
-      setToastType("success");
-      setToastVisible(true);
-    } catch (error) {
-      console.error("Failed to send connection request:", error);
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      setToastMessage("Failed to send request");
-      setToastType("error");
-      setToastVisible(true);
-    } finally {
-      setIsRequestSending(false);
-    }
-  };
-
-  const toggleVibe = (name: string) => {
-    setSelectedVibes((prev) =>
-      prev.includes(name) ? prev.filter((v) => v !== name) : [...prev, name],
-    );
   };
 
   const addDrink = () => {
@@ -1028,7 +995,7 @@ export default function ProfileScreen() {
     });
     setClubSearchQuery("");
     setAllClubs([]);
-    closeClubModal();
+    setShowClubModal(false);
   };
 
   const handleAddPost = () => {
@@ -1046,9 +1013,6 @@ export default function ProfileScreen() {
     const drinksChanged =
       JSON.stringify([...favoriteDrinks].sort()) !==
       JSON.stringify([...originalDrinks].sort());
-    const vibesChanged =
-      JSON.stringify([...selectedVibes].sort()) !==
-      JSON.stringify([...originalVibes].sort());
     const locationChanged =
       JSON.stringify(location) !== JSON.stringify(originalLocation);
     const clubsChanged =
@@ -1059,7 +1023,6 @@ export default function ProfileScreen() {
       avatarChanged ||
       bioChanged ||
       drinksChanged ||
-      vibesChanged ||
       locationChanged ||
       clubsChanged
     );
@@ -1109,7 +1072,6 @@ export default function ProfileScreen() {
       .then((uploadedAvatarUrl) => {
         const profileData: any = {
           bio: bio.trim() || undefined,
-          vibes: selectedVibes.length > 0 ? selectedVibes : undefined,
           favorite_drinks:
             favoriteDrinks.length > 0 ? favoriteDrinks : undefined,
           location: location || undefined,
@@ -1158,7 +1120,6 @@ export default function ProfileScreen() {
         setOriginalAvatar(avatarUri);
         setOriginalBio(bio);
         setOriginalDrinks([...favoriteDrinks]);
-        setOriginalVibes([...selectedVibes]);
         setOriginalLocation(location);
         setOriginalClubs([...selectedClubs]);
       })
@@ -1693,84 +1654,6 @@ export default function ProfileScreen() {
               </Animated.View>
             )}
 
-            {/* Club Vibes Section */}
-            {(isOwnProfile || selectedVibes.length > 0) && (
-              <Animated.View
-                entering={FadeInDown.delay(250).springify()}
-                style={styles.section}
-              >
-                <View style={styles.sectionCard}>
-                  <View style={styles.sectionHeader}>
-                    <View style={styles.sectionHeaderLeft}>
-                      <Ionicons name="flash" size={20} color={Colors.gold} />
-                      <Text style={styles.sectionTitle}>My Vibe</Text>
-                    </View>
-                  </View>
-                  {isOwnProfile && (
-                    <Text style={styles.sectionSubtitle}>
-                      Select your club preferences
-                    </Text>
-                  )}
-                  {selectedVibes.length === 0 && !isOwnProfile ? (
-                    <Text style={styles.emptyText}>No vibes selected yet</Text>
-                  ) : (
-                    <View style={styles.vibesGrid}>
-                      {VIBE_OPTIONS.map((vibe) => {
-                        const isSelected = selectedVibes.includes(vibe.name);
-                        return isOwnProfile ? (
-                          <PressableScale
-                            key={vibe.name}
-                            style={StyleSheet.flatten([
-                              styles.vibeChip,
-                              isSelected && styles.vibeChipSelected,
-                            ])}
-                            onPress={() => toggleVibe(vibe.name)}
-                          >
-                            <Text style={styles.vibeEmoji}>{vibe.emoji}</Text>
-                            <Text
-                              style={[
-                                styles.vibeText,
-                                isSelected && styles.vibeTextSelected,
-                              ]}
-                            >
-                              {vibe.name}
-                            </Text>
-                            {isSelected && (
-                              <Animated.View
-                                entering={ZoomIn.springify()}
-                                style={styles.checkmark}
-                              >
-                                <Ionicons
-                                  name="checkmark"
-                                  size={10}
-                                  color={Colors.bg}
-                                />
-                              </Animated.View>
-                            )}
-                          </PressableScale>
-                        ) : isSelected ? (
-                          <View
-                            key={vibe.name}
-                            style={StyleSheet.flatten([
-                              styles.vibeChip,
-                              styles.vibeChipSelected,
-                            ])}
-                          >
-                            <Text style={styles.vibeEmoji}>{vibe.emoji}</Text>
-                            <Text
-                              style={[styles.vibeText, styles.vibeTextSelected]}
-                            >
-                              {vibe.name}
-                            </Text>
-                          </View>
-                        ) : null;
-                      })}
-                    </View>
-                  )}
-                </View>
-              </Animated.View>
-            )}
-
             {/* Favourite Clubs Section */}
             <Animated.View
               entering={FadeInDown.delay(300).springify()}
@@ -1885,6 +1768,18 @@ export default function ProfileScreen() {
             }}
             onAddPost={
               isOwnProfile ? () => setShowAddPostModal(true) : undefined
+            }
+            onDeletePosts={
+              isOwnProfile
+                ? (postIds) =>
+                    Promise.all(
+                      postIds.map((id) => postsService.deletePost(id)),
+                    ).then(() => {
+                      setUserPosts((prev) =>
+                        prev.filter((p) => !postIds.includes(p.id)),
+                      );
+                    })
+                : undefined
             }
           />
         )}

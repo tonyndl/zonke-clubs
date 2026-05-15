@@ -81,18 +81,12 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     return authService
       .login(data)
       .then((response) => {
-        console.log(
-          "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
-        );
         setUser(response.user);
-        AsyncStorage.getItem(PUSH_TOKEN_KEY).then((storedToken) => {
-          if (storedToken !== null) {
-            registerForPushNotifications().then((token) => {
-              if (token) {
-                registerTokenWithBackend(token);
-                AsyncStorage.setItem(PUSH_TOKEN_KEY, token);
-              }
-            });
+        registerForPushNotifications().then((token) => {
+          if (token) {
+            console.log("Expo push token:", token);
+            registerTokenWithBackend(token);
+            AsyncStorage.setItem(PUSH_TOKEN_KEY, token);
           }
         });
       })

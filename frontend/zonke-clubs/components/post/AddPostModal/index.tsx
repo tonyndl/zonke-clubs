@@ -173,38 +173,35 @@ export function AddPostModal({
     return true;
   };
 
-  const pickFromGallery = async () => {
-    const hasPermission = await requestPermissions();
-    if (!hasPermission) return;
-
-    try {
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.All,
-        allowsMultipleSelection: true,
-        quality: 0.8,
-        videoMaxDuration: 60, // 60 seconds max
-        selectionLimit: 10 - mediaItems.length, // Max 10 total items
-      });
-
-      if (!result.canceled && result.assets) {
+  const pickFromGallery = () => {
+    requestPermissions()
+      .then((hasPermission) => {
+        if (!hasPermission) return null;
+        return ImagePicker.launchImageLibraryAsync({
+          mediaTypes: ImagePicker.MediaTypeOptions.All,
+          allowsMultipleSelection: true,
+          quality: 0.8,
+          videoMaxDuration: 60,
+          selectionLimit: 10 - mediaItems.length,
+        });
+      })
+      .then((result) => {
+        if (!result || result.canceled || !result.assets) return;
         const newMedia: MediaItem[] = result.assets.map((asset) => ({
           uri: asset.uri,
           type: asset.type === "video" ? "video" : "image",
-          duration: asset.duration ? asset.duration / 1000 : undefined, // Convert to seconds
+          duration: asset.duration ? asset.duration / 1000 : undefined,
           width: asset.width,
           height: asset.height,
         }));
 
-        // Check if any videos need trimming (> 30 seconds)
         const videosNeedingTrim = newMedia.filter(
           (item) =>
             item.type === "video" && item.duration && item.duration > 30,
         );
 
         if (videosNeedingTrim.length > 0) {
-          // Add all media first
           setMediaItems([...mediaItems, ...newMedia]);
-          // Then show trimmer for first video that needs trimming
           const firstVideoIndex =
             mediaItems.length +
             newMedia.findIndex(
@@ -217,52 +214,52 @@ export function AddPostModal({
         } else {
           setMediaItems([...mediaItems, ...newMedia]);
         }
-      }
-    } catch (error) {
-      Alert.alert("Error", "Failed to pick media from gallery.");
-      console.error("Gallery error:", error);
-    }
+      })
+      .catch(() => {
+        Alert.alert("Error", "Failed to pick media from gallery.");
+      });
   };
 
-  const takePhoto = async () => {
-    const hasPermission = await requestPermissions();
-    if (!hasPermission) return;
-
-    try {
-      const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        quality: 0.8,
-        allowsEditing: true,
-        aspect: [4, 5],
+  const takePhoto = () => {
+    requestPermissions()
+      .then((hasPermission) => {
+        if (!hasPermission) return null;
+        return ImagePicker.launchCameraAsync({
+          mediaTypes: ImagePicker.MediaTypeOptions.Images,
+          quality: 0.8,
+          allowsEditing: true,
+          aspect: [4, 5],
+        });
+      })
+      .then((result) => {
+        if (!result || result.canceled || !result.assets[0]) return;
+        setMediaItems([
+          ...mediaItems,
+          {
+            uri: result.assets[0].uri,
+            type: "image",
+            width: result.assets[0].width,
+            height: result.assets[0].height,
+          },
+        ]);
+      })
+      .catch(() => {
+        Alert.alert("Error", "Failed to take photo.");
       });
-
-      if (!result.canceled && result.assets[0]) {
-        const newMedia: MediaItem = {
-          uri: result.assets[0].uri,
-          type: "image",
-          width: result.assets[0].width,
-          height: result.assets[0].height,
-        };
-        setMediaItems([...mediaItems, newMedia]);
-      }
-    } catch (error) {
-      Alert.alert("Error", "Failed to take photo.");
-      console.error("Camera error:", error);
-    }
   };
 
-  const takeVideo = async () => {
-    const hasPermission = await requestPermissions();
-    if (!hasPermission) return;
-
-    try {
-      const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Videos,
-        videoMaxDuration: 60,
-        quality: 0.8,
-      });
-
-      if (!result.canceled && result.assets[0]) {
+  const takeVideo = () => {
+    requestPermissions()
+      .then((hasPermission) => {
+        if (!hasPermission) return null;
+        return ImagePicker.launchCameraAsync({
+          mediaTypes: ImagePicker.MediaTypeOptions.Videos,
+          videoMaxDuration: 60,
+          quality: 0.8,
+        });
+      })
+      .then((result) => {
+        if (!result || result.canceled || !result.assets[0]) return;
         const newMedia: MediaItem = {
           uri: result.assets[0].uri,
           type: "video",
@@ -272,8 +269,6 @@ export function AddPostModal({
           width: result.assets[0].width,
           height: result.assets[0].height,
         };
-
-        // Check if video needs trimming (> 30 seconds)
         if (newMedia.duration && newMedia.duration > 30) {
           setMediaItems([...mediaItems, newMedia]);
           setVideoToTrim(newMedia);
@@ -282,54 +277,50 @@ export function AddPostModal({
         } else {
           setMediaItems([...mediaItems, newMedia]);
         }
-      }
-    } catch (error) {
-      Alert.alert("Error", "Failed to record video.");
-      console.error("Video error:", error);
-    }
+      })
+      .catch(() => {
+        Alert.alert("Error", "Failed to record video.");
+      });
   };
 
   const removeMedia = (index: number) => {
     setMediaItems(mediaItems.filter((_, i) => i !== index));
   };
 
-  const handleTrimConfirm = async (startTime: number, endTime: number) => {
+  const handleTrimConfirm = (startTime: number, endTime: number) => {
     if (videoToTrimIndex >= 0 && videoToTrim) {
       setShowVideoTrimmer(false);
       setIsProcessingVideo(true);
       setProcessingProgress(0);
 
-      try {
-        // Process the video with trim metadata
-        const result = await trimVideo({
-          videoUri: videoToTrim.uri,
-          startTime,
-          endTime,
-          onProgress: (progress) => {
-            setProcessingProgress(progress);
-          },
+      trimVideo({
+        videoUri: videoToTrim.uri,
+        startTime,
+        endTime,
+        onProgress: (progress) => {
+          setProcessingProgress(progress);
+        },
+      })
+        .then((result) => {
+          const updatedItems = [...mediaItems];
+          updatedItems[videoToTrimIndex] = {
+            uri: result.uri,
+            type: "video",
+            duration: result.duration,
+            startTime,
+            endTime,
+            width: videoToTrim.width,
+            height: videoToTrim.height,
+          };
+          setMediaItems(updatedItems);
+          setIsProcessingVideo(false);
+          setProcessingProgress(0);
+        })
+        .catch(() => {
+          setIsProcessingVideo(false);
+          setProcessingProgress(0);
+          Alert.alert("Error", "Failed to process video. Please try again.");
         });
-
-        const updatedItems = [...mediaItems];
-        updatedItems[videoToTrimIndex] = {
-          uri: result.uri,
-          type: "video",
-          duration: result.duration,
-          startTime,
-          endTime,
-          width: videoToTrim.width, // Preserve original dimensions
-          height: videoToTrim.height,
-        };
-        setMediaItems(updatedItems);
-
-        setIsProcessingVideo(false);
-        setProcessingProgress(0);
-      } catch (error) {
-        setIsProcessingVideo(false);
-        setProcessingProgress(0);
-        Alert.alert("Error", "Failed to process video. Please try again.");
-        console.error("Video trim error:", error);
-      }
     }
     setVideoToTrim(null);
     setVideoToTrimIndex(-1);

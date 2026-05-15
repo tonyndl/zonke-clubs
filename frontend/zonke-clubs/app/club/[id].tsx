@@ -953,7 +953,7 @@ export default function ClubScreen() {
           onPress={() => router.back()}
           style={[styles.backButton, { top: insets.top + 8 }]}
         >
-          <Ionicons name="arrow-back" size={24} color={Colors.gold} />
+          <Ionicons name="chevron-back" size={24} color={Colors.gold} />
         </PressableScale>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={Colors.gold} />
@@ -971,7 +971,7 @@ export default function ClubScreen() {
           onPress={() => router.back()}
           style={[styles.backButton, { top: insets.top + 8 }]}
         >
-          <Ionicons name="arrow-back" size={24} color={Colors.gold} />
+          <Ionicons name="chevron-back" size={24} color={Colors.gold} />
         </PressableScale>
         <View style={styles.errorContainer}>
           <Ionicons name="alert-circle" size={48} color={Colors.gold} />
@@ -989,9 +989,10 @@ export default function ClubScreen() {
     <View style={styles.container}>
       {/* Parallax Header */}
       <Animated.View style={[styles.headerContainer, headerAnimatedStyle]}>
-        <ImageBackground source={{ uri: coverImage }} style={styles.coverImage}>
-          {/* <Animated.View style={[styles.coverOverlay, overlayAnimatedStyle]} /> */}
-        </ImageBackground>
+        <ImageBackground
+          source={{ uri: club.banner_image_url || coverImage }}
+          style={styles.coverImage}
+        ></ImageBackground>
       </Animated.View>
 
       {/* Back Button */}
@@ -999,7 +1000,7 @@ export default function ClubScreen() {
         onPress={() => router.back()}
         style={[styles.backButton, { top: insets.top + 8 }]}
       >
-        <Ionicons name="arrow-back" size={24} color={Colors.gold} />
+        <Ionicons name="chevron-back" size={24} color={Colors.gold} />
       </PressableScale>
 
       {/* Content */}
@@ -1522,27 +1523,6 @@ export default function ClubScreen() {
             >
               <Text style={styles.subsectionTitle}>About</Text>
               <Text style={styles.aboutText}>{club.description}</Text>
-
-              {/* Vibes */}
-              {club.vibes && club.vibes.length > 0 && (
-                <View style={styles.vibesContainer}>
-                  {club.vibes.map((vibe, index) => (
-                    <View key={index} style={styles.vibeBadge}>
-                      <Text style={styles.vibeText}>{vibe}</Text>
-                    </View>
-                  ))}
-                </View>
-              )}
-
-              {/* Music Genres */}
-              {club.music_genres && club.music_genres.length > 0 && (
-                <View style={styles.genresSection}>
-                  <Text style={styles.genresTitle}>Music:</Text>
-                  <Text style={styles.genresText}>
-                    {club.music_genres.join(", ")}
-                  </Text>
-                </View>
-              )}
 
               {/* Entry Fee */}
               {club.entry_fee && (

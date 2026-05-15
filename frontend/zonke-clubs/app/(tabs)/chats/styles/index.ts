@@ -230,6 +230,7 @@ export const styles = StyleSheet.create({
     color: Colors.bg,
   },
   loadingContainer: {
+    flex: 1,
     alignItems: "center",
     justifyContent: "center",
     paddingVertical: 80,

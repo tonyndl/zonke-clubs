@@ -4,7 +4,7 @@
     "slug": "zonke-clubs",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/images/zonke-club-logo-with-background.png",
     "scheme": "zonkeclubs",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
@@ -17,12 +17,12 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/android-icon-foreground.png",
-        "backgroundColor": "#1A1A2E"
+        "foregroundImage": "./assets/images/zonke-club-logo-with-background.png",
+        "backgroundColor": "#08041A"
       },
       "notification": {
         "icon": "./assets/images/notification-icon.png",
-        "color": "#08041A"
+        "color": "#39f3ff"
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
@@ -45,7 +45,7 @@
         "expo-notifications",
         {
           "icon": "./assets/images/notification-icon.png",
-          "color": "#08041A"
+          "color": "#39f3ff"
         }
       ],
       [
@@ -57,12 +57,12 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/splash-icon.png",
+          "image": "./assets/images/zonke-clubs-logo-no-background.png",
           "imageWidth": 280,
           "resizeMode": "contain",
-          "backgroundColor": "#08041A",
+          "backgroundColor": "#0f2857",
           "dark": {
-            "backgroundColor": "#000000"
+            "backgroundColor": "#0f2857"
           }
         }
       ],

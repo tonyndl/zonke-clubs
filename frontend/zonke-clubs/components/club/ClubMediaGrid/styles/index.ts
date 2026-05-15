@@ -129,7 +129,7 @@ export const styles = StyleSheet.create({
     gap: 3,
   },
   likeText: {
-    color: Colors.platinum,
+    color: Colors.white,
     fontSize: 10,
     fontWeight: "700",
   },

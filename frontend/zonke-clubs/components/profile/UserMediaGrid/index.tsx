@@ -5,28 +5,30 @@ import {
   Image,
   Pressable,
   useWindowDimensions,
+  Alert,
 } from "react-native";
-import Animated, { FadeInDown } from "react-native-reanimated";
+import Animated, { FadeInDown, FadeIn, FadeOut } from "react-native-reanimated";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { VideoView, useVideoPlayer } from "expo-video";
+import * as Haptics from "expo-haptics";
 import { Colors } from "@/constants/ui";
 import { PressableScale } from "@/components/ui/PressableScale";
-import { ClubPost, MediaAsset } from "@/types/post";
+import { ClubPost } from "@/types/post";
 import { styles, GRID_SPACING } from "./styles";
 import { EmptyState } from "@/components/ui/EmptyState";
 
-// Responsive columns based on screen width
 const getColumns = (width: number) => {
-  if (width < 600) return 2; // Phone: 2 columns
-  if (width < 900) return 3; // Tablet: 3 columns
-  return 4; // Large tablet/Desktop: 4 columns
+  if (width < 600) return 2;
+  if (width < 900) return 3;
+  return 4;
 };
 
 interface Props {
   posts: ClubPost[];
   onPostPress: (postIndex: number) => void;
   onAddPost?: () => void;
+  onDeletePosts?: (postIds: string[]) => Promise<void>;
   title?: string;
 }
 
@@ -36,27 +38,26 @@ export function UserMediaGrid({
   posts = [],
   onPostPress,
   onAddPost,
+  onDeletePosts,
   title = "My Club Vibes",
 }: Props) {
   const [activeTab, setActiveTab] = useState<TabType>("all");
   const [containerMinHeight, setContainerMinHeight] = useState<
     number | undefined
   >(undefined);
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [isDeleting, setIsDeleting] = useState(false);
   const containerRef = useRef<View>(null);
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
 
-  // Calculate responsive grid dimensions
   const numColumns = getColumns(windowWidth);
-  // Subtract padding (16px * 2 = 32px) and gaps, then divide by columns
-  // Using Math.floor to avoid rounding issues that might cause wrapping
   const itemWidth = Math.floor(
     (windowWidth - 32 - GRID_SPACING * (numColumns - 1)) / numColumns,
   );
 
-  // Ensure posts is always an array
   const safePosts = posts || [];
 
-  // Filter posts based on active tab
   const filteredPosts =
     activeTab === "all"
       ? safePosts
@@ -67,12 +68,57 @@ export function UserMediaGrid({
           return hasType;
         });
 
-  const photoCount = safePosts.filter((p) =>
-    p.media.some((m) => m.type === "image"),
-  ).length;
-  const videoCount = safePosts.filter((p) =>
-    p.media.some((m) => m.type === "video"),
-  ).length;
+  const enterSelectionMode = (postId: string) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setSelectionMode(true);
+    setSelectedIds(new Set([postId]));
+  };
+
+  const toggleSelection = (postId: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(postId)) {
+        next.delete(postId);
+      } else {
+        next.add(postId);
+        Haptics.selectionAsync();
+      }
+      return next;
+    });
+  };
+
+  const cancelSelection = () => {
+    setSelectionMode(false);
+    setSelectedIds(new Set());
+  };
+
+  const handleDelete = () => {
+    if (!onDeletePosts || selectedIds.size === 0) return;
+
+    Alert.alert(
+      "Delete Posts",
+      `Delete ${selectedIds.size} ${selectedIds.size === 1 ? "post" : "posts"}? This cannot be undone.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: () => {
+            setIsDeleting(true);
+            onDeletePosts([...selectedIds])
+              .then(() => {
+                setSelectionMode(false);
+                setSelectedIds(new Set());
+              })
+              .catch(() => {
+                Alert.alert("Error", "Failed to delete some posts.");
+              })
+              .finally(() => setIsDeleting(false));
+          },
+        },
+      ],
+    );
+  };
 
   return (
     <View
@@ -95,79 +141,132 @@ export function UserMediaGrid({
           <>
             {/* Header */}
             <View style={styles.feedHeader}>
-              <View style={styles.sectionHeaderLeft}>
-                <Ionicons name="images" size={22} color={Colors.gold} />
-                <Text style={styles.sectionTitle}>{title}</Text>
-              </View>
-              {onAddPost && (
-                <PressableScale
-                  style={styles.addMediaButton}
-                  onPress={onAddPost}
+              {selectionMode ? (
+                <Animated.View
+                  entering={FadeIn.duration(150)}
+                  exiting={FadeOut.duration(150)}
+                  style={styles.selectionHeader}
                 >
-                  <Ionicons name="add" size={24} color={Colors.gold} />
-                </PressableScale>
+                  <PressableScale
+                    onPress={cancelSelection}
+                    style={styles.selectionCancel}
+                  >
+                    <Ionicons name="close" size={22} color={Colors.platinum} />
+                  </PressableScale>
+                  <Text style={styles.selectionCount}>
+                    {selectedIds.size} selected
+                  </Text>
+                  <PressableScale
+                    onPress={handleDelete}
+                    style={[
+                      styles.selectionDelete,
+                      selectedIds.size === 0 && styles.selectionDeleteDisabled,
+                    ]}
+                    disabled={selectedIds.size === 0 || isDeleting}
+                  >
+                    <Ionicons
+                      name={isDeleting ? "hourglass-outline" : "trash-outline"}
+                      size={20}
+                      color={selectedIds.size > 0 ? "#ef4444" : Colors.smoke}
+                    />
+                    <Text
+                      style={[
+                        styles.selectionDeleteText,
+                        selectedIds.size === 0 && { color: Colors.smoke },
+                      ]}
+                    >
+                      {isDeleting ? "Deleting…" : "Delete"}
+                    </Text>
+                  </PressableScale>
+                </Animated.View>
+              ) : (
+                <Animated.View
+                  entering={FadeIn.duration(150)}
+                  style={styles.selectionHeader}
+                >
+                  <View style={styles.sectionHeaderLeft}>
+                    <Ionicons name="images" size={22} color={Colors.gold} />
+                    <Text style={styles.sectionTitle}>{title}</Text>
+                  </View>
+                  {onAddPost && (
+                    <PressableScale
+                      style={styles.addMediaButton}
+                      onPress={onAddPost}
+                    >
+                      <Ionicons name="add" size={24} color={Colors.gold} />
+                    </PressableScale>
+                  )}
+                </Animated.View>
               )}
             </View>
 
             {/* Tab Bar */}
-            <View style={styles.tabBar}>
-              <PressableScale
-                style={[styles.tab, activeTab === "all" && styles.tabActive]}
-                onPress={() => setActiveTab("all")}
-              >
-                <Ionicons
-                  name="grid"
-                  size={16}
-                  color={activeTab === "all" ? Colors.bg : Colors.smoke}
-                />
-                <Text
-                  style={[
-                    styles.tabText,
-                    activeTab === "all" && styles.tabTextActive,
-                  ]}
+            {!selectionMode && (
+              <View style={styles.tabBar}>
+                <PressableScale
+                  style={[styles.tab, activeTab === "all" && styles.tabActive]}
+                  onPress={() => setActiveTab("all")}
                 >
-                  All
-                </Text>
-              </PressableScale>
+                  <Ionicons
+                    name="grid"
+                    size={16}
+                    color={activeTab === "all" ? Colors.bg : Colors.smoke}
+                  />
+                  <Text
+                    style={[
+                      styles.tabText,
+                      activeTab === "all" && styles.tabTextActive,
+                    ]}
+                  >
+                    All
+                  </Text>
+                </PressableScale>
 
-              <PressableScale
-                style={[styles.tab, activeTab === "photos" && styles.tabActive]}
-                onPress={() => setActiveTab("photos")}
-              >
-                <Ionicons
-                  name="images"
-                  size={16}
-                  color={activeTab === "photos" ? Colors.bg : Colors.smoke}
-                />
-                <Text
+                <PressableScale
                   style={[
-                    styles.tabText,
-                    activeTab === "photos" && styles.tabTextActive,
+                    styles.tab,
+                    activeTab === "photos" && styles.tabActive,
                   ]}
+                  onPress={() => setActiveTab("photos")}
                 >
-                  Photos
-                </Text>
-              </PressableScale>
+                  <Ionicons
+                    name="images"
+                    size={16}
+                    color={activeTab === "photos" ? Colors.bg : Colors.smoke}
+                  />
+                  <Text
+                    style={[
+                      styles.tabText,
+                      activeTab === "photos" && styles.tabTextActive,
+                    ]}
+                  >
+                    Photos
+                  </Text>
+                </PressableScale>
 
-              <PressableScale
-                style={[styles.tab, activeTab === "videos" && styles.tabActive]}
-                onPress={() => setActiveTab("videos")}
-              >
-                <Ionicons
-                  name="videocam"
-                  size={16}
-                  color={activeTab === "videos" ? Colors.bg : Colors.smoke}
-                />
-                <Text
+                <PressableScale
                   style={[
-                    styles.tabText,
-                    activeTab === "videos" && styles.tabTextActive,
+                    styles.tab,
+                    activeTab === "videos" && styles.tabActive,
                   ]}
+                  onPress={() => setActiveTab("videos")}
                 >
-                  Videos
-                </Text>
-              </PressableScale>
-            </View>
+                  <Ionicons
+                    name="videocam"
+                    size={16}
+                    color={activeTab === "videos" ? Colors.bg : Colors.smoke}
+                  />
+                  <Text
+                    style={[
+                      styles.tabText,
+                      activeTab === "videos" && styles.tabTextActive,
+                    ]}
+                  >
+                    Videos
+                  </Text>
+                </PressableScale>
+              </View>
+            )}
           </>
         )}
 
@@ -181,9 +280,22 @@ export function UserMediaGrid({
                   key={post.id}
                   post={post}
                   clubName={post.clubName}
-                  onPress={() => onPostPress(originalIndex)}
+                  onPress={() => {
+                    if (selectionMode) {
+                      toggleSelection(post.id);
+                    } else {
+                      onPostPress(originalIndex);
+                    }
+                  }}
+                  onLongPress={() => {
+                    if (!selectionMode && onDeletePosts) {
+                      enterSelectionMode(post.id);
+                    }
+                  }}
                   index={index}
                   itemWidth={itemWidth}
+                  selectionMode={selectionMode}
+                  isSelected={selectedIds.has(post.id)}
                 />
               );
             })}
@@ -217,33 +329,35 @@ interface PostGridItemProps {
   post: ClubPost;
   clubName?: string;
   onPress: () => void;
+  onLongPress: () => void;
   index: number;
   itemWidth: number;
+  selectionMode: boolean;
+  isSelected: boolean;
 }
 
 function PostGridItem({
   post,
   clubName,
   onPress,
+  onLongPress,
   index,
   itemWidth,
+  selectionMode,
+  isSelected,
 }: PostGridItemProps) {
   const firstMedia = post.media[0];
   const isVideo = firstMedia.type === "video";
 
-  // Create video player for videos with preview frame
   const videoPlayer = useVideoPlayer(
     isVideo ? firstMedia.url : "",
     (player) => {
       player.loop = false;
       player.muted = true;
-      // Set a preview frame so first frame loads immediately
-      const previewTime = firstMedia.startTime || 0.1;
-      player.currentTime = previewTime;
+      player.currentTime = firstMedia.startTime || 0.1;
     },
   );
 
-  // Calculate dynamic height based on aspect ratio
   const aspectRatio =
     firstMedia.height && firstMedia.width
       ? firstMedia.height / firstMedia.width
@@ -253,13 +367,19 @@ function PostGridItem({
   return (
     <Animated.View
       entering={FadeInDown.delay(50 * index).springify()}
-      style={[styles.feedItem, { width: itemWidth, height: itemHeight }]}
+      style={[
+        styles.feedItem,
+        { width: itemWidth, height: itemHeight },
+        isSelected && { opacity: 0.75 },
+      ]}
     >
       <Pressable
         onPress={onPress}
+        onLongPress={onLongPress}
+        delayLongPress={350}
         style={({ pressed }) => [
           styles.feedItemPressable,
-          pressed && styles.feedItemPressed,
+          pressed && !selectionMode && styles.feedItemPressed,
         ]}
       >
         {isVideo ? (
@@ -276,8 +396,9 @@ function PostGridItem({
             style={styles.feedItemImage}
           />
         )}
+
         {/* Video Indicator */}
-        {isVideo && (
+        {isVideo && !selectionMode && (
           <View style={styles.videoIndicator}>
             <Ionicons
               name="play-circle"
@@ -287,24 +408,16 @@ function PostGridItem({
           </View>
         )}
 
-        {/* Duration Badge for Videos */}
-        {/* {isVideo && firstMedia.duration && (
-          <View style={styles.durationBadge}>
-            <Ionicons name="videocam" size={10} color={Colors.platinum} />
-            <Text style={styles.durationText}>{formatDuration(firstMedia.duration)}</Text>
-          </View>
-        )} */}
-
         {/* Multiple Media Indicator */}
-        {post.media.length > 1 && (
+        {post.media.length > 1 && !selectionMode && (
           <View style={styles.multipleMediaBadge}>
             <Ionicons name="copy" size={12} color={Colors.platinum} />
             <Text style={styles.multipleMediaText}>{post.media.length}</Text>
           </View>
         )}
 
-        {/* Pin Badge — top-right, like Instagram */}
-        {post.pinnedAt && (
+        {/* Pin Badge */}
+        {post.pinnedAt && !selectionMode && (
           <MaterialIcons
             name="push-pin"
             size={20}
@@ -313,61 +426,70 @@ function PostGridItem({
           />
         )}
 
-        {/* Club Approved Badge — drops below pin if both showing */}
-        {post.isClubApproved && (
+        {/* Club Approved Badge */}
+        {post.isClubApproved && !selectionMode && (
           <View style={styles.approvalBadge}>
             <Ionicons name="medal" size={20} color={Colors.gold} />
           </View>
         )}
 
-        {/* Status Badge (Rejected Only) */}
-        {post.status === "rejected" && (
+        {/* Rejected Badge */}
+        {post.status === "rejected" && !selectionMode && (
           <View style={styles.statusBadgeRejected}>
             <Text style={styles.statusBadgeText}>Rejected</Text>
           </View>
         )}
 
-        {/* Bottom Info Overlay */}
-        <View style={styles.feedItemInfo}>
-          <View style={styles.feedItemStats}>
-            <View style={styles.feedStat}>
-              <Ionicons
-                name={post.isLiked ? "heart" : "heart-outline"}
-                size={12}
-                color={post.isLiked ? "#ef4444" : Colors.smoke}
-              />
-              <Text style={styles.feedStatText}>
-                {formatNumber(post.likeCount)}
-              </Text>
+        {/* Bottom Info */}
+        {!selectionMode && (
+          <View style={styles.feedItemInfo}>
+            <View style={styles.feedItemStats}>
+              <View style={styles.feedStat}>
+                <Ionicons
+                  name={post.isLiked ? "heart" : "heart-outline"}
+                  size={12}
+                  color={post.isLiked ? "#ef4444" : Colors.white}
+                />
+                <Text style={styles.feedStatText}>
+                  {formatNumber(post.likeCount)}
+                </Text>
+              </View>
             </View>
-            {/* <View style={styles.feedStat}>
-              <Ionicons name="chatbubble" size={11} color={Colors.smoke} />
-              <Text style={styles.feedStatText}>{formatNumber(post.comments)}</Text>onPress={onAddPost}
-            </View> */}
+            {clubName && (
+              <View style={styles.feedItemClub}>
+                <Ionicons name="location" size={12} color={Colors.gold} />
+                <Text style={styles.feedItemClubText} numberOfLines={1}>
+                  {clubName}
+                </Text>
+              </View>
+            )}
           </View>
-          {clubName && (
-            <View style={styles.feedItemClub}>
-              <Ionicons name="location" size={12} color={Colors.gold} />
-              <Text style={styles.feedItemClubText} numberOfLines={1}>
-                {clubName}
-              </Text>
+        )}
+
+        {/* Selection overlay */}
+        {selectionMode && (
+          <Animated.View
+            entering={FadeIn.duration(150)}
+            style={styles.selectionOverlay}
+          >
+            <View
+              style={[
+                styles.selectionCircle,
+                isSelected && styles.selectionCircleActive,
+              ]}
+            >
+              {isSelected && (
+                <Ionicons name="checkmark" size={14} color={Colors.bg} />
+              )}
             </View>
-          )}
-        </View>
+          </Animated.View>
+        )}
       </Pressable>
     </Animated.View>
   );
 }
 
-function formatDuration(seconds: number): string {
-  const mins = Math.floor(seconds / 60);
-  const secs = Math.floor(seconds % 60);
-  return `${mins}:${secs.toString().padStart(2, "0")}`;
-}
-
 function formatNumber(num: number): string {
-  if (num >= 1000) {
-    return `${(num / 1000).toFixed(1)}k`;
-  }
+  if (num >= 1000) return `${(num / 1000).toFixed(1)}k`;
   return num.toString();
 }

@@ -756,7 +756,7 @@ export const HomeScreen = () => {
             id: club.id,
             name: club.name,
             location: club.location,
-            image: getPlaceholderImage(index),
+            image: club.banner_image_url || getPlaceholderImage(index),
           }),
         );
         setSearchResults(formatted);
@@ -779,7 +779,7 @@ export const HomeScreen = () => {
             id: club.id,
             name: club.name,
             location: club.location,
-            image: getPlaceholderImage(index),
+            image: club.banner_image_url || getPlaceholderImage(index),
           }),
         );
         setClubs(formattedClubs);
@@ -858,7 +858,8 @@ export const HomeScreen = () => {
           id: club.id,
           name: club.name,
           location: club.location,
-          image: getPlaceholderImage(clubs.length + index),
+          image:
+            club.banner_image_url || getPlaceholderImage(clubs.length + index),
         }));
         setClubs((prev) => [...prev, ...newClubs]);
         setCurrentPage(nextPage);

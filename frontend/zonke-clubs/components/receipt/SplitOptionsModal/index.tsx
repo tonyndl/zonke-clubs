@@ -141,7 +141,7 @@ export function SplitOptionsModal({
           {/* Header */}
           <View style={styles.header}>
             <TouchableOpacity onPress={onClose} style={styles.backButton}>
-              <Ionicons name="arrow-back" size={24} color={Colors.platinum} />
+              <Ionicons name="chevron-back" size={24} color={Colors.platinum} />
             </TouchableOpacity>
             <View style={styles.headerContent}>
               <Text style={styles.headerTitle}>Split Bill</Text>
