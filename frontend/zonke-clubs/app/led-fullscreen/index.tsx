@@ -543,6 +543,8 @@ export function LEDFullscreenView({
   const emojiIdCounter = useRef(0);
   const [showGestureMenu, setShowGestureMenu] = useState(false);
   const [wordResetKey, setWordResetKey] = useState(0);
+  const [wordWidthMap, setWordWidthMap] = useState<Record<string, number>>({});
+  const wordWidthAccRef = useRef<Record<string, number>>({});
   const [wordDragEnabled, setWordDragEnabled] = useState(false);
   const [wordResizeEnabled, setWordResizeEnabled] = useState(false);
   const [groupGestureEnabled, setGroupGestureEnabled] = useState(false);
@@ -732,6 +734,13 @@ export function LEDFullscreenView({
       groupCurrentScale.current = 1;
     }
   }, [activeDisplayText, animationMode, fontFamily]);
+
+  // Reset per-word width measurements whenever text, font, or the full-text
+  // measurement changes (staticMeasuredWidth settling means actualFontSize changed)
+  useEffect(() => {
+    wordWidthAccRef.current = {};
+    setWordWidthMap({});
+  }, [wordResetKey, staticMeasuredWidth]);
 
   // Detect overflow and reduce line height until it fits
   useEffect(() => {
@@ -1093,6 +1102,77 @@ export function LEDFullscreenView({
           </View>
         )}
 
+        {/* Per-word + per-line width measurement at actualFontSize.
+            Measuring line strings lets us derive exact spaceWidth per font. */}
+        {animationMode !== "scroll" &&
+          staticMeasuredWidth !== null &&
+          Object.keys(wordWidthMap).length === 0 &&
+          (() => {
+            // Recompute lines here so we know which line strings to measure
+            const _cw =
+              (staticMeasuredWidth * actualFontSize) /
+              STATIC_REF_FONT /
+              Math.max(1, activeDisplayText.length);
+            const _cpl = Math.max(1, Math.floor((SCREEN_HEIGHT * 0.98) / _cw));
+            const _words = activeDisplayText.split(" ").filter(Boolean);
+            const _lines: string[] = [];
+            let _cur: string[] = [],
+              _cc = 0;
+            for (const w of _words) {
+              const needed = _cur.length > 0 ? 1 + w.length : w.length;
+              if (_cc + needed >= _cpl && _cur.length > 0) {
+                _lines.push(_cur.join(" "));
+                _cur = [w];
+                _cc = w.length;
+              } else {
+                _cur.push(w);
+                _cc += needed;
+              }
+            }
+            if (_cur.length > 0) _lines.push(_cur.join(" "));
+
+            // Unique tokens = individual words + multi-word line strings
+            const uniqueTokens = [
+              ...new Set([..._words, ..._lines.filter((l) => l.includes(" "))]),
+            ];
+            const expectedCount = uniqueTokens.length;
+
+            return (
+              <View
+                style={{
+                  position: "absolute",
+                  opacity: 0,
+                  pointerEvents: "none",
+                }}
+                pointerEvents="none"
+              >
+                {uniqueTokens.map((token) => (
+                  <Text
+                    key={`wm-${token}-${wordResetKey}`}
+                    numberOfLines={1}
+                    style={{
+                      fontSize: actualFontSize,
+                      fontFamily,
+                      letterSpacing: 1,
+                    }}
+                    onLayout={(e) => {
+                      const next = {
+                        ...wordWidthAccRef.current,
+                        [token]: e.nativeEvent.layout.width,
+                      };
+                      wordWidthAccRef.current = next;
+                      if (Object.keys(next).length >= expectedCount) {
+                        setWordWidthMap(next);
+                      }
+                    }}
+                  >
+                    {token}
+                  </Text>
+                ))}
+              </View>
+            );
+          })()}
+
         {/* Natural line-height measurement — one character at STATIC_REF_FONT, no explicit lineHeight */}
         {animationMode !== "scroll" && measuredLineHeight === null && (
           <View
@@ -1224,8 +1304,15 @@ export function LEDFullscreenView({
             if (currentLine.length > 0) lines.push(currentLine);
 
             const blockHeight = lines.length * lineHeight;
+            // Offset so the text block is vertically centred inside the
+            // SCREEN_WIDTH-tall container.  The container's top is fixed at
+            // SCREEN_HEIGHT/2 - SCREEN_WIDTH/2 so its centre always sits at
+            // the screen centre after the 90° rotation.
+            const yOffset = (SCREEN_WIDTH - blockHeight) / 2;
 
-            // Word positions within the block (container coords)
+            // One DraggableWord per WORD — individual words can be dragged.
+            // X positions use measured widths (wordWidthMap) when available,
+            // falling back to charWidth estimates until measurements arrive.
             const wordPositions: {
               word: string;
               x: number;
@@ -1233,27 +1320,38 @@ export function LEDFullscreenView({
               alone: boolean;
             }[] = [];
             lines.forEach((lineWords, li) => {
-              const alone = lineWords.length === 1;
-              if (alone) {
+              if (lineWords.length === 1) {
                 wordPositions.push({
                   word: lineWords[0],
                   x: 0,
-                  y: li * lineHeight,
+                  y: yOffset + li * lineHeight,
                   alone: true,
                 });
               } else {
-                // Multiple words: use estimated char-width offsets
-                const lineText = lineWords.join(" ");
-                const lineWidth = lineText.length * charWidth;
-                let wordX = Math.max(0, (availW - lineWidth) / 2);
+                const lineStr = lineWords.join(" ");
+                const measuredLineW = wordWidthMap[lineStr];
+                const sumWordW = lineWords.reduce(
+                  (s, w) => s + (wordWidthMap[w] ?? w.length * charWidth),
+                  0,
+                );
+
+                // Derive exact space width from measured line - if not yet measured fall back to charWidth
+                const spaceW =
+                  measuredLineW != null
+                    ? (measuredLineW - sumWordW) / (lineWords.length - 1)
+                    : charWidth;
+                const totalLineW =
+                  measuredLineW ?? sumWordW + spaceW * (lineWords.length - 1);
+
+                let wordX = Math.max(0, (availW - totalLineW) / 2);
                 lineWords.forEach((w) => {
                   wordPositions.push({
                     word: w,
                     x: wordX,
-                    y: li * lineHeight,
+                    y: yOffset + li * lineHeight,
                     alone: false,
                   });
-                  wordX += (w.length + 1) * charWidth;
+                  wordX += (wordWidthMap[w] ?? w.length * charWidth) + spaceW;
                 });
               }
             });
@@ -1266,7 +1364,7 @@ export function LEDFullscreenView({
                   alignItems: "center",
                   height: SCREEN_WIDTH,
                   left: SCREEN_WIDTH / 2 - availW / 2,
-                  top: SCREEN_HEIGHT / 2 - blockHeight / 2,
+                  top: SCREEN_HEIGHT / 2 - SCREEN_WIDTH / 2,
                   transform: [
                     { translateX: groupPan.x },
                     { translateY: groupPan.y },
@@ -1307,7 +1405,7 @@ export function LEDFullscreenView({
       {/* Back button - appears on single tap */}
       {showBackButton && (
         <Pressable style={styles.backButton} onPress={handleExit}>
-          <Ionicons name="arrow-back" size={28} color="white" />
+          <Ionicons name="chevron-back" size={28} color="white" />
         </Pressable>
       )}
 

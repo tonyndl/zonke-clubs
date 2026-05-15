@@ -530,7 +530,7 @@ export function GroupSpendingModal({
             style={styles.backButton}
             onPress={() => setStep("amount")}
           >
-            <Ionicons name="arrow-back" size={20} color={Colors.platinum} />
+            <Ionicons name="chevron-back" size={20} color={Colors.platinum} />
             <Text style={styles.backButtonText}>Back</Text>
           </PressableScale>
 
@@ -753,7 +753,11 @@ export function GroupSpendingModal({
                 style={styles.backButton}
                 onPress={() => setStep("members")}
               >
-                <Ionicons name="arrow-back" size={20} color={Colors.platinum} />
+                <Ionicons
+                  name="chevron-back"
+                  size={20}
+                  color={Colors.platinum}
+                />
                 <Text style={styles.backButtonText}>Back</Text>
               </PressableScale>
 

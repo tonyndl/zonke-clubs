@@ -32,13 +32,6 @@ import { ClubFeedViewer } from "@/components/club/ClubFeedViewer";
 import { ClubPost } from "@/types/post";
 import postsService from "@/services/postsService";
 
-const VIBE_OPTIONS = [
-  { emoji: "💃", name: "Dancing" },
-  { emoji: "🎉", name: "High Energy" },
-  { emoji: "✨", name: "VIP Lounges" },
-  { emoji: "😌", name: "Chilled" },
-];
-
 const getPlaceholderImage = (index: number) => {
   const images = [
     "https://images.unsplash.com/photo-1566737236500-c8ac43014a67?auto=format&fit=crop&w=400&q=60",
@@ -251,7 +244,6 @@ export default function ViewProfileScreen() {
     );
   }
 
-  const vibes: string[] = (user as any).vibes || [];
   const favoriteDrinks: string[] = (user as any).favorite_drinks || [];
   const bio: string = user.bio || "";
   const location = user.location;
@@ -501,48 +493,6 @@ export default function ViewProfileScreen() {
                         <Text style={profileStyles.drinkText}>{drink}</Text>
                       </Animated.View>
                     ))}
-                  </View>
-                </View>
-              </Animated.View>
-            )}
-
-            {/* Club Vibes Section */}
-            {vibes.length > 0 && (
-              <Animated.View
-                entering={FadeInDown.delay(250).springify()}
-                style={profileStyles.section}
-              >
-                <View style={profileStyles.sectionCard}>
-                  <View style={profileStyles.sectionHeader}>
-                    <View style={profileStyles.sectionHeaderLeft}>
-                      <Ionicons name="flash" size={20} color={Colors.gold} />
-                      <Text style={profileStyles.sectionTitle}>Vibe</Text>
-                    </View>
-                  </View>
-                  <View style={profileStyles.vibesGrid}>
-                    {VIBE_OPTIONS.filter((v) => vibes.includes(v.name)).map(
-                      (vibe) => (
-                        <View
-                          key={vibe.name}
-                          style={StyleSheet.flatten([
-                            profileStyles.vibeChip,
-                            profileStyles.vibeChipSelected,
-                          ])}
-                        >
-                          <Text style={profileStyles.vibeEmoji}>
-                            {vibe.emoji}
-                          </Text>
-                          <Text
-                            style={[
-                              profileStyles.vibeText,
-                              profileStyles.vibeTextSelected,
-                            ]}
-                          >
-                            {vibe.name}
-                          </Text>
-                        </View>
-                      ),
-                    )}
                   </View>
                 </View>
               </Animated.View>

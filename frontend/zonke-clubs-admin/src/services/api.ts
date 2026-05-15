@@ -169,6 +169,24 @@ class ApiService {
     return this.client.get("/clubs/my-club").then((response) => response.data);
   }
 
+  uploadClubBanner(
+    file: File,
+    onProgress?: (progress: number) => void,
+  ): Promise<any> {
+    const formData = new FormData();
+    formData.append("file", file);
+    return this.client
+      .post("/clubs/banner", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+        onUploadProgress: onProgress
+          ? (e) => {
+              onProgress(Math.round((e.loaded * 100) / (e.total || 1)));
+            }
+          : undefined,
+      })
+      .then((res) => res.data);
+  }
+
   setupClub(data: any) {
     console.log("🌐 API.setupClub called with data:", data);
     console.log("🌐 API: Auth token:", this.getToken());
@@ -237,6 +255,21 @@ class ApiService {
   getSpendingStats() {
     return this.client
       .get("/admin/spending-records/stats")
+      .then((response) => response.data);
+  }
+
+  updateSpendingRecord(
+    id: string,
+    record: { amount?: number; visit_date?: string; notes?: string },
+  ) {
+    return this.client
+      .put(`/admin/spending-records/${id}`, record)
+      .then((response) => response.data);
+  }
+
+  deleteSpendingRecord(id: string) {
+    return this.client
+      .delete(`/admin/spending-records/${id}`)
       .then((response) => response.data);
   }
 

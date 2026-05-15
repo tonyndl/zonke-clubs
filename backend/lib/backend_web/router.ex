@@ -115,6 +115,7 @@ defmodule BackendWeb.Router do
 
     post "/setup", ClubController, :setup
     get "/my-club", ClubController, :show
+    post "/banner", ClubController, :upload_banner
   end
 
   # Admin DJ management routes
@@ -194,6 +195,8 @@ defmodule BackendWeb.Router do
     post "/spending-records", SpendingRecordController, :create
     get "/spending-records/leaderboard", SpendingRecordController, :leaderboard
     get "/spending-records/stats", SpendingRecordController, :stats
+    put "/spending-records/:id", SpendingRecordController, :update
+    delete "/spending-records/:id", SpendingRecordController, :delete
 
     # User search (for adding spending records)
     get "/users/search", UserController, :search

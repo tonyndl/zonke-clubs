@@ -61,31 +61,31 @@ export function ReceiptScannerModal({
     }
   }, [visible]);
 
-  const launchCamera = async () => {
-    try {
-      const permission = await ImagePicker.requestCameraPermissionsAsync();
-
-      if (!permission.granted) {
+  const launchCamera = () => {
+    ImagePicker.requestCameraPermissionsAsync()
+      .then((permission) => {
+        if (!permission.granted) {
+          onClose();
+          return null;
+        }
+        return ImagePicker.launchCameraAsync({
+          mediaTypes: ["images"],
+          quality: 0.8,
+          allowsEditing: false,
+        });
+      })
+      .then((result) => {
+        if (!result) return;
+        if (!result.canceled && result.assets[0]) {
+          setCapturedImage(result.assets[0].uri);
+          handleCapture();
+        } else {
+          onClose();
+        }
+      })
+      .catch(() => {
         onClose();
-        return;
-      }
-
-      const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: ["images"],
-        quality: 0.8,
-        allowsEditing: false,
       });
-
-      if (!result.canceled && result.assets[0]) {
-        setCapturedImage(result.assets[0].uri);
-        handleCapture();
-      } else {
-        onClose();
-      }
-    } catch (error) {
-      console.error("Error launching camera:", error);
-      onClose();
-    }
   };
 
   const handleCapture = () => {

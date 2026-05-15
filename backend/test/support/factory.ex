@@ -21,7 +21,6 @@ defmodule Backend.Factory do
       password_hash: Bcrypt.hash_pwd_salt("password123"),
       role: "club_goer",
       bio: nil,
-      vibes: [],
       favorite_drinks: [],
       location: nil,
       avatar_url: nil,
@@ -72,8 +71,6 @@ defmodule Backend.Factory do
       email: nil,
       phone: nil,
       active: true,
-      vibes: ["energetic", "upscale"],
-      music_genres: ["house", "techno"],
       dress_code: nil,
       entry_fee: nil,
       opening_hours: %{}

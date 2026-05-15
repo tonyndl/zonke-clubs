@@ -15,14 +15,13 @@ defmodule BackendWeb.Admin.ClubJSON do
       description: club.description,
       location: club.location,
       active: club.active,
-      vibes: club.vibes,
-      music_genres: club.music_genres,
       dress_code: club.dress_code,
       entry_fee: club.entry_fee,
       opening_hours: club.opening_hours || %{},
       next_week_hours: club.next_week_hours || %{},
       table_reservation_numbers: club.table_reservation_numbers || [],
       admin_id: club.admin_id,
+      banner_image_url: Map.get(club, :banner_image_url),
       inserted_at: club.inserted_at,
       updated_at: club.updated_at
     }

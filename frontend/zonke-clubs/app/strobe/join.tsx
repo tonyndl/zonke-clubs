@@ -579,7 +579,7 @@ export default function JoinStrobeScreen() {
 
         <View style={styles.header}>
           <Pressable onPress={() => router.back()} style={styles.backBtn}>
-            <Ionicons name="arrow-back" size={24} color={Colors.gold} />
+            <Ionicons name="chevron-back" size={24} color={Colors.gold} />
           </Pressable>
           <Text style={styles.headerTitle}>STROBE SYNC</Text>
           <View style={{ width: 40 }} />
@@ -671,7 +671,7 @@ export default function JoinStrobeScreen() {
           }}
           style={styles.backBtn}
         >
-          <Ionicons name="arrow-back" size={24} color={Colors.gold} />
+          <Ionicons name="chevron-back" size={24} color={Colors.gold} />
         </Pressable>
         <Text style={styles.headerTitle}>STROBE SYNC</Text>
         <View style={{ width: 40 }} />

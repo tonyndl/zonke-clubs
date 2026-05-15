@@ -232,7 +232,10 @@ defmodule Backend.Posts do
               where: a.post_id == parent_as(:post).id
           )
 
-    total_posts = Repo.aggregate(posts_query, :count)
+    # Count approved posts
+    approved_posts =
+      from(p in posts_query, where: p.status == "approved")
+      |> Repo.aggregate(:count)
 
     # Count pending posts within 24 hours
     cutoff_time = NaiveDateTime.add(NaiveDateTime.utc_now(), -24 * 60 * 60, :second)
@@ -251,7 +254,7 @@ defmodule Backend.Posts do
 
     %{
       total_likes: total_likes,
-      total_posts: total_posts,
+      approved_posts: approved_posts,
       pending_posts: pending_posts
     }
   end

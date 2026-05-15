@@ -78,52 +78,37 @@ export function ImagePicker({
     }
   };
 
-  const uploadImage = async (asset: ExpoImagePicker.ImagePickerAsset) => {
+  const uploadImage = (asset: ExpoImagePicker.ImagePickerAsset) => {
     setIsUploading(true);
 
     const formData = new FormData();
-
-    // Create file object from image
     const fileUri = asset.uri;
     const filename = fileUri.split("/").pop() || "image.jpg";
     const match = /\.(\w+)$/.exec(filename);
     const type = match ? `image/${match[1]}` : "image/jpeg";
 
-    formData.append("file", {
-      uri: fileUri,
-      name: filename,
-      type: type,
-    } as any);
-
+    formData.append("file", { uri: fileUri, name: filename, type } as any);
     formData.append(`${entityType}_id`, entityId);
 
-    try {
-      const response = await fetch(
-        `${process.env.EXPO_PUBLIC_API_URL}/api/assets`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "multipart/form-data",
-            // Add auth token from storage if needed
-          },
-          body: formData,
-        },
-      );
-
-      if (!response.ok) {
-        throw new Error("Upload failed");
-      }
-
-      const data = await response.json();
-      setIsUploading(false);
-      onUploadSuccess(data);
-      Alert.alert("Success", "Image uploaded successfully!");
-    } catch (error) {
-      setIsUploading(false);
-      console.error("Upload error:", error);
-      Alert.alert("Error", "Failed to upload image. Please try again.");
-      setImageUri(existingImageUrl || null);
-    }
+    fetch(`${process.env.EXPO_PUBLIC_API_URL}/api/assets`, {
+      method: "POST",
+      headers: { "Content-Type": "multipart/form-data" },
+      body: formData,
+    })
+      .then((response) => {
+        if (!response.ok) throw new Error("Upload failed");
+        return response.json();
+      })
+      .then((data) => {
+        setIsUploading(false);
+        onUploadSuccess(data);
+        Alert.alert("Success", "Image uploaded successfully!");
+      })
+      .catch(() => {
+        setIsUploading(false);
+        Alert.alert("Error", "Failed to upload image. Please try again.");
+        setImageUri(existingImageUrl || null);
+      });
   };
 
   const showImageOptions = () => {

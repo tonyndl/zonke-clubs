@@ -21,12 +21,11 @@ export type Club = {
   email?: string;
   phone?: string;
   active: boolean;
-  vibes?: string[];
-  music_genres?: string[];
   dress_code?: string;
   entry_fee?: string;
   table_reservation_numbers?: string[];
   is_liked?: boolean;
+  banner_image_url?: string | null;
   opening_hours?: Record<string, { open: string; close: string } | null>;
   inserted_at: string;
   updated_at: string;

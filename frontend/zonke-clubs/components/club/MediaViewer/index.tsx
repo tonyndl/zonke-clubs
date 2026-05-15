@@ -1,12 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
-import {
-  View,
-  Modal,
-  Image,
-  Dimensions,
-  StatusBar,
-  Pressable,
-} from "react-native";
+import { View, Modal, Dimensions, StatusBar, Pressable } from "react-native";
+import { ImageZoom } from "@likashefqet/react-native-image-zoom";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { VideoView, useVideoPlayer } from "expo-video";
 import Animated, {
@@ -300,10 +294,14 @@ export function MediaViewer({ visible, media, allMedia, onClose }: Props) {
                 )}
               </View>
             ) : (
-              <Image
+              <ImageZoom
                 source={{ uri: currentMedia.url }}
                 style={styles.image}
                 resizeMode="contain"
+                minScale={1}
+                maxScale={5}
+                doubleTapScale={2.5}
+                isDoubleTapEnabled
               />
             )}
           </Animated.View>

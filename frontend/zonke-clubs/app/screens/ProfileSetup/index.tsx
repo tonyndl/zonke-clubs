@@ -288,7 +288,6 @@ export default function ProfileSetupScreen() {
       .then((uploadedAvatarUrl) => {
         const profileData = {
           bio: bio.trim() || undefined,
-          vibes: selectedVibes.length > 0 ? selectedVibes : undefined,
           favorite_drinks:
             favoriteDrinks.length > 0 ? favoriteDrinks : undefined,
           location: location || undefined,

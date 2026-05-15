@@ -991,7 +991,7 @@ export const NightAmount = styled.div<{ isTop?: boolean }>`
 `;
 
 export const NightDate = styled.div`
-  font-size: ${theme.typography.fontSize.xs};
+  font-size: ${theme.typography.fontSize.base};
   color: ${theme.colors.primary};
   font-weight: ${theme.typography.fontWeight.semibold};
   position: relative;
@@ -1002,7 +1002,7 @@ export const NightDate = styled.div`
 
   &::before {
     content: "📅";
-    font-size: 10px;
+    font-size: ${theme.typography.fontSize.base};
   }
 `;
 

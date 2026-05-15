@@ -143,7 +143,7 @@ export default function DayLineupScreen() {
       {/* ── Header ── */}
       <View style={styles.header}>
         <PressableScale onPress={() => router.back()} style={styles.backBtn}>
-          <Ionicons name="arrow-back" size={20} color={Colors.platinum} />
+          <Ionicons name="chevron-back" size={20} color={Colors.platinum} />
         </PressableScale>
         <View style={{ flex: 1 }}>
           <Text style={styles.title}>

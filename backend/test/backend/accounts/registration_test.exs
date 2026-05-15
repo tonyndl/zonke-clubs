@@ -45,14 +45,12 @@ defmodule Backend.Accounts.RegistrationTest do
         password: "password123",
         role: "club_goer",
         bio: "Love nightlife!",
-        vibes: ["energetic", "friendly"],
         favorite_drinks: ["mojito"]
       }
 
       assert {:ok, user} = Registration.register_user(attrs)
       assert user.phone == "+27 123 456 7890"
       assert user.bio == "Love nightlife!"
-      assert user.vibes == ["energetic", "friendly"]
       assert user.favorite_drinks == ["mojito"]
     end
 
@@ -212,7 +210,6 @@ defmodule Backend.Accounts.RegistrationTest do
 
       assert {:ok, user} = Registration.register_user(attrs)
       # Arrays might be nil from DB or empty depending on schema defaults
-      assert user.vibes == [] or is_nil(user.vibes)
       assert user.favorite_drinks == [] or is_nil(user.favorite_drinks)
     end
   end

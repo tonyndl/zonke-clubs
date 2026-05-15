@@ -32,12 +32,11 @@ defmodule BackendWeb.API.ClubJSON do
       email: club.email,
       phone: club.phone,
       active: club.active,
-      vibes: club.vibes,
-      music_genres: club.music_genres,
       dress_code: club.dress_code,
       entry_fee: club.entry_fee,
       opening_hours: club.opening_hours || %{},
       table_reservation_numbers: club.table_reservation_numbers || [],
+      banner_image_url: Map.get(club, :banner_image_url),
       inserted_at: club.inserted_at,
       updated_at: club.updated_at
     }

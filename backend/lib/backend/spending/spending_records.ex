@@ -7,6 +7,26 @@ defmodule Backend.Spending.SpendingRecords do
   alias Backend.Spending.SpendingRecord
   alias Backend.Accounts.User
 
+  @doc "Get a single spending record by ID."
+  def get_spending_record(id) do
+    case Repo.get(SpendingRecord, id) do
+      nil -> {:error, :not_found}
+      record -> {:ok, record}
+    end
+  end
+
+  @doc "Update a spending record."
+  def update_spending_record(%SpendingRecord{} = record, attrs) do
+    record
+    |> SpendingRecord.changeset(attrs)
+    |> Repo.update()
+  end
+
+  @doc "Delete a spending record."
+  def delete_spending_record(%SpendingRecord{} = record) do
+    Repo.delete(record)
+  end
+
   @doc """
   Creates a single spending record.
   """
@@ -99,7 +119,8 @@ defmodule Backend.Spending.SpendingRecords do
         select: %{
           user_id: s.user_id,
           best_amount: max(s.amount),
-          visit_date: fragment("(array_agg(? ORDER BY ? DESC))[1]", s.visit_date, s.amount)
+          visit_date: fragment("(array_agg(? ORDER BY ? DESC))[1]", s.visit_date, s.amount),
+          record_id: fragment("(array_agg(CAST(? AS text) ORDER BY ? DESC))[1]", s.id, s.amount)
         },
         order_by: [desc: max(s.amount)],
         limit: ^limit
@@ -110,59 +131,6 @@ defmodule Backend.Spending.SpendingRecords do
     user_ids = Enum.map(results, & &1.user_id)
     users = Repo.all(from u in User, where: u.id in ^user_ids)
     users_map = Map.new(users, &{&1.id, &1})
-
-    # Get distinct visit counts for each user based on time period
-    today = Date.utc_today()
-
-    distinct_visits =
-      case time_period do
-        :week ->
-          # Count distinct days in last 7 days
-          week_start = Date.add(today, -7)
-
-          Repo.all(
-            from s in SpendingRecord,
-              where: s.club_id == ^club_id and s.user_id in ^user_ids,
-              where: s.visit_date >= ^week_start,
-              group_by: s.user_id,
-              select: %{
-                user_id: s.user_id,
-                count: fragment("COUNT(DISTINCT ?)", s.visit_date)
-              }
-          )
-          |> Map.new(&{&1.user_id, &1.count})
-
-        :month ->
-          # Count distinct weeks in last 30 days (group by week)
-          month_start = Date.add(today, -30)
-
-          Repo.all(
-            from s in SpendingRecord,
-              where: s.club_id == ^club_id and s.user_id in ^user_ids,
-              where: s.visit_date >= ^month_start,
-              group_by: s.user_id,
-              select: %{
-                user_id: s.user_id,
-                # Count distinct weeks (ISO week number)
-                count:
-                  fragment(
-                    "COUNT(DISTINCT EXTRACT(WEEK FROM ?))",
-                    s.visit_date
-                  )
-              }
-          )
-          |> Map.new(&{&1.user_id, &1.count})
-
-        :all ->
-          # Get first visit date for total weeks calculation
-          Repo.all(
-            from s in SpendingRecord,
-              where: s.club_id == ^club_id and s.user_id in ^user_ids,
-              group_by: s.user_id,
-              select: %{user_id: s.user_id, first_visit: min(s.visit_date)}
-          )
-          |> Map.new(&{&1.user_id, &1.first_visit})
-      end
 
     # Get previous period leaderboard for position change calculation
     previous_period = get_previous_period(time_period)
@@ -176,7 +144,7 @@ defmodule Backend.Spending.SpendingRecords do
         %{}
       end
 
-    # Add ranking with tie handling, position change, and time on chart
+    # Add ranking with tie handling and position change
     results
     |> Enum.with_index(1)
     |> Enum.map_reduce(nil, fn {result, index}, prev_state ->
@@ -203,46 +171,15 @@ defmodule Backend.Spending.SpendingRecords do
           true -> 0
         end
 
-      # Calculate time on chart based on period
-      {time_on_chart, time_unit} =
-        case time_period do
-          :week ->
-            # Number of distinct days with spending in last 7 days
-            days = Map.get(distinct_visits, result.user_id, 1)
-            # If only 1 day, show as "new"
-            if days == 1, do: {nil, "new"}, else: {days, "days"}
-
-          :month ->
-            # Number of distinct weeks with spending in last 30 days
-            weeks = Map.get(distinct_visits, result.user_id, 1)
-            # If only 1 week, show as "new"
-            if weeks == 1, do: {nil, "new"}, else: {weeks, "weeks"}
-
-          :all ->
-            # Total weeks since first visit
-            first_visit = Map.get(distinct_visits, result.user_id)
-
-            weeks =
-              if first_visit do
-                max(1, div(Date.diff(today, first_visit), 7))
-              else
-                1
-              end
-
-            # If only 1 week, show as "new"
-            if weeks == 1, do: {nil, "new"}, else: {weeks, "weeks"}
-        end
-
       entry = %{
+        record_id: result.record_id,
         rank: rank,
         user_id: result.user_id,
         username: user && user.username,
         avatar_url: user && user.avatar_url,
         amount: result.best_amount,
         visit_date: result.visit_date,
-        position_change: position_change,
-        time_on_chart: time_on_chart,
-        time_unit: time_unit
+        position_change: position_change
       }
 
       {entry, {result.best_amount, rank}}

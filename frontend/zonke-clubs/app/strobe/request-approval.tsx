@@ -180,7 +180,7 @@ export default function RequestApprovalScreen() {
       {/* Header */}
       <View style={styles.header}>
         <Pressable onPress={() => router.back()} style={styles.backBtn}>
-          <Ionicons name="arrow-back" size={24} color={Colors.gold} />
+          <Ionicons name="chevron-back" size={24} color={Colors.gold} />
         </Pressable>
         <Text style={styles.headerTitle}>REQUEST APPROVAL</Text>
         <View style={{ width: 40 }} />
