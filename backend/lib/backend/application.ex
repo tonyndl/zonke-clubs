@@ -21,7 +21,9 @@ defmodule Backend.Application do
     # See https://hexdocs.pm/elixir/Supervisor.html
     # for other strategies and supported options
     opts = [strategy: :one_for_one, name: Backend.Supervisor]
-    Supervisor.start_link(children, opts)
+    result = Supervisor.start_link(children, opts)
+    Backend.Strobe.cleanup_stale_sessions()
+    result
   end
 
   # Tell Phoenix to update the endpoint configuration

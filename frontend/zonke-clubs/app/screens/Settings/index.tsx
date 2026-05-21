@@ -739,7 +739,7 @@ export default function SettingsScreen() {
           </View>
         </Animated.View> */}
 
-        {/* DJ Tools Section */}
+        {/* DJ Tools / Strobe Section */}
         <Animated.View
           entering={FadeInDown.delay(250).springify()}
           style={styles.section}
@@ -752,30 +752,42 @@ export default function SettingsScreen() {
               >
                 <Ionicons name="flash" size={20} color={Colors.primaryBlue} />
               </LinearGradient>
-              <Text style={styles.sectionTitle}>DJ Tools</Text>
+              <Text style={styles.sectionTitle}>
+                {user?.role === "dj" ? "DJ Tools" : "Strobe"}
+              </Text>
             </View>
           </View>
 
           <View style={styles.card}>
-            <PressableScale
-              onPress={() => router.push("/strobe/dj" as any)}
-              style={styles.settingRow}
-            >
-              <View style={styles.settingLeft}>
-                <Ionicons name="flash" size={20} color={Colors.primaryBlue} />
-                <View>
-                  <Text style={styles.settingText}>Strobe Control</Text>
-                  <Text style={styles.settingSubText}>DJ flashlight sync</Text>
-                </View>
-              </View>
-              <Ionicons
-                name="chevron-forward"
-                size={20}
-                color={Colors.lightGrey}
-              />
-            </PressableScale>
+            {user?.role === "dj" && (
+              <>
+                <PressableScale
+                  onPress={() => router.push("/strobe/dj" as any)}
+                  style={styles.settingRow}
+                >
+                  <View style={styles.settingLeft}>
+                    <Ionicons
+                      name="flash"
+                      size={20}
+                      color={Colors.primaryBlue}
+                    />
+                    <View>
+                      <Text style={styles.settingText}>Strobe Control</Text>
+                      <Text style={styles.settingSubText}>
+                        DJ flashlight sync
+                      </Text>
+                    </View>
+                  </View>
+                  <Ionicons
+                    name="chevron-forward"
+                    size={20}
+                    color={Colors.lightGrey}
+                  />
+                </PressableScale>
 
-            <View style={styles.divider} />
+                <View style={styles.divider} />
+              </>
+            )}
 
             <PressableScale
               onPress={() => router.push("/strobe/join" as any)}

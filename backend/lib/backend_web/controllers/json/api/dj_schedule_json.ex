@@ -10,14 +10,33 @@ defmodule BackendWeb.API.DJScheduleJSON do
   end
 
   defp data(%DJSchedule{} = schedule) do
-    dj_loaded = Ecto.assoc_loaded?(schedule.dj)
+    dj_loaded = Ecto.assoc_loaded?(schedule.dj) and not is_nil(schedule.dj)
+    dj_user_loaded = Ecto.assoc_loaded?(schedule.dj_user) and not is_nil(schedule.dj_user)
 
     %{
       id: schedule.id,
+      # Legacy DJ (club-created)
       dj_id: schedule.dj_id,
-      dj_name: if(dj_loaded, do: schedule.dj.name, else: nil),
-      dj_instagram: if(dj_loaded, do: schedule.dj.instagram, else: nil),
-      dj_tiktok: if(dj_loaded, do: schedule.dj.tiktok, else: nil),
+      dj_name: cond do
+        dj_user_loaded -> schedule.dj_user.username
+        dj_loaded -> schedule.dj.name
+        true -> nil
+      end,
+      dj_instagram: cond do
+        dj_user_loaded -> schedule.dj_user.dj_instagram
+        dj_loaded -> schedule.dj.instagram
+        true -> nil
+      end,
+      dj_tiktok: cond do
+        dj_user_loaded -> schedule.dj_user.dj_tiktok
+        dj_loaded -> schedule.dj.tiktok
+        true -> nil
+      end,
+      # DJ user account
+      dj_user_id: schedule.dj_user_id,
+      dj_user_avatar: if(dj_user_loaded, do: schedule.dj_user.avatar_url, else: nil),
+      dj_user_soundcloud: if(dj_user_loaded, do: schedule.dj_user.dj_soundcloud, else: nil),
+      dj_user_genres: if(dj_user_loaded, do: schedule.dj_user.dj_genres || [], else: []),
       day_of_week: schedule.day_of_week,
       day: day_name(schedule.day_of_week),
       start_time: format_time(schedule.start_time),

@@ -32,15 +32,6 @@ import { ClubFeedViewer } from "@/components/club/ClubFeedViewer";
 import { ClubPost } from "@/types/post";
 import postsService from "@/services/postsService";
 
-const getPlaceholderImage = (index: number) => {
-  const images = [
-    "https://images.unsplash.com/photo-1566737236500-c8ac43014a67?auto=format&fit=crop&w=400&q=60",
-    "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=400&q=60",
-    "https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?auto=format&fit=crop&w=400&q=60",
-  ];
-  return images[index % images.length];
-};
-
 export default function ViewProfileScreen() {
   const { id, clubId } = useLocalSearchParams<{
     id: string;
@@ -68,7 +59,7 @@ export default function ViewProfileScreen() {
     "info",
   );
   const [allClubs, setAllClubs] = useState<
-    Array<{ id: string; name: string; image: string; location: string }>
+    Array<{ id: string; name: string; image?: string; location: string }>
   >([]);
   const [loadingClubs, setLoadingClubs] = useState(true);
   const [selectedClubs, setSelectedClubs] = useState<string[]>([]);
@@ -96,11 +87,11 @@ export default function ViewProfileScreen() {
       .getClubs(false)
       .then((response) => {
         setAllClubs(
-          response.clubs.map((club: ApiClub, index: number) => ({
+          response.clubs.map((club: ApiClub) => ({
             id: club.id,
             name: club.name,
             location: club.location.name,
-            image: getPlaceholderImage(index),
+            image: club.banner_image_url ?? undefined,
           })),
         );
       })

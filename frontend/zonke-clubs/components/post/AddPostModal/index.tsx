@@ -73,13 +73,13 @@ export function AddPostModal({
   const [selectedClubData, setSelectedClubData] = useState<{
     id: string;
     name: string;
-    image: string;
+    image?: string;
   } | null>(null);
   const [isPosting, setIsPosting] = useState(false);
   const [clubSearchQuery, setClubSearchQuery] = useState("");
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [clubSearchResults, setClubSearchResults] = useState<
-    Array<{ id: string; name: string; image: string }>
+    Array<{ id: string; name: string; image?: string }>
   >([]);
   const debouncedClubSearch = useDebounce(clubSearchQuery, 300);
 
@@ -93,10 +93,10 @@ export function AddPostModal({
       .getClubs(false, 1, 20, debouncedClubSearch)
       .then(({ clubs }) =>
         setClubSearchResults(
-          clubs.map((c: ApiClub, i: number) => ({
+          clubs.map((c: ApiClub) => ({
             id: c.id,
             name: c.name,
-            image: `https://i.pravatar.cc/150?img=${(i % 70) + 1}`,
+            image: c.banner_image_url ?? undefined,
           })),
         ),
       )
@@ -140,7 +140,7 @@ export function AddPostModal({
     setShowSuggestions(text.trim().length > 0);
   };
 
-  const selectClub = (club: { id: string; name: string; image: string }) => {
+  const selectClub = (club: { id: string; name: string; image?: string }) => {
     setSelectedClubId(club.id);
     setSelectedClubData(club);
     setClubSearchQuery("");
