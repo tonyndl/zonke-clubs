@@ -168,7 +168,7 @@ function LeaderboardCard({ entry, index }: LeaderboardCardProps) {
 
         {/* Avatar */}
         <Image
-          source={{ uri: entry.avatar_url || "https://via.placeholder.com/40" }}
+          source={{ uri: entry.avatar_url || undefined }}
           style={[styles.avatar, isTopThree && styles.avatarTopThree]}
         />
 

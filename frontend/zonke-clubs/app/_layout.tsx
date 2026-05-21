@@ -65,6 +65,7 @@ import { AuthProvider, useAuth } from "../contexts/AuthContext";
 import { UserRoleProvider } from "../contexts/UserRoleContext";
 import { LedColorProvider } from "../contexts/LedColorContext";
 import { AuthScreen } from "./screens/Login";
+import ProfileSetupScreen from "./screens/ProfileSetup";
 import {
   setupStrobeNotificationCategory,
   updateDeviceLocation,
@@ -162,12 +163,16 @@ function RootNavigator() {
     return <AuthScreen />;
   }
 
+  if (!user?.onboarding_complete) {
+    return <ProfileSetupScreen />;
+  }
+
   // User is authenticated - show main app based on their role
-  const isClubOwner = user?.role === "club_owner";
+  const isClubAdmin = user?.role === "admin";
 
   return (
     <Stack>
-      {isClubOwner ? (
+      {isClubAdmin ? (
         <>
           <Stack.Screen name="manage" options={{ headerShown: false }} />
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
@@ -175,6 +180,7 @@ function RootNavigator() {
       ) : (
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       )}
+      <Stack.Screen name="screens" options={{ headerShown: false }} />
       <Stack.Screen name="club/[id]" options={{ headerShown: false }} />
       <Stack.Screen
         name="club/[id]/comments"

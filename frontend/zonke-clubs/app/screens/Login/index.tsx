@@ -127,6 +127,7 @@ export const AuthScreen = () => {
   // Register fields
   const [email, setEmail] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [selectedRole, setSelectedRole] = useState<"user" | "dj">("user");
 
   // Password visibility state
   const [showPassword, setShowPassword] = useState(false);
@@ -188,7 +189,7 @@ export const AuthScreen = () => {
       username: username.trim(),
       email: email.trim() || undefined,
       password,
-      role: "club_goer",
+      role: selectedRole,
     })
       .then(() => {
         router.replace("/screens/ProfileSetup");
@@ -210,6 +211,7 @@ export const AuthScreen = () => {
     setErrors({});
     setShowPassword(false);
     setShowConfirmPassword(false);
+    setSelectedRole("user");
   };
 
   return (
@@ -300,6 +302,69 @@ export const AuthScreen = () => {
               {!!errors.confirmPassword && (
                 <Text style={errorTextStyle}>{errors.confirmPassword}</Text>
               )}
+            </View>
+          )}
+
+          {!isLogin && (
+            <View style={{ marginBottom: 20 }}>
+              <Text
+                style={{
+                  color: Colors.smoke,
+                  fontSize: 13,
+                  marginBottom: 10,
+                  letterSpacing: 0.5,
+                  textTransform: "uppercase",
+                }}
+              >
+                I am a...
+              </Text>
+              <View style={{ flexDirection: "row", gap: 10 }}>
+                {(["user", "dj"] as const).map((role) => {
+                  const active = selectedRole === role;
+                  const label = role === "user" ? "Club Goer" : "DJ";
+                  const icon =
+                    role === "user"
+                      ? "people-outline"
+                      : "musical-notes-outline";
+                  return (
+                    <TouchableOpacity
+                      key={role}
+                      activeOpacity={0.8}
+                      onPress={() => setSelectedRole(role)}
+                      style={{
+                        flex: 1,
+                        flexDirection: "row",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: 8,
+                        paddingVertical: 14,
+                        borderRadius: 14,
+                        borderWidth: active ? 0 : 1,
+                        borderColor: "rgba(57,243,255,0.25)",
+                        backgroundColor: active
+                          ? Colors.gold
+                          : "rgba(57,243,255,0.05)",
+                      }}
+                    >
+                      <Ionicons
+                        name={icon as any}
+                        size={18}
+                        color={active ? Colors.bg : Colors.smoke}
+                      />
+                      <Text
+                        style={{
+                          color: active ? Colors.bg : Colors.smoke,
+                          fontWeight: active ? "800" : "500",
+                          fontSize: 15,
+                          letterSpacing: 0.3,
+                        }}
+                      >
+                        {label}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
             </View>
           )}
 

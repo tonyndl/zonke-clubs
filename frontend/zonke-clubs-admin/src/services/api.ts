@@ -341,6 +341,25 @@ class ApiService {
       .then((response) => response.data);
   }
 
+  // DJ user profile search (mobile DJ accounts)
+  searchDJUsers(
+    query: string = "",
+  ): Promise<
+    Array<{
+      id: string;
+      username: string;
+      bio?: string;
+      avatar_url?: string;
+      dj_instagram?: string;
+      dj_tiktok?: string;
+      dj_soundcloud?: string;
+      dj_genres?: string[];
+    }>
+  > {
+    const q = query ? `?q=${encodeURIComponent(query)}` : "";
+    return this.client.get(`/dj-profiles${q}`).then((res) => res.data.djs);
+  }
+
   // DJ Management endpoints
   getDJs() {
     return this.client.get("/djs").then((response) => response.data.djs);

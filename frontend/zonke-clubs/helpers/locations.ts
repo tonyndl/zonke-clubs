@@ -6,16 +6,17 @@ export const fetchSuggestions = debounce(
     text: string,
     onSetResults: (results: any[]) => void,
     onOpen: (open: boolean) => void,
+    onSetLoading?: (loading: boolean) => void,
   ) => {
     if (text.length < 3) {
       onSetResults([]);
+      onSetLoading?.(false);
       return;
     }
 
     locationService
       .searchLocations(text)
       .then((results) => {
-        // Convert to format expected by DropdownInput and backend
         const formattedResults = results.map((location) => ({
           name: location.name,
           latitude: location.latitude,
@@ -24,10 +25,12 @@ export const fetchSuggestions = debounce(
 
         onSetResults(formattedResults);
         onOpen(true);
+        onSetLoading?.(false);
       })
       .catch((err) => {
         console.error("Location fetch error:", err.message);
         onSetResults([]);
+        onSetLoading?.(false);
       });
   },
   400,

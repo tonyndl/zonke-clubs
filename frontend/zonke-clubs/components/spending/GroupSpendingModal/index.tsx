@@ -47,78 +47,11 @@ export type GroupSpendingData = {
   timestamp: string;
 };
 
-const MOCK_MEMBERS: Member[] = [
-  {
-    id: "1",
-    name: "Alex Johnson",
-    avatar: "https://i.pravatar.cc/150?img=12",
-    username: "alexj",
-    selected: false,
-    amount: 0,
-  },
-  {
-    id: "2",
-    name: "Sarah Williams",
-    avatar: "https://i.pravatar.cc/150?img=47",
-    username: "sarahw",
-    selected: false,
-    amount: 0,
-  },
-  {
-    id: "3",
-    name: "Michael Chen",
-    avatar: "https://i.pravatar.cc/150?img=33",
-    username: "mikec",
-    selected: false,
-    amount: 0,
-  },
-  {
-    id: "4",
-    name: "Emma Davis",
-    avatar: "https://i.pravatar.cc/150?img=23",
-    username: "emmad",
-    selected: false,
-    amount: 0,
-  },
-  {
-    id: "5",
-    name: "James Wilson",
-    avatar: "https://i.pravatar.cc/150?img=14",
-    username: "jamesw",
-    selected: false,
-    amount: 0,
-  },
-  {
-    id: "6",
-    name: "Olivia Brown",
-    avatar: "https://i.pravatar.cc/150?img=45",
-    username: "oliviab",
-    selected: false,
-    amount: 0,
-  },
-  {
-    id: "7",
-    name: "Liam Martinez",
-    avatar: "https://i.pravatar.cc/150?img=68",
-    username: "liamm",
-    selected: false,
-    amount: 0,
-  },
-  {
-    id: "8",
-    name: "Sophia Taylor",
-    avatar: "https://i.pravatar.cc/150?img=32",
-    username: "sophiat",
-    selected: false,
-    amount: 0,
-  },
-];
-
 export function GroupSpendingModal({
   visible,
   onClose,
   onComplete,
-  members = MOCK_MEMBERS,
+  members = [],
   clubName = "The Club",
 }: Props) {
   const [step, setStep] = useState<"amount" | "members" | "split" | "confirm">(

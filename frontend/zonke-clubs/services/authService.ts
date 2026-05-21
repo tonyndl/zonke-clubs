@@ -37,7 +37,7 @@ export interface User {
   username: string;
   email?: string;
   phone?: string;
-  role: string;
+  role: "user" | "admin" | "dj";
   inserted_at: string;
   updated_at: string;
   // Optional profile fields
@@ -52,13 +52,16 @@ export interface User {
   };
   onboarding_complete?: boolean;
   spending_visible?: boolean;
+  // DJ profile fields (only set when role = "dj")
+  dj_genres?: string[];
+  dj_handles?: Array<{ platform: string; handle: string }>;
 }
 
 export interface RegisterData {
   username: string;
   email?: string;
   password: string;
-  role: "club_goer" | "club_owner";
+  role: "user" | "dj";
 }
 
 export interface LoginData {

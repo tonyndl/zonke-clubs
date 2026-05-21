@@ -159,6 +159,7 @@ function getClosedDays(
 export const DJSchedule: React.FC = () => {
   const toast = useToast();
   const [djs, setDJs] = useState<DJ[]>([]);
+  const [djSearch, setDjSearch] = useState("");
   const [schedules, setSchedules] = useState<Schedule[]>([]);
   const [events, setEvents] = useState<any[]>([]);
   const [openingHours, setOpeningHours] = useState<Record<string, any>>({});
@@ -187,13 +188,22 @@ export const DJSchedule: React.FC = () => {
   const fetchData = () => {
     setIsLoading(true);
     Promise.all([
-      apiService.getDJs(),
+      apiService.searchDJUsers(djSearch),
       apiService.getDJSchedules(),
       eventService.getEvents().catch(() => ({ events: [] })),
       apiService.getMyClub().catch(() => null),
     ])
-      .then(([djsData, schedulesData, eventsData, clubData]) => {
-        setDJs(djsData);
+      .then(([djUsersData, schedulesData, eventsData, clubData]) => {
+        // Map DJ user accounts to the DJ shape expected by the schedule calendar
+        const mappedDJs: DJ[] = djUsersData.map((u: any) => ({
+          id: u.id,
+          name: u.username,
+          bio: u.bio,
+          instagram: u.dj_instagram,
+          tiktok: u.dj_tiktok,
+          image: u.avatar_url,
+        }));
+        setDJs(mappedDJs);
         const transformedSchedules = schedulesData.map((s: any) => ({
           id: s.id,
           djId: s.dj_id,
@@ -323,7 +333,7 @@ export const DJSchedule: React.FC = () => {
 
   const handleAddSchedule = (scheduleData: ScheduleFormData) => {
     const apiData = {
-      dj_id: scheduleData.djId,
+      dj_user_id: scheduleData.djId,
       day_of_week: scheduleData.dayOfWeek,
       start_time: scheduleData.startTime,
       end_time: scheduleData.endTime,
@@ -413,7 +423,7 @@ export const DJSchedule: React.FC = () => {
     if (!editingSchedule) return;
 
     const apiData = {
-      dj_id: scheduleData.djId,
+      dj_user_id: scheduleData.djId,
       day_of_week: scheduleData.dayOfWeek,
       start_time: scheduleData.startTime,
       end_time: scheduleData.endTime,
@@ -750,23 +760,54 @@ export const DJSchedule: React.FC = () => {
             Manage your resident DJs and their weekly performance schedules.
           </PageDescription>
         </HeaderLeft>
-        <PrimaryButton onClick={() => setIsAddDJModalOpen(true)}>
-          {React.createElement(RiAddLine as React.ComponentType)}
-          Add DJ
-        </PrimaryButton>
       </PageHeader>
 
-      {/* DJs Section */}
+      {/* Registered DJs Section */}
       <Section>
         <SectionHeader>
           <SectionTitle>
             {React.createElement(RiMusic2Line as React.ComponentType)}
-            Your DJs
+            Registered DJs
           </SectionTitle>
           <SectionDescription>
-            Manage your club's resident DJ roster
+            DJs who have signed up on the mobile app. Search to find them and
+            add them to your schedule below.
           </SectionDescription>
         </SectionHeader>
+
+        <div style={{ marginBottom: theme.spacing.md }}>
+          <input
+            type="text"
+            value={djSearch}
+            onChange={(e) => {
+              setDjSearch(e.target.value);
+              apiService.searchDJUsers(e.target.value).then((users: any[]) => {
+                setDJs(
+                  users.map((u) => ({
+                    id: u.id,
+                    name: u.username,
+                    bio: u.bio,
+                    instagram: u.dj_instagram,
+                    tiktok: u.dj_tiktok,
+                    image: u.avatar_url,
+                  })),
+                );
+              });
+            }}
+            placeholder="Search DJs by username..."
+            style={{
+              width: "100%",
+              padding: `${theme.spacing.sm} ${theme.spacing.md}`,
+              background: theme.colors.background,
+              border: `1px solid ${theme.colors.border}`,
+              borderRadius: theme.borderRadius.lg,
+              color: theme.colors.textPrimary,
+              fontSize: theme.typography.fontSize.sm,
+              outline: "none",
+              boxSizing: "border-box",
+            }}
+          />
+        </div>
 
         {djs.length > 0 ? (
           <DJGrid>
@@ -808,22 +849,6 @@ export const DJSchedule: React.FC = () => {
                     )}
                   </DJGridSocials>
                 )}
-                <DJGridActions>
-                  <DJGridEditBtn
-                    onClick={() => handleEditDJ(dj.id)}
-                    title="Edit DJ"
-                  >
-                    {React.createElement(RiEditLine as React.ComponentType)}
-                  </DJGridEditBtn>
-                  <DJGridDeleteBtn
-                    onClick={() => setDJToDelete(dj.id)}
-                    title="Delete DJ"
-                  >
-                    {React.createElement(
-                      RiDeleteBinLine as React.ComponentType,
-                    )}
-                  </DJGridDeleteBtn>
-                </DJGridActions>
               </DJGridItem>
             ))}
           </DJGrid>
@@ -831,17 +856,14 @@ export const DJSchedule: React.FC = () => {
           <Card>
             <EmptyState>
               {React.createElement(RiMusic2Line as React.ComponentType)}
-              <CardTitle>No DJs Added</CardTitle>
+              <CardTitle>
+                {djSearch ? "No DJs found" : "No Registered DJs"}
+              </CardTitle>
               <CardDescription>
-                Add your first DJ to start managing schedules
+                {djSearch
+                  ? `No DJs matching "${djSearch}"`
+                  : "DJs sign up on the mobile app. Once registered, they'll appear here."}
               </CardDescription>
-              <PrimaryButton
-                style={{ marginTop: theme.spacing.lg }}
-                onClick={() => setIsAddDJModalOpen(true)}
-              >
-                {/* {React.createElement(RiAddLine as React.ComponentType)} */}
-                Add Your First DJ
-              </PrimaryButton>
             </EmptyState>
           </Card>
         )}

@@ -10,11 +10,16 @@ defmodule Backend.Accounts.User do
     :favorite_drinks,
     :onboarding_complete,
     :avatar_url,
-    :location
+    :location,
+    :dj_instagram,
+    :dj_tiktok,
+    :dj_soundcloud,
+    :dj_genres,
+    :dj_handles
   ]
   @all_fields @required_fields ++ @optional_fields
 
-  @role_values ["club_goer", "club_owner"]
+  @role_values ["user", "admin", "dj"]
 
   schema "users" do
     field :email, :string
@@ -35,6 +40,14 @@ defmodule Backend.Accounts.User do
     field :device_lat, :float
     field :device_lng, :float
     field :device_location_at, :utc_datetime
+
+    # DJ profile fields (only populated when role = "dj")
+    field :dj_instagram, :string
+    field :dj_tiktok, :string
+    field :dj_soundcloud, :string
+    field :dj_genres, {:array, :string}, default: []
+    # Flexible list of social/platform handles: [%{"platform" => "Instagram", "handle" => "@username"}]
+    field :dj_handles, {:array, :map}, default: []
 
     # Activity tracking
     field :last_seen_at, :naive_datetime
@@ -139,6 +152,41 @@ defmodule Backend.Accounts.User do
   end
 
   defp put_password_hash(changeset), do: changeset
+
+  @doc """
+  Changeset for updating DJ-specific profile fields.
+  Only allowed for users with role = "dj".
+  """
+  def dj_profile_changeset(user, attrs) do
+    user
+    |> cast(attrs, [:dj_instagram, :dj_tiktok, :dj_soundcloud, :dj_genres, :dj_handles, :bio, :avatar_url])
+    |> validate_length(:bio, max: 500)
+    |> validate_dj_handles()
+  end
+
+  defp validate_dj_handles(changeset) do
+    case get_change(changeset, :dj_handles) do
+      nil ->
+        changeset
+
+      handles when is_list(handles) ->
+        valid =
+          Enum.all?(handles, fn h ->
+            is_map(h) and
+              is_binary(Map.get(h, "platform", "")) and
+              is_binary(Map.get(h, "handle", "")) and
+              String.length(Map.get(h, "platform", "")) > 0 and
+              String.length(Map.get(h, "handle", "")) > 0
+          end)
+
+        if valid,
+          do: changeset,
+          else: add_error(changeset, :dj_handles, "each handle must have a platform and handle value")
+
+      _ ->
+        add_error(changeset, :dj_handles, "must be a list")
+    end
+  end
 
   def device_location_changeset(user, attrs) do
     user

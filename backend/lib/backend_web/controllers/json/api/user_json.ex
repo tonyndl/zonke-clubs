@@ -19,6 +19,8 @@ defmodule BackendWeb.API.UserJSON do
       location: user.location,
       onboarding_complete: user.onboarding_complete,
       spending_visible: user.spending_visible,
+      dj_genres: user.dj_genres,
+      dj_handles: user.dj_handles,
       inserted_at: user.inserted_at,
       updated_at: user.updated_at
     }

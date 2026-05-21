@@ -76,7 +76,7 @@ defmodule Backend.Accounts.Users do
     search_pattern = "%#{query}%"
 
     from(u in User,
-      where: u.role == "club_goer",
+      where: u.role == "user",
       where: u.id not in ^exclude_ids,
       where: ilike(u.username, ^search_pattern),
       limit: ^limit,

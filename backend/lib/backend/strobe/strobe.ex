@@ -283,6 +283,15 @@ defmodule Backend.Strobe do
     |> Repo.one()
   end
 
+  @doc "Mark all active sessions older than 6 hours as stopped (run on startup)"
+  def cleanup_stale_sessions do
+    expiry = DateTime.utc_now() |> DateTime.add(-6 * 3600, :second)
+
+    StrobeSession
+    |> where([s], s.status == "active" and s.started_at < ^expiry)
+    |> Repo.update_all(set: [status: "stopped"])
+  end
+
   defp stop_existing_sessions(club_id, dj_user_id) do
     StrobeSession
     |> where([s], s.club_id == ^club_id and s.dj_user_id == ^dj_user_id and s.status == "active")

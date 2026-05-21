@@ -156,9 +156,7 @@ export function PeopleSwipeModal({
         {/* Profile Image */}
         <Image
           source={{
-            uri:
-              intention.user.avatarUrl ||
-              "https://via.placeholder.com/600x800/1a1a2e/ffffff?text=No+Photo",
+            uri: intention.user.avatarUrl || undefined,
             cache: "force-cache",
           }}
           style={styles.cardImage}

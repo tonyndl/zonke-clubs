@@ -14,6 +14,7 @@ import {
   Platform,
   BackHandler,
   TextInput,
+  ActivityIndicator,
 } from "react-native";
 import { FieldValues, Path, UseFormSetValue } from "react-hook-form";
 import { Portal } from "react-native-paper";
@@ -22,6 +23,7 @@ import { Feather, MaterialIcons } from "@expo/vector-icons";
 
 import { Colors } from "@/constants/ui";
 import { fetchSuggestions } from "@/helpers/locations";
+import { Location } from "@/services/locationService";
 import { styles } from "./styles";
 
 type DropdownInputProps<T extends FieldValues> = {
@@ -63,11 +65,14 @@ export const DropdownInput = <T extends FieldValues>({
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   const [keyboardTopPosition, setKeyboardTopPosition] = useState(0);
   const [query, setQuery] = useState(value || "");
-  const [results, setResults] = useState<LocationType[]>([]);
+  const [results, setResults] = useState<Location[]>([]);
+  const [isLoadingLocations, setIsLoadingLocations] = useState(false);
   const [isRepositioning, setIsRepositioning] = useState(false);
 
+  // Sync query when value changes externally (e.g. pre-loaded saved location),
+  // but only when the dropdown is closed so we don't overwrite what the user is typing
   useEffect(() => {
-    if (value) {
+    if (value && !open) {
       setQuery(value);
     }
   }, [value]);
@@ -97,7 +102,7 @@ export const DropdownInput = <T extends FieldValues>({
     if (inputRef.current) {
       const handle = findNodeHandle(inputRef.current);
       if (handle) {
-        UIManager.measure(handle, (x, y, width, height, pageX, pageY) => {
+        UIManager.measure(handle, (_x, _y, width, height, pageX, pageY) => {
           const screenHeight = Dimensions.get("window").height;
           const screenWidth = Dimensions.get("window").width;
           setLayout((prev) => ({
@@ -121,11 +126,8 @@ export const DropdownInput = <T extends FieldValues>({
     if (caretRef.current) {
       const handle = findNodeHandle(caretRef.current);
       if (handle) {
-        UIManager.measure(handle, (x, y, width) => {
-          setLayout((prev) => ({
-            ...prev,
-            caretWidth: width,
-          }));
+        UIManager.measure(handle, (_x, _y, width) => {
+          setLayout((prev) => ({ ...prev, caretWidth: width }));
         });
       }
     }
@@ -139,32 +141,26 @@ export const DropdownInput = <T extends FieldValues>({
     const kbShowSub = Keyboard.addListener(
       Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow",
       (e) => {
-        setKeyboardHeight(e.endCoordinates.height);
         const screenHeight = Dimensions.get("window").height;
-        const keyboardTopPosition = screenHeight - e.endCoordinates.height;
-        setKeyboardTopPosition(keyboardTopPosition);
-        measureInputPosition();
-
+        setKeyboardHeight(e.endCoordinates.height);
+        setKeyboardTopPosition(screenHeight - e.endCoordinates.height);
         if (open) measureInputPosition();
       },
     );
     const kbHideSub = Keyboard.addListener(
       Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide",
       () => {
-        // Reset keyboard state immediately
         setKeyboardHeight(0);
         setKeyboardTopPosition(0);
-        // Hide dropdown temporarily during repositioning
         if (open) {
           setIsRepositioning(true);
+          requestAnimationFrame(() => {
+            setTimeout(() => {
+              measureInputPosition();
+              setIsRepositioning(false);
+            }, 150);
+          });
         }
-        // Use requestAnimationFrame to wait for layout to settle after keyboard animation
-        requestAnimationFrame(() => {
-          setTimeout(() => {
-            measureInputPosition();
-            setIsRepositioning(false);
-          }, 150);
-        });
       },
     );
 
@@ -175,7 +171,10 @@ export const DropdownInput = <T extends FieldValues>({
       kbShowSub?.remove();
       kbHideSub?.remove();
     };
-  }, [open, keyboardHeight, layout.inputY]);
+    // layout.inputY intentionally excluded — it's set inside measureInputPosition,
+    // including it would create a measurement feedback loop
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
@@ -191,43 +190,53 @@ export const DropdownInput = <T extends FieldValues>({
       onBackPress,
     );
 
-    return () => {
-      subscription.remove();
-    };
+    return () => subscription.remove();
   }, [open]);
 
   useEffect(() => {
     measureCaretWidth();
-    measureInputPosition();
-  }, [layout.dropdownHeight, layout.inputHeight]);
+    // Only re-measure caret width when caret visibility changes (open toggle)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
   useEffect(() => {
     return () => {
       fetchSuggestions.cancel();
     };
-  }, [fetchSuggestions]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  const handleSelect = (value: string | LocationType) => {
+  const handleSelect = (item: Location | string) => {
     if (isLocation) {
-      setValue(name, value, { shouldValidate: true });
-      setQuery((value as LocationType).name);
+      const loc = item as Location;
+      setValue(name, loc as any, { shouldValidate: true });
+      setQuery(loc.name);
+      setIsLoadingLocations(false);
     } else {
-      onSelect!(value as string);
-      setQuery(value as string);
+      onSelect!(item as string);
+      setQuery(item as string);
     }
-
     setOpen(false);
   };
 
   const handleChange = (text: string) => {
     setQuery(text);
 
-    if (isLocation) {
-      fetchSuggestions(text, setResults, setOpen);
+    if (!isLocation) return;
+
+    if (text.length >= 3) {
+      // Show loading immediately — before the debounced search fires
+      setIsLoadingLocations(true);
+      setResults([]);
+      fetchSuggestions(text, setResults, setOpen, setIsLoadingLocations);
+    } else {
+      setIsLoadingLocations(false);
+      setResults([]);
+      fetchSuggestions.cancel();
     }
   };
 
-  let computedWidth;
+  let computedWidth: number;
   switch (menuWidth) {
     case "full":
       computedWidth = layout.inputWidth;
@@ -236,7 +245,7 @@ export const DropdownInput = <T extends FieldValues>({
       computedWidth = layout.widestTextWidth + 60;
       break;
     default:
-      computedWidth = menuWidth;
+      computedWidth = menuWidth as number;
       break;
   }
 
@@ -246,7 +255,6 @@ export const DropdownInput = <T extends FieldValues>({
     if (keyboardHeight > 0) {
       const inputBottom = layout.inputY + layout.inputHeight;
       const availableSpaceBelow = keyboardTopPosition - inputBottom;
-
       const keyboardBottom = keyboardTopPosition + keyboardHeight;
       const screenHeight = Dimensions.get("window").height;
       const availableSpaceAbove =
@@ -267,21 +275,23 @@ export const DropdownInput = <T extends FieldValues>({
     ? layout.dropdownTop - (layout.dropdownHeight + layout.inputHeight) - 10
     : layout.dropdownTop + 10;
 
-  const calculateMaxHeight = () => {
-    if (showAbove) {
-      return "auto";
-    } else {
-      if (keyboardHeight > 0) {
-        const availableHeight =
-          keyboardTopPosition - (dropdownPositionTop + 10);
-        return Math.max(availableHeight, 50);
-      } else {
-        return Math.max(layout.freeHeight - 30, 0);
-      }
+  const calculateMaxHeight = (): number | "auto" => {
+    if (showAbove) return "auto";
+    if (keyboardHeight > 0) {
+      return Math.max(keyboardTopPosition - (dropdownPositionTop + 10), 50);
     }
+    return Math.max(layout.freeHeight - 30, 0);
   };
 
   const maxHeight = calculateMaxHeight();
+
+  // Show the dropdown when:
+  //  - location field: query is ≥ 3 chars (shows loading, then results)
+  //  - options field:  results or options exist
+  const showDropdown =
+    open &&
+    !isRepositioning &&
+    (isLocation ? query.length >= 3 : (options?.length ?? 0) > 0);
 
   return (
     <View>
@@ -299,7 +309,6 @@ export const DropdownInput = <T extends FieldValues>({
         ref={inputRef}
         style={[styles.inputBox, inputStyle]}
         onPress={() => {
-          // Toggle focus: if open (focused), blur it; otherwise focus it
           if (open) {
             textInputRef.current?.blur();
             setOpen(false);
@@ -312,28 +321,47 @@ export const DropdownInput = <T extends FieldValues>({
         }}
       >
         <View style={styles.before} />
-        <TextInput
-          ref={textInputRef}
-          value={query}
-          onFocus={() => {
-            // Measure position first, then open dropdown
-            measureInputPosition(() => {
-              setOpen(true);
-              // If there's already a query value, fetch suggestions on focus
-              if (isLocation && query && query.length >= 3) {
-                fetchSuggestions(query, setResults, setOpen);
-              }
-            });
-          }}
-          onChangeText={handleChange}
-          multiline
-          placeholderTextColor={placeholderTextColor}
-          placeholder={placeholder}
-          style={[
-            styles.inputText,
-            { width: layout.inputWidth - layout.caretWidth * 2 },
-          ]}
-        />
+        {open ? (
+          <TextInput
+            ref={textInputRef}
+            value={query}
+            onFocus={() => {
+              measureInputPosition(() => {
+                setOpen(true);
+                if (isLocation && query.length >= 3) {
+                  setIsLoadingLocations(true);
+                  setResults([]);
+                  fetchSuggestions(
+                    query,
+                    setResults,
+                    setOpen,
+                    setIsLoadingLocations,
+                  );
+                }
+              });
+            }}
+            onChangeText={handleChange}
+            placeholderTextColor={placeholderTextColor}
+            placeholder={placeholder}
+            autoFocus
+            style={[
+              styles.inputText,
+              { width: layout.inputWidth - layout.caretWidth * 2 },
+            ]}
+          />
+        ) : (
+          <Text
+            numberOfLines={1}
+            ellipsizeMode="tail"
+            style={[
+              styles.inputText,
+              { width: layout.inputWidth - layout.caretWidth * 2 },
+              !query && { color: placeholderTextColor ?? "#aaa" },
+            ]}
+          >
+            {query || placeholder}
+          </Text>
+        )}
         <View style={styles.caretWrapper} ref={caretRef}>
           <Feather
             name={open ? "chevron-up" : "chevron-down"}
@@ -343,7 +371,7 @@ export const DropdownInput = <T extends FieldValues>({
         </View>
       </Pressable>
 
-      {open && !isRepositioning && (results || options).length !== 0 && (
+      {showDropdown && (
         <Portal>
           <TouchableWithoutFeedback onPress={() => setOpen(false)}>
             <View style={styles.backdrop} />
@@ -377,62 +405,132 @@ export const DropdownInput = <T extends FieldValues>({
               menuStyle,
             ]}
           >
-            <FlatList
-              data={isLocation ? results : options}
-              keyboardShouldPersistTaps="handled"
-              keyExtractor={(item, index) => `${item}-${index}`}
-              renderItem={({ item }) => {
-                // For location dropdowns, compare names; for regular dropdowns, compare values
-                const isSelected = isLocation
-                  ? query === item.name
-                  : selectedValue === item;
+            {/* Loading indicator — shown immediately while debounce fires */}
+            {isLocation && isLoadingLocations && (
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 10,
+                  padding: 14,
+                }}
+              >
+                <ActivityIndicator size="small" color={Colors.gold} />
+                <Text style={{ color: Colors.smoke, fontSize: 14 }}>
+                  Searching...
+                </Text>
+              </View>
+            )}
 
-                return (
-                  <Pressable
-                    style={styles.dropdownItem}
-                    onPress={() => handleSelect(item)}
-                  >
-                    <Text
-                      style={[
-                        styles.dropdownText,
-                        isSelected && {
-                          fontWeight: "bold",
-                          color: Colors.primaryBlue,
-                        },
-                        {
-                          maxWidth:
-                            (typeof computedWidth === "number"
-                              ? computedWidth
-                              : layout.inputWidth + layout.freeWidth) * 0.85,
-                        },
-                      ]}
-                      onLayout={(e) => {
-                        const { width } = e.nativeEvent.layout;
-                        setLayout((prev) => ({
-                          ...prev,
-                          widestTextWidth: Math.max(
-                            prev.widestTextWidth,
-                            width,
-                          ),
-                        }));
-                      }}
+            {/* No results */}
+            {isLocation &&
+              !isLoadingLocations &&
+              results.length === 0 &&
+              query.length >= 3 && (
+                <View style={{ padding: 14 }}>
+                  <Text style={{ color: Colors.smoke, fontSize: 14 }}>
+                    No locations found
+                  </Text>
+                </View>
+              )}
+
+            {/* Location results */}
+            {isLocation && !isLoadingLocations && results.length > 0 && (
+              <FlatList<Location>
+                data={results}
+                keyboardShouldPersistTaps="handled"
+                keyExtractor={(item, index) => `${item.name}-${index}`}
+                renderItem={({ item }) => {
+                  const isSelected = query === item.name;
+                  return (
+                    <Pressable
+                      style={styles.dropdownItem}
+                      onPress={() => handleSelect(item)}
                     >
-                      {isLocation ? item.name : item}
-                    </Text>
-                    {isSelected && (
-                      <MaterialIcons
-                        name="check"
-                        size={18}
-                        color={Colors.primaryBlue}
-                      />
-                    )}
-                  </Pressable>
-                );
-              }}
-              style={{ flexGrow: 0 }}
-              contentContainerStyle={{ paddingVertical: 4 }}
-              showsVerticalScrollIndicator={false}
-            />
+                      <Text
+                        style={[
+                          styles.dropdownText,
+                          isSelected && {
+                            fontWeight: "bold",
+                            color: Colors.primaryBlue,
+                          },
+                          { maxWidth: computedWidth * 0.85 },
+                        ]}
+                      >
+                        {item.name}
+                      </Text>
+                      {isSelected && (
+                        <MaterialIcons
+                          name="check"
+                          size={18}
+                          color={Colors.primaryBlue}
+                        />
+                      )}
+                    </Pressable>
+                  );
+                }}
+                style={{ flexGrow: 0 }}
+                contentContainerStyle={{ paddingVertical: 4 }}
+                showsVerticalScrollIndicator={false}
+              />
+            )}
+
+            {/* Options list (non-location dropdowns) */}
+            {!isLocation && (
+              <FlatList<string>
+                data={options}
+                keyboardShouldPersistTaps="handled"
+                keyExtractor={(item, index) => `${item}-${index}`}
+                renderItem={({ item }) => {
+                  const isSelected = selectedValue === item;
+                  return (
+                    <Pressable
+                      style={styles.dropdownItem}
+                      onPress={() => handleSelect(item)}
+                    >
+                      <Text
+                        style={[
+                          styles.dropdownText,
+                          isSelected && {
+                            fontWeight: "bold",
+                            color: Colors.primaryBlue,
+                          },
+                          {
+                            maxWidth:
+                              (typeof computedWidth === "number"
+                                ? computedWidth
+                                : layout.inputWidth + layout.freeWidth) * 0.85,
+                          },
+                        ]}
+                        onLayout={(e) => {
+                          const { width } = e.nativeEvent.layout;
+                          setLayout((prev) => ({
+                            ...prev,
+                            widestTextWidth: Math.max(
+                              prev.widestTextWidth,
+                              width,
+                            ),
+                          }));
+                        }}
+                      >
+                        {item}
+                      </Text>
+                      {isSelected && (
+                        <MaterialIcons
+                          name="check"
+                          size={18}
+                          color={Colors.primaryBlue}
+                        />
+                      )}
+                    </Pressable>
+                  );
+                }}
+                style={{ flexGrow: 0 }}
+                contentContainerStyle={{ paddingVertical: 4 }}
+                showsVerticalScrollIndicator={false}
+              />
+            )}
           </View>
         </Portal>
       )}

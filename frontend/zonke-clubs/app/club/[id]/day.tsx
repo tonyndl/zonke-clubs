@@ -19,21 +19,8 @@ export default function DayLineupScreen() {
   const { id, day } = useLocalSearchParams() as { id: string; day?: string };
   const router = useRouter();
 
-  const sampleLineup = [
-    { id: "d1", name: "DJ Nova", playingFrom: "10:00 PM" },
-    { id: "d2", name: "Rass Da Dany", playingFrom: "11:30 PM" },
-    { id: "d3", name: "Lo-fi Beats", playingFrom: "1:00 AM" },
-  ];
-
-  const sampleRequests = [
-    { id: "r1", song: "Losing It - Fisher", count: 100 },
-    { id: "r2", song: "Promises - Calvin Harris", count: 65 },
-    { id: "r3", song: "Turn On The Lights - Fred again..", count: 50 },
-    { id: "r4", song: "Head & Heart - Joel Corry", count: 28 },
-  ];
-
-  const [lineup] = useState<any[]>(sampleLineup);
-  const [requests, setRequests] = useState<any[]>(sampleRequests);
+  const [lineup] = useState<any[]>([]);
+  const [requests, setRequests] = useState<any[]>([]);
   const [requestText, setRequestText] = useState("");
   const inputRef = useRef<TextInput>(null);
   const [votedRequests, setVotedRequests] = useState<Record<string, boolean>>(

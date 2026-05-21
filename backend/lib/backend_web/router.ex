@@ -118,12 +118,27 @@ defmodule BackendWeb.Router do
     post "/banner", ClubController, :upload_banner
   end
 
-  # Admin DJ management routes
+  # Admin DJ management routes (legacy club-created DJs + schedule management)
   scope "/api", BackendWeb.API, as: :api do
     pipe_through [:api, :authenticated]
 
     resources "/djs", DJController, except: [:new, :edit]
     resources "/dj-schedules", DJScheduleController, except: [:new, :edit]
+  end
+
+  # DJ user profile routes — authenticated specific paths must come before /:id
+  scope "/api", BackendWeb.API, as: :api do
+    pipe_through [:api, :authenticated]
+
+    put "/dj-profiles/me", DJProfileController, :update_me
+    get "/dj-profiles/my-schedules", DJProfileController, :my_schedules
+  end
+
+  scope "/api", BackendWeb.API, as: :api do
+    pipe_through :api
+
+    get "/dj-profiles", DJProfileController, :index
+    get "/dj-profiles/:id", DJProfileController, :show
   end
 
   # Routes with optional authentication (work for both logged in and logged out users)

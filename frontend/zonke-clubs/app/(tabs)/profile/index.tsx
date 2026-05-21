@@ -9,6 +9,7 @@ import {
   Image,
   TouchableOpacity,
   ActivityIndicator,
+  Linking,
 } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import Animated, {
@@ -17,7 +18,7 @@ import Animated, {
   SlideInRight,
   ZoomIn,
 } from "react-native-reanimated";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons, FontAwesome5, FontAwesome6 } from "@expo/vector-icons";
 import { Colors } from "@/constants/ui";
 import { PressableScale } from "@/components/ui/PressableScale";
 import { TextStroke } from "../../screens/Login/utils";
@@ -49,6 +50,7 @@ import { Location } from "@/services/locationService";
 import { userService } from "@/services/userService";
 import { Alert } from "react-native";
 import { clubsService, Club as ApiClub } from "@/services/clubsService";
+import { djService } from "@/services/djService";
 import postsService from "@/services/postsService";
 import { intentionsService } from "@/services/intentionsService";
 import {
@@ -167,107 +169,144 @@ const confirmStyles = StyleSheet.create({
   },
 });
 
-// Placeholder images for clubs (we'll use random unsplash images)
-const getPlaceholderImage = (index: number) => {
-  const images = [
-    "https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?auto=format&fit=crop&w=800&q=60",
-    "https://images.unsplash.com/photo-1506157786151-b8491531f063?auto=format&fit=crop&w=800&q=60",
-    "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&w=800&q=60",
-    "https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?auto=format&fit=crop&w=800&q=60",
-    "https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?auto=format&fit=crop&w=800&q=60",
-    "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=800&q=60",
-  ];
-  return images[index % images.length];
-};
+type PlatformBrand =
+  | { set: "fa5"; name: string; color: string }
+  | { set: "fa6"; name: string; color: string }
+  | { set: "ionicon"; name: string; color: string };
 
-// Mock current user ID - in real app, get from auth context
-const CURRENT_USER_ID = "current-user";
+// FA5 lacks TikTok in the free bundle — use Ionicons for those gaps.
+const PLATFORM_BRANDS: { match: string[]; brand: PlatformBrand }[] = [
+  {
+    match: ["instagram"],
+    brand: { set: "fa5", name: "instagram", color: "#E1306C" },
+  },
+  {
+    match: ["tiktok"],
+    brand: { set: "fa6", name: "tiktok", color: "#FFFFFF" },
+  },
+  {
+    match: ["youtube"],
+    brand: { set: "fa5", name: "youtube", color: "#FF0000" },
+  },
+  {
+    match: ["twitter", "x.com"],
+    brand: { set: "fa5", name: "twitter", color: "#1DA1F2" },
+  },
+  {
+    match: ["facebook"],
+    brand: { set: "fa5", name: "facebook", color: "#1877F2" },
+  },
+  {
+    match: ["soundcloud"],
+    brand: { set: "fa5", name: "soundcloud", color: "#FF5500" },
+  },
+  {
+    match: ["spotify"],
+    brand: { set: "fa5", name: "spotify", color: "#1DB954" },
+  },
+  {
+    match: ["apple music", "apple"],
+    brand: { set: "fa5", name: "apple", color: "#FFFFFF" },
+  },
+  {
+    match: ["mixcloud"],
+    brand: { set: "fa5", name: "mixcloud", color: "#52AAD8" },
+  },
+  {
+    match: ["linkedin"],
+    brand: { set: "fa5", name: "linkedin", color: "#0A66C2" },
+  },
+  {
+    match: ["snapchat"],
+    brand: { set: "fa5", name: "snapchat-ghost", color: "#FFFC00" },
+  },
+  {
+    match: ["twitch"],
+    brand: { set: "fa5", name: "twitch", color: "#9146FF" },
+  },
+  {
+    match: ["discord"],
+    brand: { set: "fa5", name: "discord", color: "#5865F2" },
+  },
+  {
+    match: ["reddit"],
+    brand: { set: "fa5", name: "reddit-alien", color: "#FF4500" },
+  },
+  {
+    match: ["pinterest"],
+    brand: { set: "fa5", name: "pinterest", color: "#E60023" },
+  },
+  {
+    match: ["github"],
+    brand: { set: "fa5", name: "github", color: "#FFFFFF" },
+  },
+  {
+    match: ["whatsapp"],
+    brand: { set: "fa5", name: "whatsapp", color: "#25D366" },
+  },
+  {
+    match: ["telegram"],
+    brand: { set: "fa5", name: "telegram-plane", color: "#2AABEE" },
+  },
+  { match: ["vimeo"], brand: { set: "fa5", name: "vimeo", color: "#1AB7EA" } },
+];
 
-// Mock user profiles database
-const MOCK_USER_PROFILES: Record<string, any> = {
-  "current-user": {
-    id: "current-user",
-    name: "Alex D.",
-    avatar: "https://randomuser.me/api/portraits/men/32.jpg",
-    age: 26,
-    bio: "Weekend warrior with a passion for good music and great vibes. Always down for a spontaneous night out!",
-    favoriteDrinks: ["Black Label", "Hennessy", "Jameson"],
-    favoriteClubIds: ["1", "2", "5"],
-  },
-  user_1: {
-    id: "user_1",
-    name: "Sarah M.",
-    avatar: "https://randomuser.me/api/portraits/women/44.jpg",
-    age: 24,
-    bio: "Music lover and dance enthusiast. Always looking for new places to explore and great people to meet!",
-    favoriteDrinks: ["Aperol Spritz", "Champagne", "Mojito"],
-    favoriteClubIds: ["1", "3"],
-  },
-  user_2: {
-    id: "user_2",
-    name: "James K.",
-    avatar: "https://randomuser.me/api/portraits/men/45.jpg",
-    age: 28,
-    bio: "Tech enthusiast who loves mixing business with pleasure. You'll find me at the best clubs every Friday!",
-    favoriteDrinks: ["Whiskey", "Gin & Tonic", "Craft Beer"],
-    favoriteClubIds: ["2", "4", "6"],
-  },
-  user_3: {
-    id: "user_3",
-    name: "Emily R.",
-    avatar: "https://randomuser.me/api/portraits/women/68.jpg",
-    age: 25,
-    bio: "Party planner by day, party-goer by night. Let's make some unforgettable memories!",
-    favoriteDrinks: ["Vodka", "Tequila", "Margarita"],
-    favoriteClubIds: ["1", "2", "3"],
-  },
-  user_4: {
-    id: "user_4",
-    name: "Marcus T.",
-    avatar: "https://randomuser.me/api/portraits/men/22.jpg",
-    age: 27,
-    bio: "DJ and music producer. Always on the hunt for the next big sound and vibe.",
-    favoriteDrinks: ["Red Bull", "Vodka", "Corona"],
-    favoriteClubIds: ["3", "4", "5"],
-  },
-  user_5: {
-    id: "user_5",
-    name: "Lisa P.",
-    avatar: "https://randomuser.me/api/portraits/women/32.jpg",
-    age: 23,
-    bio: "Fashion student living for the weekend. Love dressing up and hitting the town with good people!",
-    favoriteDrinks: ["Rosé", "Prosecco", "Cosmopolitan"],
-    favoriteClubIds: ["5", "6"],
-  },
-  user_6: {
-    id: "user_6",
-    name: "David C.",
-    avatar: "https://randomuser.me/api/portraits/men/67.jpg",
-    age: 29,
-    bio: "Finance guy who knows how to unwind. Premium vibes only!",
-    favoriteDrinks: ["Champagne", "Johnny Walker Blue", "Cognac"],
-    favoriteClubIds: ["5", "6"],
-  },
-};
-
-// Mock function to get user profile data by ID
-const getUserProfile = (userId: string) => {
-  // Return the profile if it exists in our mock database
-  if (MOCK_USER_PROFILES[userId]) {
-    return MOCK_USER_PROFILES[userId];
+function getPlatformBrand(platform: string): PlatformBrand | null {
+  // Normalise: lowercase and remove all spaces so "tik tok" == "tiktok",
+  // "sound cloud" == "soundcloud", "you tube" == "youtube", etc.
+  const p = platform.toLowerCase().replace(/\s+/g, "");
+  for (const entry of PLATFORM_BRANDS) {
+    if (entry.match.some((m) => p.includes(m.replace(/\s+/g, ""))))
+      return entry.brand;
   }
+  return null;
+}
 
-  // Fallback for unknown users - generate a basic profile
-  return {
-    id: userId,
-    name: "Guest User",
-    avatar: "",
-    age: 25,
-    bio: "New to the club scene. Looking to connect and have a great time!",
-    favoriteDrinks: ["Beer", "Vodka"],
-    favoriteClubIds: ["1"],
-  };
-};
+function buildPlatformUrl(platform: string, handle: string): string {
+  // If the handle already looks like a URL, use it directly
+  if (handle.startsWith("http://") || handle.startsWith("https://"))
+    return handle;
+
+  const p = platform.toLowerCase().replace(/\s+/g, "");
+  const h = handle.replace(/^@/, ""); // strip leading @
+
+  if (p.includes("instagram")) return `https://instagram.com/${h}`;
+  if (p.includes("tiktok")) return `https://tiktok.com/@${h}`;
+  if (p.includes("youtube")) return `https://youtube.com/@${h}`;
+  if (p.includes("twitter")) return `https://twitter.com/${h}`;
+  if (p.includes("facebook")) return `https://facebook.com/${h}`;
+  if (p.includes("soundcloud")) return `https://soundcloud.com/${h}`;
+  if (p.includes("spotify")) return `https://open.spotify.com/user/${h}`;
+  if (p.includes("linkedin")) return `https://linkedin.com/in/${h}`;
+  if (p.includes("snapchat")) return `https://snapchat.com/add/${h}`;
+  if (p.includes("twitch")) return `https://twitch.tv/${h}`;
+  if (p.includes("discord")) return `https://discord.gg/${h}`;
+  if (p.includes("reddit")) return `https://reddit.com/u/${h}`;
+  if (p.includes("pinterest")) return `https://pinterest.com/${h}`;
+  if (p.includes("github")) return `https://github.com/${h}`;
+  if (p.includes("whatsapp")) return `https://wa.me/${h}`;
+  if (p.includes("telegram")) return `https://t.me/${h}`;
+  if (p.includes("mixcloud")) return `https://mixcloud.com/${h}`;
+  if (p.includes("vimeo")) return `https://vimeo.com/${h}`;
+
+  // Generic fallback — search the web
+  return `https://www.google.com/search?q=${encodeURIComponent(platform + " " + handle)}`;
+}
+
+function PlatformIcon({ platform, size }: { platform: string; size: number }) {
+  const brand = getPlatformBrand(platform);
+  if (!brand)
+    return <Ionicons name="link-outline" size={size} color={Colors.smoke} />;
+  if (brand.set === "ionicon")
+    return (
+      <Ionicons name={brand.name as any} size={size} color={brand.color} />
+    );
+  if (brand.set === "fa6")
+    return (
+      <FontAwesome6 name={brand.name as any} size={size} color={brand.color} />
+    );
+  return <FontAwesome5 name={brand.name} size={size} color={brand.color} />;
+}
 
 // This profile screen now handles both editable (own profile) and read-only (other users) modes
 export default function ProfileScreen() {
@@ -290,9 +329,9 @@ export default function ProfileScreen() {
   // Get authenticated user from context
   const { user: authUser, isLoading: authLoading, refreshUser } = useAuth();
 
-  const viewingUserId = params.userId ?? authUser?.id ?? CURRENT_USER_ID;
+  const viewingUserId = params.userId ?? authUser?.id ?? "";
   const isOwnProfile =
-    !params.userId || (authUser && viewingUserId === authUser.id);
+    !params.userId || !!(authUser && viewingUserId === authUser.id);
 
   // Parse connection request data if passed from requests screen
   const existingRequest = React.useMemo(() => {
@@ -339,7 +378,7 @@ export default function ProfileScreen() {
           avatar: authUser.avatar_url || "",
           age: 26, // This would come from backend if we add it
           bio: authUser.bio || "",
-          favoriteDrinks: authUser.favorite_drinks || [],
+          favoriteDrinks: authUser.favoriteDrinks || [],
           favoriteClubIds: [],
         }
       : viewingUser
@@ -349,7 +388,7 @@ export default function ProfileScreen() {
             avatar: viewingUser.avatar_url || "",
             age: 26,
             bio: viewingUser.bio || "",
-            favoriteDrinks: viewingUser.favorite_drinks || [],
+            favoriteDrinks: viewingUser.favoriteDrinks || [],
             favoriteClubIds: [],
           }
         : {
@@ -427,6 +466,23 @@ export default function ProfileScreen() {
       setOriginalAvatar(authUser?.avatar_url || null);
     }
   }, [authUser?.avatar_url]);
+  // DJ profile state (only used when role = "dj")
+  const isDJ = authUser?.role === "dj";
+  type DJHandle = { platform: string; handle: string };
+  const [djHandles, setDjHandles] = useState<DJHandle[]>(
+    authUser?.dj_handles || [],
+  );
+  const [djGenres, setDjGenres] = useState<string[]>(authUser?.dj_genres || []);
+  const [djGenreInput, setDjGenreInput] = useState("");
+  const [djHandlePlatform, setDjHandlePlatform] = useState("");
+  const [djHandleValue, setDjHandleValue] = useState("");
+  const [originalDjHandles, setOriginalDjHandles] = useState<DJHandle[]>(
+    authUser?.dj_handles || [],
+  );
+  const [originalDjGenres, setOriginalDjGenres] = useState<string[]>(
+    authUser?.dj_genres || [],
+  );
+
   const [originalBio, setOriginalBio] = useState(userProfileData.bio);
   const [originalDrinks, setOriginalDrinks] = useState<string[]>(
     userProfileData.favoriteDrinks,
@@ -488,11 +544,11 @@ export default function ProfileScreen() {
 
   // Clubs state (loaded from backend)
   const [allClubs, setAllClubs] = useState<
-    Array<{ id: string; name: string; image: string; location: string }>
+    Array<{ id: string; name: string; image?: string; location: string }>
   >([]);
   // Full data for the user's saved favorite clubs (used for profile display, separate from search results)
   const [favoriteClubsData, setFavoriteClubsData] = useState<
-    Array<{ id: string; name: string; image: string; location: string }>
+    Array<{ id: string; name: string; image?: string; location: string }>
   >([]);
   const [loadingClubs, setLoadingClubs] = useState(true);
 
@@ -536,7 +592,7 @@ export default function ProfileScreen() {
           })),
           user: {
             id: post.user.id,
-            username: post.user.username,
+            username: post.user.name || post.user.id,
             avatarUrl: post.user.avatar_url || undefined,
           },
         }));
@@ -690,12 +746,12 @@ export default function ProfileScreen() {
   useEffect(() => {
     if (isOwnProfile && authUser) {
       setBio(authUser.bio || "");
-      setFavoriteDrinks(authUser.favorite_drinks || []);
+      setFavoriteDrinks(authUser.favoriteDrinks || []);
       setOriginalBio(authUser.bio || "");
-      setOriginalDrinks(authUser.favorite_drinks || []);
+      setOriginalDrinks(authUser.favoriteDrinks || []);
     } else if (viewingUser) {
       setBio(viewingUser.bio || "");
-      setFavoriteDrinks(viewingUser.favorite_drinks || []);
+      setFavoriteDrinks(viewingUser.favoriteDrinks || []);
     }
   }, [authUser, viewingUser, isOwnProfile]);
 
@@ -823,7 +879,7 @@ export default function ProfileScreen() {
                   id: club.id,
                   name: club.name,
                   location: club.location.name,
-                  image: getPlaceholderImage(index),
+                  image: club.banner_image_url ?? undefined,
                 }),
               );
               setFavoriteClubsData(favData);
@@ -849,14 +905,12 @@ export default function ProfileScreen() {
     clubsService
       .getClubs(false, 1, 50, debouncedClubSearch)
       .then((response) => {
-        const formatted = response.clubs.map(
-          (club: ApiClub, index: number) => ({
-            id: club.id,
-            name: club.name,
-            location: club.location.name,
-            image: getPlaceholderImage(index),
-          }),
-        );
+        const formatted = response.clubs.map((club: ApiClub) => ({
+          id: club.id,
+          name: club.name,
+          location: club.location.name,
+          image: club.banner_image_url ?? undefined,
+        }));
         setAllClubs(formatted);
       })
       .catch((err) => console.error("[Profile] Club search failed", err));
@@ -1018,13 +1072,19 @@ export default function ProfileScreen() {
     const clubsChanged =
       JSON.stringify([...selectedClubs].sort()) !==
       JSON.stringify([...originalClubs].sort());
+    const djChanged =
+      isDJ &&
+      (JSON.stringify(djHandles) !== JSON.stringify(originalDjHandles) ||
+        JSON.stringify([...djGenres].sort()) !==
+          JSON.stringify([...originalDjGenres].sort()));
 
     return (
       avatarChanged ||
       bioChanged ||
       drinksChanged ||
       locationChanged ||
-      clubsChanged
+      clubsChanged ||
+      djChanged
     );
   };
 
@@ -1096,6 +1156,16 @@ export default function ProfileScreen() {
         // Add profile update
         updates.push(authService.updateProfile(profileData));
 
+        // Add DJ profile update if user is a DJ
+        if (isDJ) {
+          updates.push(
+            djService.updateMyProfile({
+              dj_handles: djHandles,
+              dj_genres: djGenres,
+            }),
+          );
+        }
+
         // Add like/unlike promises for clubs
         clubsAdded.forEach((clubId) => {
           updates.push(clubsService.likeClub(clubId));
@@ -1122,6 +1192,10 @@ export default function ProfileScreen() {
         setOriginalDrinks([...favoriteDrinks]);
         setOriginalLocation(location);
         setOriginalClubs([...selectedClubs]);
+        if (isDJ) {
+          setOriginalDjHandles([...djHandles]);
+          setOriginalDjGenres([...djGenres]);
+        }
       })
       .catch((error) => {
         console.error("❌ Profile update failed:", error);
@@ -1468,6 +1542,405 @@ export default function ProfileScreen() {
                     </View>
                   ) : (
                     <Text style={styles.bioText}>{bio}</Text>
+                  )}
+                </View>
+              </Animated.View>
+            )}
+
+            {/* DJ Profile Section — only visible for DJ users */}
+            {(isDJ ||
+              authUser?.role === "dj" ||
+              (!isOwnProfile && viewingUser?.role === "dj")) && (
+              <Animated.View
+                entering={FadeInDown.delay(155).springify()}
+                style={styles.section}
+              >
+                <View style={styles.sectionCard}>
+                  <View style={styles.sectionHeader}>
+                    <View style={styles.sectionHeaderLeft}>
+                      <Ionicons
+                        name="musical-notes"
+                        size={20}
+                        color={Colors.gold}
+                      />
+                      <Text style={styles.sectionTitle}>DJ Profile</Text>
+                    </View>
+                    {isOwnProfile && (
+                      <PressableScale
+                        onPress={() => router.push("/screens/DJGigs" as any)}
+                        style={{
+                          flexDirection: "row",
+                          alignItems: "center",
+                          gap: 4,
+                        }}
+                      >
+                        <Text
+                          style={{
+                            color: Colors.gold,
+                            fontSize: 13,
+                            fontWeight: "600",
+                          }}
+                        >
+                          My Gigs
+                        </Text>
+                        <Ionicons
+                          name="chevron-forward"
+                          size={16}
+                          color={Colors.gold}
+                        />
+                      </PressableScale>
+                    )}
+                  </View>
+
+                  {isOwnProfile ? (
+                    <View style={{ gap: 16 }}>
+                      {/* Existing handles list */}
+                      {djHandles.length > 0 && (
+                        <View style={{ gap: 8 }}>
+                          {djHandles.map((h, idx) => (
+                            <TouchableOpacity
+                              key={idx}
+                              activeOpacity={0.75}
+                              onPress={() =>
+                                Linking.openURL(
+                                  buildPlatformUrl(h.platform, h.handle),
+                                ).catch(() => {})
+                              }
+                              style={{
+                                flexDirection: "row",
+                                alignItems: "center",
+                                gap: 10,
+                                paddingVertical: 8,
+                                paddingHorizontal: 12,
+                                borderRadius: 12,
+                                backgroundColor: "rgba(57,243,255,0.05)",
+                                borderWidth: 1,
+                                borderColor: "rgba(57,243,255,0.15)",
+                              }}
+                            >
+                              <PlatformIcon platform={h.platform} size={20} />
+                              <View style={{ flex: 1 }}>
+                                <Text
+                                  style={{
+                                    color: Colors.smoke,
+                                    fontSize: 11,
+                                    fontWeight: "600",
+                                    textTransform: "uppercase",
+                                    letterSpacing: 0.5,
+                                  }}
+                                >
+                                  {h.platform}
+                                </Text>
+                                <Text
+                                  style={{
+                                    color: Colors.white,
+                                    fontSize: 14,
+                                    marginTop: 2,
+                                  }}
+                                >
+                                  {h.handle}
+                                </Text>
+                              </View>
+                              <TouchableOpacity
+                                onPress={(e) => {
+                                  e.stopPropagation?.();
+                                  setDjHandles(
+                                    djHandles.filter((_, i) => i !== idx),
+                                  );
+                                }}
+                                hitSlop={{
+                                  top: 8,
+                                  bottom: 8,
+                                  left: 8,
+                                  right: 8,
+                                }}
+                              >
+                                <Ionicons
+                                  name="close-circle"
+                                  size={20}
+                                  color={Colors.smoke}
+                                />
+                              </TouchableOpacity>
+                            </TouchableOpacity>
+                          ))}
+                        </View>
+                      )}
+
+                      {/* Add new handle */}
+                      <View style={{ gap: 8 }}>
+                        <Text
+                          style={{
+                            color: Colors.smoke,
+                            fontSize: 12,
+                            fontWeight: "600",
+                            textTransform: "uppercase",
+                            letterSpacing: 0.5,
+                          }}
+                        >
+                          Add Handle
+                        </Text>
+                        <View
+                          style={{
+                            flexDirection: "row",
+                            alignItems: "center",
+                            gap: 10,
+                            borderWidth: 1,
+                            borderColor: "rgba(57,243,255,0.2)",
+                            borderRadius: 10,
+                            paddingHorizontal: 12,
+                            backgroundColor: "rgba(57,243,255,0.03)",
+                          }}
+                        >
+                          {djHandlePlatform.trim() ? (
+                            <PlatformIcon
+                              platform={djHandlePlatform}
+                              size={18}
+                            />
+                          ) : (
+                            <Ionicons
+                              name="apps-outline"
+                              size={18}
+                              color={Colors.smoke}
+                            />
+                          )}
+                          <TextInput
+                            value={djHandlePlatform}
+                            onChangeText={setDjHandlePlatform}
+                            placeholder="Platform (e.g. Instagram, TikTok, Spotify)"
+                            placeholderTextColor={Colors.smoke}
+                            style={{
+                              flex: 1,
+                              color: Colors.white,
+                              fontSize: 14,
+                              paddingVertical: 10,
+                            }}
+                          />
+                        </View>
+                        <View style={{ flexDirection: "row", gap: 8 }}>
+                          <TextInput
+                            value={djHandleValue}
+                            onChangeText={setDjHandleValue}
+                            placeholder="Handle or URL"
+                            placeholderTextColor={Colors.smoke}
+                            autoCapitalize="none"
+                            returnKeyType="done"
+                            style={{
+                              flex: 1,
+                              color: Colors.white,
+                              fontSize: 14,
+                              borderWidth: 1,
+                              borderColor: "rgba(57,243,255,0.2)",
+                              borderRadius: 10,
+                              paddingHorizontal: 12,
+                              paddingVertical: 10,
+                              backgroundColor: "rgba(57,243,255,0.03)",
+                            }}
+                          />
+                          <TouchableOpacity
+                            onPress={() => {
+                              const p = djHandlePlatform.trim();
+                              const h = djHandleValue.trim();
+                              if (p && h) {
+                                setDjHandles([
+                                  ...djHandles,
+                                  { platform: p, handle: h },
+                                ]);
+                                setDjHandlePlatform("");
+                                setDjHandleValue("");
+                              }
+                            }}
+                            disabled={
+                              !djHandlePlatform.trim() || !djHandleValue.trim()
+                            }
+                            style={{
+                              paddingHorizontal: 16,
+                              borderRadius: 10,
+                              backgroundColor:
+                                djHandlePlatform.trim() && djHandleValue.trim()
+                                  ? Colors.primaryBlue
+                                  : "rgba(57,243,255,0.15)",
+                              alignItems: "center",
+                              justifyContent: "center",
+                            }}
+                          >
+                            <Ionicons
+                              name="add"
+                              size={22}
+                              color={
+                                djHandlePlatform.trim() && djHandleValue.trim()
+                                  ? Colors.bg
+                                  : "rgba(57,243,255,0.4)"
+                              }
+                            />
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+
+                      {/* Genres */}
+                      <View>
+                        <Text
+                          style={{
+                            color: Colors.smoke,
+                            fontSize: 12,
+                            fontWeight: "600",
+                            textTransform: "uppercase",
+                            letterSpacing: 0.5,
+                            marginBottom: 8,
+                          }}
+                        >
+                          Genres
+                        </Text>
+                        <View
+                          style={{
+                            flexDirection: "row",
+                            flexWrap: "wrap",
+                            gap: 6,
+                            marginBottom: 8,
+                          }}
+                        >
+                          {djGenres.map((g) => (
+                            <TouchableOpacity
+                              key={g}
+                              onPress={() =>
+                                setDjGenres(djGenres.filter((x) => x !== g))
+                              }
+                              style={{
+                                flexDirection: "row",
+                                alignItems: "center",
+                                gap: 4,
+                                paddingHorizontal: 10,
+                                paddingVertical: 5,
+                                borderRadius: 99,
+                                backgroundColor: "rgba(212,175,55,0.15)",
+                                borderWidth: 1,
+                                borderColor: "rgba(212,175,55,0.4)",
+                              }}
+                            >
+                              <Text
+                                style={{
+                                  color: Colors.gold,
+                                  fontSize: 13,
+                                  fontWeight: "600",
+                                }}
+                              >
+                                {g}
+                              </Text>
+                              <Ionicons
+                                name="close"
+                                size={12}
+                                color={Colors.gold}
+                              />
+                            </TouchableOpacity>
+                          ))}
+                        </View>
+                        <TextInput
+                          value={djGenreInput}
+                          onChangeText={setDjGenreInput}
+                          placeholder="Add genre..."
+                          placeholderTextColor={Colors.smoke}
+                          onSubmitEditing={() => {
+                            const g = djGenreInput.trim();
+                            if (g && !djGenres.includes(g))
+                              setDjGenres([...djGenres, g]);
+                            setDjGenreInput("");
+                          }}
+                          returnKeyType="done"
+                          style={{
+                            color: Colors.white,
+                            fontSize: 14,
+                            borderBottomWidth: 1,
+                            borderBottomColor: "rgba(57,243,255,0.2)",
+                            paddingVertical: 6,
+                          }}
+                        />
+                      </View>
+                    </View>
+                  ) : (
+                    // Read-only view for other users' DJ profile
+                    <View style={{ gap: 10 }}>
+                      {(viewingUser?.dj_handles ?? []).map((h, idx) => (
+                        <TouchableOpacity
+                          key={idx}
+                          activeOpacity={0.75}
+                          onPress={() =>
+                            Linking.openURL(
+                              buildPlatformUrl(h.platform, h.handle),
+                            ).catch(() => {})
+                          }
+                          style={{
+                            flexDirection: "row",
+                            alignItems: "center",
+                            gap: 10,
+                          }}
+                        >
+                          <View
+                            style={{
+                              flexDirection: "row",
+                              alignItems: "center",
+                              gap: 5,
+                              paddingHorizontal: 8,
+                              paddingVertical: 4,
+                              borderRadius: 6,
+                              backgroundColor: "rgba(57,243,255,0.08)",
+                            }}
+                          >
+                            <PlatformIcon platform={h.platform} size={13} />
+                            <Text
+                              style={{
+                                color: Colors.smoke,
+                                fontSize: 11,
+                                fontWeight: "600",
+                              }}
+                            >
+                              {h.platform}
+                            </Text>
+                          </View>
+                          <Text
+                            style={{
+                              color: Colors.white,
+                              fontSize: 14,
+                              flex: 1,
+                            }}
+                          >
+                            {h.handle}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                      {(viewingUser?.dj_genres ?? []).length > 0 && (
+                        <View
+                          style={{
+                            flexDirection: "row",
+                            flexWrap: "wrap",
+                            gap: 6,
+                            marginTop: 4,
+                          }}
+                        >
+                          {(viewingUser?.dj_genres ?? []).map((g) => (
+                            <View
+                              key={g}
+                              style={{
+                                paddingHorizontal: 10,
+                                paddingVertical: 5,
+                                borderRadius: 99,
+                                backgroundColor: "rgba(212,175,55,0.12)",
+                                borderWidth: 1,
+                                borderColor: "rgba(212,175,55,0.3)",
+                              }}
+                            >
+                              <Text
+                                style={{
+                                  color: Colors.gold,
+                                  fontSize: 12,
+                                  fontWeight: "600",
+                                }}
+                              >
+                                {g}
+                              </Text>
+                            </View>
+                          ))}
+                        </View>
+                      )}
+                    </View>
                   )}
                 </View>
               </Animated.View>
@@ -2101,7 +2574,6 @@ export default function ProfileScreen() {
           onClose={() => setShowAddPostModal(false)}
           onPost={handleAddPost}
           showClubSelector={true}
-          availableClubs={allClubs}
         />
       )}
 

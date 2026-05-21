@@ -99,17 +99,19 @@ const VIBE_OPTIONS = [
   { emoji: "😌", name: "Chilled", gradient: ["#39F3FF", "#00C9FF"] as const },
 ];
 
-const DRINK_SUGGESTIONS = [
-  { name: "Black Label", emoji: "🥃" },
-  { name: "Hennessy", emoji: "🍾" },
-  { name: "Jameson", emoji: "🥃" },
-  { name: "Champagne", emoji: "🍾" },
-  { name: "Vodka", emoji: "🍸" },
-  { name: "Gin & Tonic", emoji: "🍸" },
-  { name: "Whiskey", emoji: "🥃" },
-  { name: "Tequila", emoji: "🍹" },
-  { name: "Mojito", emoji: "🍹" },
-  { name: "Beer", emoji: "🍺" },
+const DRINK_EMOJIS = [
+  "🥃",
+  "🍾",
+  "🍸",
+  "🍹",
+  "🍺",
+  "🍻",
+  "🥂",
+  "🧃",
+  "🧋",
+  "🍵",
+  "☕",
+  "🥤",
 ];
 
 export default function ProfileSetupScreen() {
@@ -123,6 +125,8 @@ export default function ProfileSetupScreen() {
   const [selectedVibes, setSelectedVibes] = useState<string[]>([]);
   const [location, setLocation] = useState<Location | null>(null);
   const [favoriteDrinks, setFavoriteDrinks] = useState<string[]>([]);
+  const [drinkInput, setDrinkInput] = useState("");
+  const [selectedDrinkEmoji, setSelectedDrinkEmoji] = useState("🥃");
   const [isSaving, setIsSaving] = useState(false);
   const [alertModal, setAlertModal] = useState<{
     title: string;
@@ -170,11 +174,19 @@ export default function ProfileSetupScreen() {
     );
   };
 
-  const toggleDrink = (drink: string) => {
+  const addDrink = () => {
+    const name = drinkInput.trim();
+    if (!name) return;
+    const entry = `${selectedDrinkEmoji} ${name}`;
+    if (favoriteDrinks.includes(entry)) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setFavoriteDrinks((prev) =>
-      prev.includes(drink) ? prev.filter((d) => d !== drink) : [...prev, drink],
-    );
+    setFavoriteDrinks((prev) => [...prev, entry]);
+    setDrinkInput("");
+  };
+
+  const removeDrink = (entry: string) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setFavoriteDrinks((prev) => prev.filter((d) => d !== entry));
   };
 
   const handleNext = () => {
@@ -553,47 +565,163 @@ export default function ProfileSetupScreen() {
                 <Text style={styles.sectionTitle}>Favorite Drinks</Text>
               </View>
               <Text style={styles.sectionSubtitle}>
-                Tap to select your preferences
+                Add your own drinks and pick an icon
               </Text>
 
-              <View style={styles.drinksGrid}>
-                {DRINK_SUGGESTIONS.map((drink, index) => {
-                  const isSelected = favoriteDrinks.includes(drink.name);
-                  return (
+              {/* Emoji picker */}
+              <View
+                style={{
+                  flexDirection: "row",
+                  flexWrap: "wrap",
+                  gap: 8,
+                  marginTop: 12,
+                  marginBottom: 12,
+                }}
+              >
+                {DRINK_EMOJIS.map((emoji) => (
+                  <PressableScale
+                    key={emoji}
+                    onPress={() => {
+                      setSelectedDrinkEmoji(emoji);
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    }}
+                    style={{
+                      width: 44,
+                      height: 44,
+                      borderRadius: 12,
+                      alignItems: "center",
+                      justifyContent: "center",
+                      backgroundColor:
+                        selectedDrinkEmoji === emoji
+                          ? "rgba(212,175,55,0.25)"
+                          : "rgba(255,255,255,0.05)",
+                      borderWidth: selectedDrinkEmoji === emoji ? 1.5 : 1,
+                      borderColor:
+                        selectedDrinkEmoji === emoji
+                          ? Colors.gold
+                          : "rgba(255,255,255,0.1)",
+                    }}
+                  >
+                    <Text style={{ fontSize: 22 }}>{emoji}</Text>
+                  </PressableScale>
+                ))}
+              </View>
+
+              {/* Text input + Add button */}
+              <View style={{ flexDirection: "row", gap: 10, marginBottom: 16 }}>
+                <View
+                  style={{
+                    flex: 1,
+                    flexDirection: "row",
+                    alignItems: "center",
+                    backgroundColor: "rgba(255,255,255,0.06)",
+                    borderRadius: 12,
+                    borderWidth: 1,
+                    borderColor: "rgba(255,255,255,0.1)",
+                    paddingHorizontal: 12,
+                  }}
+                >
+                  <Text style={{ fontSize: 20, marginRight: 8 }}>
+                    {selectedDrinkEmoji}
+                  </Text>
+                  <TextInput
+                    value={drinkInput}
+                    onChangeText={setDrinkInput}
+                    placeholder="e.g. Black Label, Mojito..."
+                    placeholderTextColor={Colors.lightGrey}
+                    style={{
+                      flex: 1,
+                      color: Colors.white,
+                      fontSize: 15,
+                      paddingVertical: 13,
+                    }}
+                    onSubmitEditing={addDrink}
+                    returnKeyType="done"
+                    autoCapitalize="words"
+                  />
+                </View>
+                <PressableScale
+                  onPress={addDrink}
+                  disabled={!drinkInput.trim()}
+                  style={{
+                    width: 48,
+                    height: 48,
+                    borderRadius: 12,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    backgroundColor: drinkInput.trim()
+                      ? Colors.gold
+                      : "rgba(212,175,55,0.2)",
+                    alignSelf: "center",
+                  }}
+                >
+                  <Ionicons
+                    name="add"
+                    size={26}
+                    color={drinkInput.trim() ? Colors.bg : Colors.smoke}
+                  />
+                </PressableScale>
+              </View>
+
+              {/* Added drinks chips */}
+              {favoriteDrinks.length > 0 && (
+                <View
+                  style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}
+                >
+                  {favoriteDrinks.map((entry) => (
                     <Animated.View
-                      key={drink.name}
-                      entering={FadeInDown.delay(100 + index * 40).springify()}
+                      key={entry}
+                      entering={FadeInDown.springify()}
                     >
                       <PressableScale
-                        style={[
-                          styles.drinkCard,
-                          isSelected && styles.drinkCardSelected,
-                        ]}
-                        onPress={() => toggleDrink(drink.name)}
+                        onPress={() => removeDrink(entry)}
+                        style={{
+                          flexDirection: "row",
+                          alignItems: "center",
+                          gap: 6,
+                          paddingHorizontal: 12,
+                          paddingVertical: 8,
+                          borderRadius: 99,
+                          backgroundColor: "rgba(212,175,55,0.15)",
+                          borderWidth: 1,
+                          borderColor: "rgba(212,175,55,0.4)",
+                        }}
                       >
-                        <Text style={styles.drinkEmoji}>{drink.emoji}</Text>
-                        <Text
-                          style={[
-                            styles.drinkName,
-                            isSelected && styles.drinkNameSelected,
-                          ]}
-                        >
-                          {drink.name}
+                        <Text style={{ fontSize: 16 }}>
+                          {entry.split(" ")[0]}
                         </Text>
-                        {isSelected && (
-                          <View style={styles.checkmarkSmall}>
-                            <Ionicons
-                              name="checkmark-circle"
-                              size={18}
-                              color={Colors.gold}
-                            />
-                          </View>
-                        )}
+                        <Text
+                          style={{
+                            color: Colors.gold,
+                            fontSize: 14,
+                            fontWeight: "600",
+                          }}
+                        >
+                          {entry.split(" ").slice(1).join(" ")}
+                        </Text>
+                        <Ionicons
+                          name="close-circle"
+                          size={16}
+                          color={Colors.gold}
+                        />
                       </PressableScale>
                     </Animated.View>
-                  );
-                })}
-              </View>
+                  ))}
+                </View>
+              )}
+
+              {favoriteDrinks.length === 0 && (
+                <Text
+                  style={{
+                    color: Colors.smoke,
+                    fontSize: 13,
+                    textAlign: "center",
+                    marginTop: 8,
+                  }}
+                >
+                  No drinks added yet — type one above and hit +
+                </Text>
+              )}
             </View>
           </Animated.View>
         )}

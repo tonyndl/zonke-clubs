@@ -29,23 +29,13 @@ type Props = {
   totalAmount: number;
 };
 
-// Mock friends data
-const MOCK_FRIENDS: Friend[] = [
-  { id: "1", name: "Alex Johnson", avatar: "🧑", selected: false, amount: 0 },
-  { id: "2", name: "Sarah Williams", avatar: "👩", selected: false, amount: 0 },
-  { id: "3", name: "Michael Chen", avatar: "👨", selected: false, amount: 0 },
-  { id: "4", name: "Emma Davis", avatar: "👱‍♀️", selected: false, amount: 0 },
-  { id: "5", name: "James Wilson", avatar: "👨‍🦱", selected: false, amount: 0 },
-  { id: "6", name: "Olivia Brown", avatar: "👩‍🦰", selected: false, amount: 0 },
-];
-
 export function SplitOptionsModal({
   visible,
   onClose,
   onComplete,
   totalAmount,
 }: Props) {
-  const [friends, setFriends] = useState<Friend[]>(MOCK_FRIENDS);
+  const [friends, setFriends] = useState<Friend[]>([]);
   const [splitEqually, setSplitEqually] = useState(true);
   const [myAmount, setMyAmount] = useState(0);
   const [searchQuery, setSearchQuery] = useState("");

@@ -9,7 +9,7 @@ interface UserRoleContextType {
   // setRole: (role: UserRole) => void;
   accountType: AccountType;
   setAccountType: (type: AccountType) => void;
-  // isClubOwner: boolean;
+  // isClubAdmin: boolean;
   // isClubMember: boolean;
   // hasClubAccess: boolean;
   isClubAccount: boolean;
@@ -41,9 +41,9 @@ export function UserRoleProvider({ children }: { children: React.ReactNode }) {
   }, [DEFAULT_ACCOUNT_TYPE]);
 
   const isClubAccount = accountType === "club-account";
-  // const isClubOwner = role === 'owner';
+  // const isClubAdmin = role === 'owner';
   // const isClubMember = role === 'member';
-  // const hasClubAccess = isClubOwner || isClubMember;
+  // const hasClubAccess = isClubAdmin || isClubMember;
 
   return (
     <UserRoleContext.Provider
@@ -52,7 +52,7 @@ export function UserRoleProvider({ children }: { children: React.ReactNode }) {
         // setRole,
         accountType,
         setAccountType,
-        // isClubOwner,
+        // isClubAdmin,
         // isClubMember,
         // hasClubAccess,
         isClubAccount,
