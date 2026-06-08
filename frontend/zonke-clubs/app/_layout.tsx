@@ -1,4 +1,10 @@
-import { StatusBar, ActivityIndicator, View, AppState } from "react-native";
+import {
+  StatusBar,
+  ActivityIndicator,
+  View,
+  AppState,
+  Linking,
+} from "react-native";
 import { useEffect, useRef } from "react";
 import { useFonts } from "expo-font";
 import { Nabla_400Regular } from "@expo-google-fonts/nabla";
@@ -77,6 +83,23 @@ function RootNavigator() {
   const locationIntervalRef = useRef<ReturnType<typeof setInterval> | null>(
     null,
   );
+
+  // Handle deep links for QR wristband check-in: zonkeclubs://checkin/{token}
+  useEffect(() => {
+    const handleUrl = ({ url }: { url: string | null }) => {
+      if (!url) return;
+      const match = url.match(/zonkeclubs:\/\/checkin\/([^/?]+)/);
+      if (match) router.push(`/club/${match[1]}/checkin` as any);
+    };
+
+    const sub = Linking.addEventListener("url", handleUrl);
+
+    Linking.getInitialURL().then((url) => {
+      if (url) handleUrl({ url });
+    });
+
+    return () => sub.remove();
+  }, []);
 
   // Set up notification category and response handler
   useEffect(() => {
@@ -197,6 +220,11 @@ function RootNavigator() {
       <Stack.Screen name="strobe" options={{ headerShown: false }} />
       <Stack.Screen name="settings" options={{ headerShown: false }} />
       <Stack.Screen name="people-browse" options={{ headerShown: false }} />
+      <Stack.Screen
+        name="qr-scan"
+        options={{ headerShown: false, presentation: "modal" }}
+      />
+      <Stack.Screen name="club/[id]/checkin" options={{ headerShown: false }} />
     </Stack>
   );
 }

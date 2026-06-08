@@ -313,7 +313,7 @@ export const DropdownInput = <T extends FieldValues>({
             textInputRef.current?.blur();
             setOpen(false);
           } else {
-            textInputRef.current?.focus();
+            setOpen(true);
           }
         }}
         onLayout={() => {

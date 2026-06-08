@@ -593,6 +593,51 @@ export const styles = StyleSheet.create({
     fontWeight: "700",
     color: Colors.bg,
   },
+  drinkEmojiGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginTop: 4,
+    marginBottom: 16,
+  },
+  drinkEmojiBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(255,255,255,0.05)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.1)",
+  },
+  drinkEmojiBtnActive: {
+    backgroundColor: "rgba(212,175,55,0.25)",
+    borderWidth: 1.5,
+    borderColor: Colors.gold,
+  },
+  drinkEmojiText: {
+    fontSize: 22,
+  },
+  drinkInputRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(255,255,255,0.06)",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.1)",
+    paddingHorizontal: 12,
+    marginBottom: 16,
+  },
+  drinkEmojiPreview: {
+    fontSize: 20,
+    marginRight: 8,
+  },
+  drinkNameInput: {
+    flex: 1,
+    color: Colors.white,
+    fontSize: 15,
+    paddingVertical: 13,
+  },
   // Feed Styles
   feedHeader: {
     flexDirection: "row",

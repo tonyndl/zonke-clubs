@@ -11,7 +11,7 @@ defmodule Backend.Clubs.Club do
   alias Backend.Clubs.ClubLike
 
   @required_fields [:name, :description, :location]
-  @optional_fields [:email, :phone, :active, :dress_code, :entry_fee, :user_id, :admin_id, :opening_hours, :next_week_hours, :table_reservation_numbers]
+  @optional_fields [:email, :phone, :active, :dress_code, :entry_fee, :user_id, :admin_id, :opening_hours, :next_week_hours, :table_reservation_numbers, :banner_position_x, :banner_position_y]
   @all_fields @required_fields ++ @optional_fields
 
   schema "clubs" do
@@ -26,6 +26,8 @@ defmodule Backend.Clubs.Club do
     field :opening_hours, :map, default: %{}
     field :next_week_hours, :map, default: %{}
     field :table_reservation_numbers, {:array, :string}, default: []
+    field :banner_position_x, :float, default: 50.0
+    field :banner_position_y, :float, default: 50.0
     field :is_liked, :boolean, virtual: true
     field :banner_image_url, :string, virtual: true
 

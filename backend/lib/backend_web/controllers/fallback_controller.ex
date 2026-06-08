@@ -88,6 +88,13 @@ defmodule BackendWeb.FallbackController do
     |> json(%{error: "You are no longer connected with this person"})
   end
 
+  # Handle expired QR codes
+  def call(conn, {:error, :expired}) do
+    conn
+    |> put_status(:gone)
+    |> json(%{error: "expired", message: "This QR code has expired"})
+  end
+
   # Handle admin with no club
   def call(conn, {:error, :no_club_found}) do
     conn

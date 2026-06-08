@@ -4,6 +4,7 @@ import { Colors } from "@/constants/ui";
 export const styles = StyleSheet.create({
   container: {
     marginVertical: 20,
+    flex: 1,
   },
   header: {
     marginBottom: 4,
@@ -108,6 +109,8 @@ export const styles = StyleSheet.create({
   },
   leaderboardList: {
     gap: 12,
+    flex: 1,
+    justifyContent: "center",
   },
   emptyState: {
     alignItems: "center",

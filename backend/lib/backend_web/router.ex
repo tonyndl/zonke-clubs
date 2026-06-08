@@ -94,6 +94,18 @@ defmodule BackendWeb.Router do
     get "/strobe/clubs/:club_id/approvals", StrobeController, :club_approvals
     get "/strobe/clubs/:club_id/session", StrobeController, :active_session
 
+    # Club check-in (QR wristband scan)
+    post "/clubs/:club_id/checkin", CheckinController, :checkin
+    delete "/clubs/:club_id/checkin", CheckinController, :checkout
+    put "/clubs/:club_id/checkin", CheckinController, :update
+    get "/clubs/:club_id/checkin/me", CheckinController, :my_checkin
+    get "/clubs/:club_id/checkin/open", CheckinController, :open_users
+
+    # QR code management (club admin generates per-gig codes)
+    post "/clubs/:club_id/qr-codes", CheckinController, :create_qr
+    get "/clubs/:club_id/qr-codes", CheckinController, :list_qr
+    delete "/clubs/:club_id/qr-codes/:id", CheckinController, :delete_qr
+
     # Posts (club feed)
     post "/posts", PostController, :create
     get "/posts/:id", PostController, :show
@@ -159,6 +171,10 @@ defmodule BackendWeb.Router do
     # Authentication
     post "/login", SessionController, :create
     post "/register", UserController, :create
+
+    # Public QR validation (scanned by mobile app)
+    get "/qr/:token", CheckinController, :validate_qr
+    get "/clubs/:club_id/qr-codes/active", CheckinController, :active_qr
 
     # Asset proxy for serving S3 images
     get "/avatars/:filename", AssetProxyController, :proxy_avatar

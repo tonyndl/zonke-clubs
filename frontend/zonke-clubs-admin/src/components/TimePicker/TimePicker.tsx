@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import { RiArrowRightSLine, RiTimeLine } from "react-icons/ri";
+import { RiTimeLine } from "react-icons/ri";
 import {
   TimePickerContainer,
   TimeInput,
@@ -118,11 +118,10 @@ export const TimePicker: React.FC<TimePickerProps> = ({ value, onChange }) => {
         onClick={() => setIsOpen(!isOpen)}
       >
         <TimeDisplay>
-          {React.createElement(RiTimeLine as React.ComponentType)}
           <span>{formatTimeDisplay(value)}</span>
         </TimeDisplay>
         <ArrowIcon isOpen={isOpen}>
-          {React.createElement(RiArrowRightSLine as React.ComponentType)}
+          {React.createElement(RiTimeLine as React.ComponentType)}
         </ArrowIcon>
       </TimeInput>
 

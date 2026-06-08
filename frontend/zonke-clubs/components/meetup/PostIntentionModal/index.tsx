@@ -31,6 +31,16 @@ const ACTIVITIES: ActivityType[] = [
   "open_to_anything",
 ];
 
+const FULL_DAY_NAMES = [
+  "Sunday",
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+];
+
 // Get date string in YYYY-MM-DD format
 const getDateString = (daysFromNow: number): string => {
   const date = new Date();
@@ -38,8 +48,10 @@ const getDateString = (daysFromNow: number): string => {
   return date.toISOString().split("T")[0];
 };
 
-// Generate date options for the next 7 days
-const generateDateOptions = () => {
+// Generate up to 7 open-day date options scanning the next 14 days
+const generateDateOptions = (
+  closedDays: string[] = [],
+): { value: string; label: string; icon: string }[] => {
   const options: { value: string; label: string; icon: string }[] = [];
   const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
   const months = [
@@ -57,11 +69,14 @@ const generateDateOptions = () => {
     "Dec",
   ];
 
-  for (let i = 0; i < 7; i++) {
+  let found = 0;
+  for (let i = 0; i < 14 && found < 7; i++) {
     const date = new Date();
     date.setDate(date.getDate() + i);
-    const dateStr = date.toISOString().split("T")[0];
+    const fullDayName = FULL_DAY_NAMES[date.getDay()];
+    if (closedDays.includes(fullDayName)) continue;
 
+    const dateStr = date.toISOString().split("T")[0];
     let label: string;
     let icon: string;
 
@@ -77,9 +92,22 @@ const generateDateOptions = () => {
     }
 
     options.push({ value: dateStr, label, icon });
+    found++;
   }
 
   return options;
+};
+
+// Return the first open date on or after today
+const getFirstOpenDate = (closedDays: string[]): string => {
+  for (let i = 0; i < 14; i++) {
+    const date = new Date();
+    date.setDate(date.getDate() + i);
+    if (!closedDays.includes(FULL_DAY_NAMES[date.getDay()])) {
+      return date.toISOString().split("T")[0];
+    }
+  }
+  return getDateString(0);
 };
 
 export function PostIntentionModal({
@@ -96,7 +124,7 @@ export function PostIntentionModal({
     existingIntention?.activityType || null,
   );
   const [selectedDate, setSelectedDate] = useState<string>(
-    fixedDate || existingIntention?.plannedDate || getDateString(0),
+    fixedDate || existingIntention?.plannedDate || getFirstOpenDate(closedDays),
   );
   const [message, setMessage] = useState<string>(
     existingIntention?.message || "",
@@ -110,7 +138,7 @@ export function PostIntentionModal({
     selectedDate !== existingIntention.plannedDate ||
     message !== (existingIntention.message || "");
 
-  const dateOptions = generateDateOptions();
+  const dateOptions = generateDateOptions(closedDays);
 
   const handleSubmit = () => {
     const result = intentionSchema.safeParse({
@@ -141,7 +169,9 @@ export function PostIntentionModal({
 
   const resetForm = () => {
     setSelectedActivity(existingIntention?.activityType || null);
-    setSelectedDate(existingIntention?.plannedDate || getDateString(0));
+    setSelectedDate(
+      existingIntention?.plannedDate || getFirstOpenDate(closedDays),
+    );
     setMessage(existingIntention?.message || "");
     setActivityError("");
   };

@@ -162,7 +162,6 @@ export const BeerLeaderboard = () => {
             icon="search-outline"
             title="No Entries Yet"
             subtitle="No entries for this club"
-            style={{ minHeight: 300, justifyContent: "center" }}
           />
         )}
       </View>

@@ -15,6 +15,7 @@ import {
   ActivityIndicator,
   Modal,
   Image,
+  StyleSheet,
   useWindowDimensions,
   Linking,
 } from "react-native";
@@ -36,6 +37,7 @@ import { getDistance } from "geolib";
 import { Ionicons } from "@expo/vector-icons";
 import { Colors } from "@/constants/ui";
 import { PressableScale } from "@/components/ui/PressableScale";
+import { PositionedBannerImage } from "@/components/ui/PositionedBannerImage";
 import { TextStroke } from "../Login/utils";
 import { getIntentionsForClub, MeetupIntention } from "@/types/meetup";
 import { PostIntentionModal } from "@/components/meetup/PostIntentionModal";
@@ -71,6 +73,8 @@ type Club = {
   };
   image: string;
   distance?: number;
+  bannerPositionX?: number;
+  bannerPositionY?: number;
 };
 
 type DiscoverEvent = ClubEvent & {
@@ -617,6 +621,8 @@ export const HomeScreen = () => {
             name: club.name,
             location: club.location,
             image: club.banner_image_url || undefined,
+            bannerPositionX: club.banner_position_x ?? 50,
+            bannerPositionY: club.banner_position_y ?? 50,
           }),
         );
         setSearchResults(formatted);
@@ -640,6 +646,8 @@ export const HomeScreen = () => {
             name: club.name,
             location: club.location,
             image: club.banner_image_url || undefined,
+            bannerPositionX: club.banner_position_x ?? 50,
+            bannerPositionY: club.banner_position_y ?? 50,
           }),
         );
         setClubs(formattedClubs);
@@ -828,13 +836,17 @@ export const HomeScreen = () => {
   // ── Club card renderer ──────────────────────────────────────────────────
   const renderClub = useCallback(
     ({ item }: { item: Club; index: number }) => {
+      const posX = item.bannerPositionX ?? 50;
+      const posY = item.bannerPositionY ?? 50;
       return (
         <View>
           <PressableScale onPress={() => openClub(item)} style={styles.card}>
-            <ImageBackground
-              source={{ uri: item.image }}
-              style={styles.cardImage}
-              imageStyle={styles.cardImageStyle}
+            <PositionedBannerImage
+              uri={item.image}
+              posX={posX}
+              posY={posY}
+              height={260}
+              style={[styles.cardImage, styles.cardImageStyle]}
             >
               <View style={styles.goldAccent} />
 
@@ -875,7 +887,7 @@ export const HomeScreen = () => {
                   )}
                 </View>
               </View>
-            </ImageBackground>
+            </PositionedBannerImage>
           </PressableScale>
         </View>
       );
@@ -940,26 +952,37 @@ export const HomeScreen = () => {
           <TextStroke stroke={0.6} color={Colors.gold}>
             <Text style={styles.title}>Discover</Text>
           </TextStroke>
-          <PressableScale
-            style={styles.searchIconBtn}
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              const next = !showSearch;
-              setShowSearch(next);
-              if (!next) {
-                setSearchQuery("");
-                setSearchFocused(false);
-              } else {
-                setTimeout(() => searchInputRef.current?.focus(), 100);
-              }
-            }}
-          >
-            <Ionicons
-              name={showSearch ? "close" : "search-outline"}
-              size={20}
-              color={showSearch ? Colors.gold : Colors.smoke}
-            />
-          </PressableScale>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+            <PressableScale
+              style={styles.searchIconBtn}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                router.push("/qr-scan" as any);
+              }}
+            >
+              <Ionicons name="qr-code-outline" size={20} color={Colors.smoke} />
+            </PressableScale>
+            <PressableScale
+              style={styles.searchIconBtn}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                const next = !showSearch;
+                setShowSearch(next);
+                if (!next) {
+                  setSearchQuery("");
+                  setSearchFocused(false);
+                } else {
+                  setTimeout(() => searchInputRef.current?.focus(), 100);
+                }
+              }}
+            >
+              <Ionicons
+                name={showSearch ? "close" : "search-outline"}
+                size={20}
+                color={showSearch ? Colors.gold : Colors.smoke}
+              />
+            </PressableScale>
+          </View>
         </View>
       </View>
 

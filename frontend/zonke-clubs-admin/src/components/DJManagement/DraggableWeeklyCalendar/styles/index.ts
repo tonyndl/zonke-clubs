@@ -679,6 +679,58 @@ export const DJOptionGenre = styled.div`
   margin-top: 2px;
 `;
 
+export const DJSearchWrapper = styled.div`
+  padding: 8px 10px;
+  border-bottom: 1px solid rgba(57, 243, 255, 0.1);
+`;
+
+export const DJSearchInputWrapper = styled.div`
+  position: relative;
+`;
+
+export const DJSearchIcon = styled.span`
+  position: absolute;
+  left: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  opacity: 0.5;
+  pointer-events: none;
+
+  svg {
+    width: 13px;
+    height: 13px;
+  }
+`;
+
+export const DJSearchInput = styled.input`
+  width: 100%;
+  padding: 6px 8px 6px 26px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(57, 243, 255, 0.2);
+  border-radius: ${theme.borderRadius.md};
+  color: ${theme.colors.textPrimary};
+  font-size: ${theme.typography.fontSize.xs};
+  font-family: ${theme.typography.fontFamily.base};
+  outline: none;
+  box-sizing: border-box;
+
+  &::placeholder {
+    color: ${theme.colors.textSecondary};
+  }
+
+  &:focus {
+    border-color: rgba(57, 243, 255, 0.4);
+  }
+`;
+
+export const DJSearchMessage = styled.div`
+  padding: 12px 10px;
+  color: rgba(255, 255, 255, 0.4);
+  font-size: ${theme.typography.fontSize.xs};
+  text-align: center;
+`;
+
 // Palette of muted, sophisticated colors for DJ cards
 const DJ_COLORS = [
   "#60A5FA", // soft blue
@@ -695,7 +747,8 @@ const DJ_COLORS = [
   "#818CF8", // indigo
 ];
 
-export function getDJColor(djId: string): string {
+export function getDJColor(djId: string | null | undefined): string {
+  if (!djId) return DJ_COLORS[0];
   let hash = 0;
   for (let i = 0; i < djId.length; i++) {
     hash = (hash * 31 + djId.charCodeAt(i)) & 0xffffffff;

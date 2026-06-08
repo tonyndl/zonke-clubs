@@ -353,7 +353,6 @@ export const styles = StyleSheet.create({
   },
   cardImage: {
     width: "100%",
-    height: 220,
     justifyContent: "flex-end",
   },
   cardImageStyle: {

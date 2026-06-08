@@ -36,6 +36,8 @@ defmodule BackendWeb.API.ClubJSON do
       entry_fee: club.entry_fee,
       opening_hours: club.opening_hours || %{},
       table_reservation_numbers: club.table_reservation_numbers || [],
+      banner_position_x: club.banner_position_x,
+      banner_position_y: club.banner_position_y,
       banner_image_url: Map.get(club, :banner_image_url),
       inserted_at: club.inserted_at,
       updated_at: club.updated_at

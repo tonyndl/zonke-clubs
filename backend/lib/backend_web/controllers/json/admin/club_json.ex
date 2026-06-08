@@ -20,6 +20,8 @@ defmodule BackendWeb.Admin.ClubJSON do
       opening_hours: club.opening_hours || %{},
       next_week_hours: club.next_week_hours || %{},
       table_reservation_numbers: club.table_reservation_numbers || [],
+      banner_position_x: club.banner_position_x,
+      banner_position_y: club.banner_position_y,
       admin_id: club.admin_id,
       banner_image_url: Map.get(club, :banner_image_url),
       inserted_at: club.inserted_at,
