@@ -11,9 +11,9 @@ import {
   RiTimeLine,
   RiImageAddLine,
   RiMusicLine,
-  RiAddLine,
   RiCloseLine,
-  RiCheckLine,
+  RiSearchLine,
+  RiMusic2Line,
 } from "react-icons/ri";
 import {
   Form,
@@ -33,8 +33,6 @@ import {
   SwitchInput,
   SwitchSlider,
   StatusText,
-  DJSelectHeader,
-  QuickAddDJButton,
   ImagePreviewOverlay,
   ImageProgressBar,
   ImageProgressText,
@@ -46,13 +44,8 @@ import {
   DJChipIcon,
   DJChipName,
   DJChipRemove,
-  DJPickerGrid,
-  DJPickerCard,
-  DJPickerAvatar,
-  DJPickerName,
-  DJPickerCheck,
-  DJPickerEmpty,
 } from "./styles";
+import { theme } from "../../../styles/theme";
 
 interface CreateEventModalProps {
   isOpen: boolean;
@@ -61,8 +54,6 @@ interface CreateEventModalProps {
   mode?: "create" | "edit";
   initialData?: EventFormData;
   eventId?: string;
-  availableDJs?: Array<{ id: string; name: string }>;
-  onAddDJ?: () => void;
 }
 
 export interface EventFormData {
@@ -73,9 +64,16 @@ export interface EventFormData {
   end_time: string;
   general_entry_price: string;
   vip_entry_price: string;
-  dj_lineup: string[];
+  dj_lineup: Array<{ id: string; name: string }>;
   cover_image: string;
   status: "draft" | "published";
+}
+
+interface DJUser {
+  id: string;
+  username: string;
+  avatar_url?: string;
+  dj_genres?: string[];
 }
 
 export const CreateEventModal: React.FC<CreateEventModalProps> = ({
@@ -84,8 +82,6 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
   onSubmit,
   mode = "create",
   initialData,
-  availableDJs = [],
-  onAddDJ,
 }) => {
   const getInitialFormData = (): EventFormData => {
     if (mode === "edit" && initialData) {
@@ -107,6 +103,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
 
   const toast = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const djSearchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [closedDays, setClosedDays] = useState<number[]>([]);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [imageUploadProgress, setImageUploadProgress] = useState(0);
@@ -114,8 +111,10 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [originalData, setOriginalData] =
     useState<EventFormData>(getInitialFormData());
+  const [djSearch, setDjSearch] = useState("");
+  const [djResults, setDjResults] = useState<DJUser[]>([]);
+  const [djDropdownOpen, setDjDropdownOpen] = useState(false);
 
-  // Fetch club opening hours to determine closed days
   useEffect(() => {
     if (!isOpen) return;
     apiService
@@ -141,7 +140,6 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
       .catch(() => {});
   }, [isOpen]);
 
-  // Update form data when initialData changes (for edit mode)
   React.useEffect(() => {
     if (mode === "edit" && initialData) {
       setFormData(initialData);
@@ -149,10 +147,8 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
     }
   }, [mode, initialData, isOpen]);
 
-  // Check if form has been modified
   const hasChanges = React.useMemo(() => {
     if (mode === "create") {
-      // For create mode, check if any field has been filled
       return (
         formData.title !== "" ||
         formData.description !== "" ||
@@ -165,8 +161,6 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
         formData.cover_image !== ""
       );
     }
-
-    // For edit mode, compare with original data
     return (
       formData.title !== originalData.title ||
       formData.description !== originalData.description ||
@@ -187,12 +181,42 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
     setErrors((prev) => ({ ...prev, [field]: "" }));
   };
 
-  const toggleDJ = (djId: string) => {
+  const handleDJSearch = (query: string) => {
+    setDjSearch(query);
+    if (djSearchTimerRef.current) clearTimeout(djSearchTimerRef.current);
+    if (!query.trim()) {
+      setDjResults([]);
+      setDjDropdownOpen(false);
+      return;
+    }
+    djSearchTimerRef.current = setTimeout(() => {
+      apiService
+        .searchDJUsers(query)
+        .then((results: DJUser[]) => {
+          setDjResults(results);
+          setDjDropdownOpen(true);
+        })
+        .catch(() => {});
+    }, 300);
+  };
+
+  const addDJToLineup = (dj: DJUser) => {
+    const already = formData.dj_lineup.some((d) => d.id === dj.id);
+    if (!already) {
+      setFormData((prev) => ({
+        ...prev,
+        dj_lineup: [...prev.dj_lineup, { id: dj.id, name: dj.username }],
+      }));
+    }
+    setDjSearch("");
+    setDjResults([]);
+    setDjDropdownOpen(false);
+  };
+
+  const removeDJFromLineup = (id: string) => {
     setFormData((prev) => ({
       ...prev,
-      dj_lineup: prev.dj_lineup.includes(djId)
-        ? prev.dj_lineup.filter((id) => id !== djId)
-        : [...prev.dj_lineup, djId],
+      dj_lineup: prev.dj_lineup.filter((d) => d.id !== id),
     }));
   };
 
@@ -200,7 +224,6 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Show local preview immediately
     const previewUrl = URL.createObjectURL(file);
     setFormData((prev) => ({ ...prev, cover_image: previewUrl }));
     setUploadingImage(true);
@@ -233,6 +256,19 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
+  const emptyForm: EventFormData = {
+    title: "",
+    description: "",
+    date: "",
+    start_time: "",
+    end_time: "",
+    general_entry_price: "",
+    vip_entry_price: "",
+    dj_lineup: [],
+    cover_image: "",
+    status: "draft",
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -252,35 +288,12 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
     setErrors({});
     onSubmit(formData);
     onClose();
-    // Reset form
-    setFormData({
-      title: "",
-      description: "",
-      date: "",
-      start_time: "",
-      end_time: "",
-      general_entry_price: "",
-      vip_entry_price: "",
-      dj_lineup: [],
-      cover_image: "",
-      status: "draft",
-    });
+    setFormData(emptyForm);
   };
 
   const handleOnClose = () => {
     onClose();
-    setFormData({
-      title: "",
-      description: "",
-      date: "",
-      start_time: "",
-      end_time: "",
-      general_entry_price: "",
-      vip_entry_price: "",
-      dj_lineup: [],
-      cover_image: "",
-      status: "draft",
-    });
+    setFormData(emptyForm);
   };
 
   const modalTitle = mode === "edit" ? "Edit Event" : "Create New Event";
@@ -440,85 +453,164 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
           </FormGroup>
         </FormRow>
 
+        {/* DJ Lineup */}
         <FormGroup>
-          <DJSelectHeader>
-            <Label>
-              {React.createElement(RiMusicLine as React.ComponentType)}
-              DJ Lineup
-            </Label>
-            {onAddDJ && (
-              <QuickAddDJButton type="button" onClick={onAddDJ}>
-                {React.createElement(RiAddLine as React.ComponentType)}
-                Add New DJ
-              </QuickAddDJButton>
-            )}
-          </DJSelectHeader>
+          <Label>
+            {React.createElement(RiMusicLine as React.ComponentType)}
+            DJ Lineup
+          </Label>
 
-          {/* Selected DJs chips */}
           <SelectedDJsArea>
             {formData.dj_lineup.length === 0 ? (
-              <EmptyDJHint>
-                {availableDJs.length === 0
-                  ? "Add DJs to your roster first"
-                  : "Select DJs from below"}
-              </EmptyDJHint>
+              <EmptyDJHint>Search and add DJs to this event</EmptyDJHint>
             ) : (
-              formData.dj_lineup.map((djId) => {
-                const dj = availableDJs.find((d) => d.id === djId);
-                return dj ? (
-                  <DJChip key={djId}>
-                    <DJChipIcon>
-                      {React.createElement(RiMusicLine as React.ComponentType)}
-                    </DJChipIcon>
-                    <DJChipName>{dj.name}</DJChipName>
-                    <DJChipRemove type="button" onClick={() => toggleDJ(djId)}>
-                      {React.createElement(RiCloseLine as React.ComponentType)}
-                    </DJChipRemove>
-                  </DJChip>
-                ) : null;
-              })
+              formData.dj_lineup.map((dj) => (
+                <DJChip key={dj.id}>
+                  <DJChipIcon>
+                    {React.createElement(RiMusicLine as React.ComponentType)}
+                  </DJChipIcon>
+                  <DJChipName>{dj.name}</DJChipName>
+                  <DJChipRemove
+                    type="button"
+                    onClick={() => removeDJFromLineup(dj.id)}
+                  >
+                    {React.createElement(RiCloseLine as React.ComponentType)}
+                  </DJChipRemove>
+                </DJChip>
+              ))
             )}
           </SelectedDJsArea>
 
-          {/* DJ picker grid */}
-          {availableDJs.length > 0 ? (
-            <DJPickerGrid>
-              {availableDJs.map((dj) => {
-                const isSelected = formData.dj_lineup.includes(dj.id);
-                return (
-                  <DJPickerCard
-                    key={dj.id}
-                    type="button"
-                    selected={isSelected}
-                    onClick={() => toggleDJ(dj.id)}
-                  >
-                    <DJPickerAvatar selected={isSelected}>
-                      {React.createElement(RiMusicLine as React.ComponentType)}
-                    </DJPickerAvatar>
-                    <DJPickerName>{dj.name}</DJPickerName>
-                    {isSelected && (
-                      <DJPickerCheck>
-                        {React.createElement(
-                          RiCheckLine as React.ComponentType,
-                        )}
-                      </DJPickerCheck>
-                    )}
-                  </DJPickerCard>
-                );
-              })}
-            </DJPickerGrid>
-          ) : (
-            <DJPickerEmpty>
-              {React.createElement(RiMusicLine as React.ComponentType)}
-              <span>No DJs in your roster yet</span>
-              {onAddDJ && (
-                <QuickAddDJButton type="button" onClick={onAddDJ}>
-                  {React.createElement(RiAddLine as React.ComponentType)}
-                  Add Your First DJ
-                </QuickAddDJButton>
+          <div style={{ position: "relative", marginTop: 8 }}>
+            <span
+              style={{
+                position: "absolute",
+                left: 12,
+                top: "50%",
+                transform: "translateY(-50%)",
+                color: theme.colors.textSecondary,
+                display: "flex",
+                pointerEvents: "none",
+              }}
+            >
+              {React.createElement(
+                RiSearchLine as React.ComponentType<{ size?: number }>,
+                { size: 16 },
               )}
-            </DJPickerEmpty>
-          )}
+            </span>
+            <input
+              type="text"
+              value={djSearch}
+              onChange={(e) => handleDJSearch(e.target.value)}
+              onFocus={() => djResults.length > 0 && setDjDropdownOpen(true)}
+              onBlur={() => setTimeout(() => setDjDropdownOpen(false), 150)}
+              placeholder="Search DJs by username..."
+              style={{
+                width: "100%",
+                padding: `10px 12px 10px 38px`,
+                background: theme.colors.background,
+                border: `1px solid ${theme.colors.border}`,
+                borderRadius: theme.borderRadius.lg,
+                color: theme.colors.textPrimary,
+                fontSize: theme.typography.fontSize.sm,
+                fontFamily: theme.typography.fontFamily.base,
+                boxSizing: "border-box",
+                outline: "none",
+              }}
+            />
+            {djDropdownOpen && djResults.length > 0 && (
+              <div
+                style={{
+                  position: "absolute",
+                  top: "calc(100% + 4px)",
+                  left: 0,
+                  right: 0,
+                  background: theme.colors.backgroundCard,
+                  border: `1px solid ${theme.colors.border}`,
+                  borderRadius: theme.borderRadius.lg,
+                  zIndex: 200,
+                  overflow: "hidden",
+                  boxShadow: "0 8px 24px rgba(0,0,0,0.4)",
+                }}
+              >
+                {djResults.map((dj) => (
+                  <div
+                    key={dj.id}
+                    onMouseDown={() => addDJToLineup(dj)}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 10,
+                      padding: "10px 14px",
+                      cursor: "pointer",
+                      borderBottom: `1px solid ${theme.colors.border}`,
+                    }}
+                    onMouseEnter={(e) =>
+                      (e.currentTarget.style.background =
+                        "rgba(57,243,255,0.06)")
+                    }
+                    onMouseLeave={(e) =>
+                      (e.currentTarget.style.background = "transparent")
+                    }
+                  >
+                    {dj.avatar_url ? (
+                      <img
+                        src={dj.avatar_url}
+                        alt=""
+                        style={{
+                          width: 30,
+                          height: 30,
+                          borderRadius: 15,
+                          objectFit: "cover",
+                        }}
+                      />
+                    ) : (
+                      <div
+                        style={{
+                          width: 30,
+                          height: 30,
+                          borderRadius: 15,
+                          background: "rgba(57,243,255,0.12)",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                        }}
+                      >
+                        {React.createElement(
+                          RiMusic2Line as React.ComponentType<{
+                            size?: number;
+                            color?: string;
+                          }>,
+                          { size: 14, color: theme.colors.primary },
+                        )}
+                      </div>
+                    )}
+                    <div>
+                      <div
+                        style={{
+                          color: theme.colors.textPrimary,
+                          fontSize: theme.typography.fontSize.sm,
+                          fontWeight: 600,
+                        }}
+                      >
+                        {dj.username}
+                      </div>
+                      {dj.dj_genres && dj.dj_genres.length > 0 && (
+                        <div
+                          style={{
+                            color: theme.colors.textSecondary,
+                            fontSize: theme.typography.fontSize.xs,
+                          }}
+                        >
+                          {dj.dj_genres.join(", ")}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </FormGroup>
 
         <FormGroup>

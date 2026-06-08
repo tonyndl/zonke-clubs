@@ -1,19 +1,8 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Card, CardTitle, CardDescription } from "../../../components/Card";
+import { Card } from "../../../components/Card";
 import { PrimaryButton } from "../../../components/Buttons";
 import { theme } from "../../../styles/theme";
-import {
-  RiMusic2Line,
-  RiAddLine,
-  RiEditLine,
-  RiDeleteBinLine,
-  RiCalendar2Line,
-} from "react-icons/ri";
-import { SiInstagram, SiTiktok } from "react-icons/si";
-import {
-  AddDJModal,
-  DJFormData,
-} from "../../../components/DJManagement/AddDJModal";
+import { RiMusic2Line, RiCalendar2Line } from "react-icons/ri";
 import {
   AddScheduleModal,
   ScheduleFormData,
@@ -33,34 +22,11 @@ import {
   SectionHeader,
   SectionTitle,
   SectionDescription,
-  DJGrid,
-  DJGridItem,
-  DJGridAvatar,
-  DJGridName,
-  DJGridSocials,
-  DJGridSocialLink,
-  DJGridSocialPlatform,
-  DJGridSocialHandle,
-  DJGridActions,
-  DJGridEditBtn,
-  DJGridDeleteBtn,
-  EmptyState,
   WeekToggleContainer,
   WeekToggleButton,
   WeekLabel,
   UpcomingBadge,
 } from "./styles";
-
-const getDJInitial = (name: string): string => {
-  const upper = name.trim();
-  if (/^dj\s+/i.test(upper)) {
-    return upper
-      .replace(/^dj\s+/i, "")
-      .charAt(0)
-      .toUpperCase();
-  }
-  return upper.charAt(0).toUpperCase();
-};
 
 interface DJ {
   id: string;
@@ -74,6 +40,7 @@ interface DJ {
 interface Schedule {
   id: string;
   djId: string;
+  djUserId: string | null;
   djName: string;
   day: string;
   dayOfWeek: number;
@@ -159,21 +126,17 @@ function getClosedDays(
 export const DJSchedule: React.FC = () => {
   const toast = useToast();
   const [djs, setDJs] = useState<DJ[]>([]);
-  const [djSearch, setDjSearch] = useState("");
   const [schedules, setSchedules] = useState<Schedule[]>([]);
   const [events, setEvents] = useState<any[]>([]);
   const [openingHours, setOpeningHours] = useState<Record<string, any>>({});
   const [nextWeekHours, setNextWeekHours] = useState<Record<string, any>>({});
   const [isLoading, setIsLoading] = useState(true);
-  const [isAddDJModalOpen, setIsAddDJModalOpen] = useState(false);
-  const [editingDJ, setEditingDJ] = useState<DJ | null>(null);
   const [isAddScheduleModalOpen, setIsAddScheduleModalOpen] = useState(false);
   const [shouldReopenScheduleModal, setShouldReopenScheduleModal] =
     useState(false);
   const [editingSchedule, setEditingSchedule] = useState<Schedule | null>(null);
   const [prefilledScheduleData, setPrefilledScheduleData] =
     useState<Partial<Schedule> | null>(null);
-  const [djToDelete, setDJToDelete] = useState<string | null>(null);
   const [scheduleToDelete, setScheduleToDelete] = useState<string | null>(null);
   const [scheduleDeleteContext, setScheduleDeleteContext] = useState<{
     scheduleId: string;
@@ -188,7 +151,7 @@ export const DJSchedule: React.FC = () => {
   const fetchData = () => {
     setIsLoading(true);
     Promise.all([
-      apiService.searchDJUsers(djSearch),
+      apiService.searchDJUsers(""),
       apiService.getDJSchedules(),
       eventService.getEvents().catch(() => ({ events: [] })),
       apiService.getMyClub().catch(() => null),
@@ -206,7 +169,8 @@ export const DJSchedule: React.FC = () => {
         setDJs(mappedDJs);
         const transformedSchedules = schedulesData.map((s: any) => ({
           id: s.id,
-          djId: s.dj_id,
+          djId: s.dj_user_id || s.dj_id || "",
+          djUserId: s.dj_user_id,
           djName: s.dj_name,
           day: s.day,
           dayOfWeek: s.day_of_week,
@@ -260,77 +224,6 @@ export const DJSchedule: React.FC = () => {
     previousDJsLengthRef.current = djs.length;
   }, [djs, shouldReopenScheduleModal]);
 
-  const handleAddDJ = (djData: DJFormData) => {
-    apiService
-      .createDJ(djData)
-      .then((newDJ) => {
-        // Update DJs state with the new DJ
-        setDJs((prevDJs) => [...prevDJs, newDJ]);
-        setIsAddDJModalOpen(false);
-        toast.success(`${newDJ.name} added successfully!`);
-
-        // Modal will automatically reopen via useEffect when DJ list updates
-      })
-      .catch((error) => {
-        console.error("Failed to add DJ:", error);
-        toast.error("Failed to add DJ");
-      });
-  };
-
-  const handleDeleteDJ = (djId: string) => {
-    apiService
-      .deleteDJ(djId)
-      .then(() => {
-        setDJs(djs.filter((dj) => dj.id !== djId));
-        setSchedules(schedules.filter((s) => s.djId !== djId));
-        setDJToDelete(null);
-        toast.success("DJ deleted successfully");
-      })
-      .catch((error) => {
-        console.error("Failed to delete DJ:", error);
-        toast.error("Failed to delete DJ");
-        setDJToDelete(null);
-      });
-  };
-
-  const handleEditDJ = (djId: string) => {
-    const dj = djs.find((d) => d.id === djId);
-    if (dj) {
-      setEditingDJ(dj);
-      setIsAddDJModalOpen(true);
-    }
-  };
-
-  const handleUpdateDJ = (djData: DJFormData) => {
-    if (!editingDJ) return;
-
-    apiService
-      .updateDJ(editingDJ.id, djData)
-      .then((updatedDJ) => {
-        setDJs(djs.map((dj) => (dj.id === editingDJ.id ? updatedDJ : dj)));
-        setIsAddDJModalOpen(false);
-        setEditingDJ(null);
-        toast.success(`${updatedDJ.name} updated successfully!`);
-      })
-      .catch((error) => {
-        console.error("Failed to update DJ:", error);
-        toast.error("Failed to update DJ");
-      });
-  };
-
-  const handleDJModalSubmit = (djData: DJFormData) => {
-    if (editingDJ) {
-      handleUpdateDJ(djData);
-    } else {
-      handleAddDJ(djData);
-    }
-  };
-
-  const handleDJModalClose = () => {
-    setIsAddDJModalOpen(false);
-    setEditingDJ(null);
-  };
-
   const handleAddSchedule = (scheduleData: ScheduleFormData) => {
     const apiData = {
       dj_user_id: scheduleData.djId,
@@ -347,7 +240,8 @@ export const DJSchedule: React.FC = () => {
       .then((newSchedule: any) => {
         const transformedSchedule: Schedule = {
           id: newSchedule.id,
-          djId: newSchedule.dj_id,
+          djId: newSchedule.dj_user_id || newSchedule.dj_id || "",
+          djUserId: newSchedule.dj_user_id,
           djName: newSchedule.dj_name,
           day: newSchedule.day,
           dayOfWeek: newSchedule.day_of_week,
@@ -437,7 +331,8 @@ export const DJSchedule: React.FC = () => {
       .then((updatedSchedule: any) => {
         const transformedSchedule: Schedule = {
           id: updatedSchedule.id,
-          djId: updatedSchedule.dj_id,
+          djId: updatedSchedule.dj_user_id || updatedSchedule.dj_id || "",
+          djUserId: updatedSchedule.dj_user_id,
           djName: updatedSchedule.dj_name,
           day: updatedSchedule.day,
           dayOfWeek: updatedSchedule.day_of_week,
@@ -469,12 +364,9 @@ export const DJSchedule: React.FC = () => {
     const schedule = schedules.find((s) => s.id === scheduleId);
     if (!schedule) return;
 
-    // Create a new schedule with the same data but for the next day
-    const nextDay = (currentDayOfWeek + 1) % 7;
-
     const apiData = {
-      dj_id: schedule.djId,
-      day_of_week: nextDay,
+      dj_user_id: schedule.djUserId,
+      day_of_week: currentDayOfWeek,
       start_time: schedule.startTime,
       end_time: schedule.endTime,
       notes: schedule.notes,
@@ -487,7 +379,8 @@ export const DJSchedule: React.FC = () => {
       .then((newSchedule: any) => {
         const transformedSchedule: Schedule = {
           id: newSchedule.id,
-          djId: newSchedule.dj_id,
+          djId: newSchedule.dj_user_id || newSchedule.dj_id || "",
+          djUserId: newSchedule.dj_user_id,
           djName: newSchedule.dj_name,
           day: newSchedule.day,
           dayOfWeek: newSchedule.day_of_week,
@@ -524,7 +417,7 @@ export const DJSchedule: React.FC = () => {
     );
 
     const apiData = {
-      dj_id: schedule.djId,
+      dj_user_id: schedule.djUserId,
       day_of_week: newDayOfWeek,
       start_time: schedule.startTime,
       end_time: schedule.endTime,
@@ -542,7 +435,8 @@ export const DJSchedule: React.FC = () => {
 
         const transformedSchedule: Schedule = {
           id: updatedSchedule.id,
-          djId: updatedSchedule.dj_id,
+          djId: updatedSchedule.dj_user_id || updatedSchedule.dj_id || "",
+          djUserId: updatedSchedule.dj_user_id,
           djName: updatedSchedule.dj_name,
           day: updatedSchedule.day,
           dayOfWeek: updatedSchedule.day_of_week,
@@ -587,7 +481,6 @@ export const DJSchedule: React.FC = () => {
 
   const handleQuickAddDJ = (djId: string, dayOfWeek: number) => {
     const dj = djs.find((d) => d.id === djId);
-    if (!dj) return;
 
     let apiData: Record<string, unknown>;
 
@@ -596,14 +489,14 @@ export const DJSchedule: React.FC = () => {
       const targetDate = new Date(upcomingSunday);
       targetDate.setDate(upcomingSunday.getDate() + dayOfWeek);
       apiData = {
-        dj_id: djId,
+        dj_user_id: djId,
         day_of_week: dayOfWeek,
         type: "specific",
         specific_date: dateToString(targetDate),
       };
     } else {
       apiData = {
-        dj_id: djId,
+        dj_user_id: djId,
         day_of_week: dayOfWeek,
         type: "weekly",
       };
@@ -614,7 +507,8 @@ export const DJSchedule: React.FC = () => {
       .then((newSchedule: any) => {
         const transformedSchedule: Schedule = {
           id: newSchedule.id,
-          djId: newSchedule.dj_id,
+          djId: newSchedule.dj_user_id || newSchedule.dj_id || "",
+          djUserId: newSchedule.dj_user_id,
           djName: newSchedule.dj_name,
           day: newSchedule.day,
           dayOfWeek: newSchedule.day_of_week,
@@ -627,7 +521,7 @@ export const DJSchedule: React.FC = () => {
         setSchedules([...schedules, transformedSchedule]);
         const weekLabel = selectedWeek === "upcoming" ? " (upcoming week)" : "";
         toast.success(
-          `${dj.name} added to ${DAYS_LIST[dayOfWeek]}${weekLabel}!`,
+          `${dj?.name || transformedSchedule.djName} added to ${DAYS_LIST[dayOfWeek]}${weekLabel}!`,
         );
       })
       .catch((error) => {
@@ -762,113 +656,6 @@ export const DJSchedule: React.FC = () => {
         </HeaderLeft>
       </PageHeader>
 
-      {/* Registered DJs Section */}
-      <Section>
-        <SectionHeader>
-          <SectionTitle>
-            {React.createElement(RiMusic2Line as React.ComponentType)}
-            Registered DJs
-          </SectionTitle>
-          <SectionDescription>
-            DJs who have signed up on the mobile app. Search to find them and
-            add them to your schedule below.
-          </SectionDescription>
-        </SectionHeader>
-
-        <div style={{ marginBottom: theme.spacing.md }}>
-          <input
-            type="text"
-            value={djSearch}
-            onChange={(e) => {
-              setDjSearch(e.target.value);
-              apiService.searchDJUsers(e.target.value).then((users: any[]) => {
-                setDJs(
-                  users.map((u) => ({
-                    id: u.id,
-                    name: u.username,
-                    bio: u.bio,
-                    instagram: u.dj_instagram,
-                    tiktok: u.dj_tiktok,
-                    image: u.avatar_url,
-                  })),
-                );
-              });
-            }}
-            placeholder="Search DJs by username..."
-            style={{
-              width: "100%",
-              padding: `${theme.spacing.sm} ${theme.spacing.md}`,
-              background: theme.colors.background,
-              border: `1px solid ${theme.colors.border}`,
-              borderRadius: theme.borderRadius.lg,
-              color: theme.colors.textPrimary,
-              fontSize: theme.typography.fontSize.sm,
-              outline: "none",
-              boxSizing: "border-box",
-            }}
-          />
-        </div>
-
-        {djs.length > 0 ? (
-          <DJGrid>
-            {djs.map((dj) => (
-              <DJGridItem key={dj.id}>
-                <DJGridAvatar image={dj.image}>
-                  {!dj.image && getDJInitial(dj.name)}
-                </DJGridAvatar>
-                <DJGridName>{dj.name}</DJGridName>
-                {(dj.instagram || dj.tiktok) && (
-                  <DJGridSocials>
-                    {dj.instagram && (
-                      <DJGridSocialLink
-                        href={`https://instagram.com/${dj.instagram}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        $platform="instagram"
-                      >
-                        <DJGridSocialPlatform $platform="instagram">
-                          {React.createElement(
-                            SiInstagram as React.ComponentType,
-                          )}
-                        </DJGridSocialPlatform>
-                        <DJGridSocialHandle>@{dj.instagram}</DJGridSocialHandle>
-                      </DJGridSocialLink>
-                    )}
-                    {dj.tiktok && (
-                      <DJGridSocialLink
-                        href={`https://tiktok.com/@${dj.tiktok}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        $platform="tiktok"
-                      >
-                        <DJGridSocialPlatform $platform="tiktok">
-                          {React.createElement(SiTiktok as React.ComponentType)}
-                        </DJGridSocialPlatform>
-                        <DJGridSocialHandle>@{dj.tiktok}</DJGridSocialHandle>
-                      </DJGridSocialLink>
-                    )}
-                  </DJGridSocials>
-                )}
-              </DJGridItem>
-            ))}
-          </DJGrid>
-        ) : (
-          <Card>
-            <EmptyState>
-              {React.createElement(RiMusic2Line as React.ComponentType)}
-              <CardTitle>
-                {djSearch ? "No DJs found" : "No Registered DJs"}
-              </CardTitle>
-              <CardDescription>
-                {djSearch
-                  ? `No DJs matching "${djSearch}"`
-                  : "DJs sign up on the mobile app. Once registered, they'll appear here."}
-              </CardDescription>
-            </EmptyState>
-          </Card>
-        )}
-      </Section>
-
       {/* Weekly Schedule Section */}
       <Section>
         <SectionHeader>
@@ -942,30 +729,23 @@ export const DJSchedule: React.FC = () => {
           onDuplicateSchedule={handleDuplicateSchedule}
           onMoveSchedule={handleMoveSchedule}
           onQuickAddDJ={handleQuickAddDJ}
+          onSearchDJs={(query) =>
+            apiService
+              .searchDJUsers(query)
+              .then((users: any[]) =>
+                users.map((u) => ({
+                  id: u.id,
+                  name: u.username,
+                  image: u.avatar_url,
+                })),
+              )
+          }
           onAddDJToEvent={handleAddDJToEvent}
           onRemoveDJFromEvent={handleRemoveDJFromEvent}
         />
       </Section>
 
       {/* Modals */}
-      <AddDJModal
-        isOpen={isAddDJModalOpen}
-        onClose={handleDJModalClose}
-        onSubmit={handleDJModalSubmit}
-        initialData={
-          editingDJ
-            ? {
-                name: editingDJ.name,
-                bio: editingDJ.bio ?? "",
-                instagram: editingDJ.instagram ?? "",
-                tiktok: editingDJ.tiktok ?? "",
-                image: editingDJ.image ?? "",
-              }
-            : undefined
-        }
-        isEditMode={!!editingDJ}
-      />
-
       <AddScheduleModal
         isOpen={isAddScheduleModalOpen}
         onClose={handleScheduleModalClose}
@@ -974,7 +754,7 @@ export const DJSchedule: React.FC = () => {
         initialData={
           editingSchedule
             ? {
-                djId: editingSchedule.djId,
+                djId: editingSchedule.djUserId || editingSchedule.djId || "",
                 djName: editingSchedule.djName,
                 scheduleType: editingSchedule.type as "weekly" | "specific",
                 dayOfWeek: editingSchedule.dayOfWeek,
@@ -1010,21 +790,7 @@ export const DJSchedule: React.FC = () => {
                 : undefined
         }
         isEditMode={!!editingSchedule}
-        onAddDJ={() => {
-          setShouldReopenScheduleModal(true);
-          setIsAddScheduleModalOpen(false);
-          setIsAddDJModalOpen(true);
-        }}
-      />
-
-      <ConfirmationModal
-        isOpen={!!djToDelete}
-        onClose={() => setDJToDelete(null)}
-        onConfirm={() => djToDelete && handleDeleteDJ(djToDelete)}
-        title="Delete DJ"
-        message="Are you sure you want to remove this DJ? All associated schedules will also be deleted."
-        confirmText="Delete"
-        cancelText="Cancel"
+        onAddDJ={() => {}}
       />
 
       <ConfirmationModal

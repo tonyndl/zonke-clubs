@@ -72,7 +72,7 @@ export interface Event {
   end_time?: string;
   general_entry_price: number;
   vip_entry_price: number;
-  dj_lineup: string[];
+  dj_lineup: Array<{ id: string; name: string }>;
   status: "draft" | "published";
   inserted_at: string;
   updated_at: string;

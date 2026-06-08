@@ -174,6 +174,21 @@ type PlatformBrand =
   | { set: "fa6"; name: string; color: string }
   | { set: "ionicon"; name: string; color: string };
 
+const DRINK_EMOJIS = [
+  "🥃",
+  "🍾",
+  "🍸",
+  "🍹",
+  "🍺",
+  "🍻",
+  "🥂",
+  "🧃",
+  "🧋",
+  "🍵",
+  "☕",
+  "🥤",
+];
+
 // FA5 lacks TikTok in the free bundle — use Ionicons for those gaps.
 const PLATFORM_BRANDS: { match: string[]; brand: PlatformBrand }[] = [
   {
@@ -500,6 +515,7 @@ export default function ProfileScreen() {
   const [showDrinkModal, setShowDrinkModal] = useState(false);
   const [showClubModal, setShowClubModal] = useState(false);
   const [newDrink, setNewDrink] = useState("");
+  const [selectedDrinkEmoji, setSelectedDrinkEmoji] = useState("🥃");
   const [clubSearchQuery, setClubSearchQuery] = useState("");
   const debouncedClubSearch = useDebounce(clubSearchQuery, 300);
 
@@ -1006,11 +1022,16 @@ export default function ProfileScreen() {
   };
 
   const addDrink = () => {
-    if (newDrink.trim() && !favoriteDrinks.includes(newDrink.trim())) {
-      setFavoriteDrinks([...favoriteDrinks, newDrink.trim()]);
-      setNewDrink("");
-      setShowDrinkModal(false);
+    const raw = newDrink.trim();
+    if (!raw) return;
+    const name = raw.charAt(0).toUpperCase() + raw.slice(1);
+    const entry = `${selectedDrinkEmoji} ${name}`;
+    if (!favoriteDrinks.includes(entry)) {
+      setFavoriteDrinks([...favoriteDrinks, entry]);
     }
+    setNewDrink("");
+    setSelectedDrinkEmoji("🥃");
+    setShowDrinkModal(false);
   };
 
   const removeDrink = (drink: string) => {
@@ -2106,7 +2127,6 @@ export default function ProfileScreen() {
                         entering={SlideInRight.delay(index * 50).springify()}
                         style={styles.drinkChip}
                       >
-                        <Text style={styles.drinkEmoji}>🥃</Text>
                         <Text style={styles.drinkText}>{drink}</Text>
                         {isOwnProfile && (
                           <TouchableOpacity
@@ -2272,32 +2292,69 @@ export default function ProfileScreen() {
       {/* Add Drink Modal - only for own profile */}
       {isOwnProfile && showDrinkModal && (
         <Modal
-          onDismiss={() => setShowDrinkModal(false)}
+          onDismiss={() => {
+            setShowDrinkModal(false);
+            setNewDrink("");
+            setSelectedDrinkEmoji("🥃");
+          }}
           bgColor={Colors.bgCard}
         >
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>Add Favorite Drink</Text>
-            <TouchableOpacity onPress={() => setShowDrinkModal(false)}>
+            <TouchableOpacity
+              onPress={() => {
+                setShowDrinkModal(false);
+                setNewDrink("");
+                setSelectedDrinkEmoji("🥃");
+              }}
+            >
               <Ionicons name="close" size={24} color={Colors.platinum} />
             </TouchableOpacity>
           </View>
           <Text style={styles.modalSubtitle}>
-            Enter the brand name (e.g., Black Label, Hennessy)
+            Pick an icon and enter the name
           </Text>
-          <TextInput
-            style={styles.modalInput}
-            value={newDrink}
-            onChangeText={setNewDrink}
-            placeholder="Brand name..."
-            placeholderTextColor={Colors.lightGrey}
-            autoFocus
-            onSubmitEditing={addDrink}
-          />
-          <PressableScale style={styles.modalButton} onPress={addDrink}>
+
+          {/* Emoji grid */}
+          <View style={styles.drinkEmojiGrid}>
+            {DRINK_EMOJIS.map((emoji) => (
+              <PressableScale
+                key={emoji}
+                onPress={() => setSelectedDrinkEmoji(emoji)}
+                style={[
+                  styles.drinkEmojiBtn,
+                  selectedDrinkEmoji === emoji && styles.drinkEmojiBtnActive,
+                ]}
+              >
+                <Text style={styles.drinkEmojiText}>{emoji}</Text>
+              </PressableScale>
+            ))}
+          </View>
+
+          {/* Input with emoji prefix */}
+          <View style={styles.drinkInputRow}>
+            <Text style={styles.drinkEmojiPreview}>{selectedDrinkEmoji}</Text>
+            <TextInput
+              style={styles.drinkNameInput}
+              value={newDrink}
+              onChangeText={setNewDrink}
+              placeholder="e.g. Black Label, Mojito..."
+              placeholderTextColor={Colors.lightGrey}
+              autoFocus
+              returnKeyType="done"
+              autoCapitalize="words"
+              onSubmitEditing={addDrink}
+            />
+          </View>
+
+          <PressableScale
+            style={[styles.modalButton, !newDrink.trim() && { opacity: 0.4 }]}
+            onPress={addDrink}
+            disabled={!newDrink.trim()}
+          >
             <Text style={styles.modalButtonText}>Add Drink</Text>
             <Ionicons name="checkmark" size={20} color={Colors.bg} />
           </PressableScale>
-          {/* </Animated.View> */}
         </Modal>
       )}
 

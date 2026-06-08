@@ -68,6 +68,7 @@ import {
   strobeChannel,
   type StrobeSessionInfo,
 } from "@/services/strobeService";
+import { checkinService } from "@/services/checkinService";
 
 const HEADER_HEIGHT = 300;
 
@@ -174,6 +175,9 @@ export default function ClubScreen() {
     null,
   );
 
+  // Whether the club has a valid QR code for today
+  const [hasActiveQR, setHasActiveQR] = useState(false);
+
   // Heartbeat animation for the strobe banner
   const heartbeatScale = useSharedValue(1);
 
@@ -207,6 +211,10 @@ export default function ClubScreen() {
     loadIntentions();
     loadRequestedUsers();
     loadEvents();
+    checkinService
+      .hasActiveQRCode(clubId)
+      .then(({ active }) => setHasActiveQR(active))
+      .catch(() => setHasActiveQR(false));
   }, [clubId]);
 
   // Reload schedules when the selected week view changes
@@ -1098,6 +1106,28 @@ export default function ClubScreen() {
           </Animated.View>
         )}
 
+        {/* Check-in banner — only when club has an active QR code for today */}
+        {hasActiveQR && (
+          <PressableScale
+            onPress={() => router.push(`/club/${clubId}/checkin` as any)}
+            style={styles.checkinBanner}
+          >
+            <View style={{ flex: 1 }}>
+              <Text style={styles.checkinBannerTitle}>
+                Check In to this Club
+              </Text>
+              <Text style={styles.checkinBannerSub}>
+                Mark yourself open to meet others here tonight
+              </Text>
+            </View>
+            <Ionicons
+              name="qr-code-outline"
+              size={22}
+              color={Colors.primaryBlue}
+            />
+          </PressableScale>
+        )}
+
         {/* ========== SECTION 1: CLUB INFORMATION ========== */}
         {activeSection === "info" && (
           <>
@@ -1895,6 +1925,29 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.bg,
+  },
+  checkinBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    backgroundColor: "rgba(57,243,255,0.07)",
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "rgba(57,243,255,0.2)",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    marginTop: 12,
+  },
+  checkinBannerTitle: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: Colors.primaryBlue,
+    letterSpacing: 0.2,
+  },
+  checkinBannerSub: {
+    fontSize: 11,
+    color: Colors.smoke,
+    marginTop: 2,
   },
   strobeBanner: {
     flexDirection: "row",

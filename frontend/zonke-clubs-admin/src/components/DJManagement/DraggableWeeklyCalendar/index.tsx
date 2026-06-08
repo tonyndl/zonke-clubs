@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { useToast } from "../../Toast";
 import {
   RiAddLine,
@@ -12,6 +12,7 @@ import {
   RiTrophyFill,
   RiCloseLine,
   RiCheckLine,
+  RiSearchLine,
 } from "react-icons/ri";
 import {
   CalendarContainer,
@@ -47,6 +48,11 @@ import {
   DJOptionInfo,
   DJOptionName,
   DJOptionGenre,
+  DJSearchWrapper,
+  DJSearchInputWrapper,
+  DJSearchIcon,
+  DJSearchInput,
+  DJSearchMessage,
   EmptySlot,
   getGenreColor,
   getDJColor,
@@ -77,6 +83,9 @@ interface DraggableWeeklyCalendarProps {
   onQuickAddDJ?: (djId: string, dayOfWeek: number) => void;
   onAddDJToEvent?: (eventId: string, djId: string) => void;
   onRemoveDJFromEvent?: (eventId: string, djId: string) => void;
+  onSearchDJs?: (
+    query: string,
+  ) => Promise<Array<{ id: string; name: string; image?: string }>>;
 }
 
 export interface DJScheduleItem {
@@ -164,6 +173,7 @@ export const DraggableWeeklyCalendar: React.FC<
   onQuickAddDJ,
   onAddDJToEvent,
   onRemoveDJFromEvent,
+  onSearchDJs,
 }) => {
   const toast = useToast();
   const [draggedSchedule, setDraggedSchedule] = useState<DJScheduleItem | null>(
@@ -172,6 +182,12 @@ export const DraggableWeeklyCalendar: React.FC<
   const [dragOverDay, setDragOverDay] = useState<number | null>(null);
   const [invalidDropDay, setInvalidDropDay] = useState<number | null>(null);
   const [openDropdownDay, setOpenDropdownDay] = useState<number | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<
+    Array<{ id: string; name: string; image?: string }>
+  >([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Close dropdown when clicking outside
   React.useEffect(() => {
@@ -388,7 +404,32 @@ export const DraggableWeeklyCalendar: React.FC<
   };
 
   const handleToggleDropdown = (dayOfWeek: number) => {
-    setOpenDropdownDay(openDropdownDay === dayOfWeek ? null : dayOfWeek);
+    const isOpening = openDropdownDay !== dayOfWeek;
+    setOpenDropdownDay(isOpening ? dayOfWeek : null);
+    if (isOpening) {
+      setSearchQuery("");
+      setSearchResults([]);
+    }
+  };
+
+  const handleSearch = (query: string) => {
+    setSearchQuery(query);
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    if (!query.trim()) {
+      setSearchResults([]);
+      return;
+    }
+    setIsSearching(true);
+    searchTimerRef.current = setTimeout(() => {
+      if (onSearchDJs) {
+        onSearchDJs(query)
+          .then((results) => setSearchResults(results))
+          .catch(() => setSearchResults([]))
+          .finally(() => setIsSearching(false));
+      } else {
+        setIsSearching(false);
+      }
+    }, 300);
   };
 
   const handleSelectDJ = (
@@ -416,6 +457,8 @@ export const DraggableWeeklyCalendar: React.FC<
       onQuickAddDJ(djId, dayOfWeek);
     }
     setOpenDropdownDay(null);
+    setSearchQuery("");
+    setSearchResults([]);
   };
 
   // Helper to check if a slot is from an event (not a regular schedule)
@@ -737,7 +780,7 @@ export const DraggableWeeklyCalendar: React.FC<
                   )}
                 </DaySlots>
 
-                {onQuickAddDJ && djs.length > 0 && !isClosed && (
+                {onQuickAddDJ && !isClosed && (
                   <QuickAddContainer data-quick-add="true">
                     <QuickAddButton
                       isOpen={openDropdownDay === dayOfWeek}
@@ -745,38 +788,63 @@ export const DraggableWeeklyCalendar: React.FC<
                     >
                       {React.createElement(RiAddLine as React.ComponentType)}
                       {openDropdownDay === dayOfWeek
-                        ? "Select DJ"
+                        ? "Cancel"
                         : "Quick Add DJ"}
                     </QuickAddButton>
 
                     {openDropdownDay === dayOfWeek && (
                       <DJDropdown data-dj-dropdown>
-                        {djs.map((dj) => {
-                          const isScheduled = slots.some(
-                            (s) => s.djId === dj.id,
-                          );
-                          return (
-                            <DJOption
-                              key={dj.id}
-                              $isScheduled={isScheduled}
-                              disabled={isScheduled}
-                              onClick={() =>
-                                handleSelectDJ(dj.id, dayOfWeek, isScheduled)
-                              }
-                            >
-                              {isScheduled
-                                ? React.createElement(
-                                    RiCheckLine as React.ComponentType,
-                                  )
-                                : React.createElement(
-                                    RiMusic2Line as React.ComponentType,
-                                  )}
-                              <DJOptionInfo>
-                                <DJOptionName>{dj.name}</DJOptionName>
-                              </DJOptionInfo>
-                            </DJOption>
-                          );
-                        })}
+                        <DJSearchWrapper>
+                          <DJSearchInputWrapper>
+                            <DJSearchIcon>
+                              {React.createElement(
+                                RiSearchLine as React.ComponentType,
+                              )}
+                            </DJSearchIcon>
+                            <DJSearchInput
+                              autoFocus
+                              type="text"
+                              value={searchQuery}
+                              onChange={(e) => handleSearch(e.target.value)}
+                              placeholder="Search DJ"
+                            />
+                          </DJSearchInputWrapper>
+                        </DJSearchWrapper>
+
+                        {!searchQuery.trim() ? (
+                          <DJSearchMessage>Type to search DJs</DJSearchMessage>
+                        ) : isSearching ? (
+                          <DJSearchMessage>Searching...</DJSearchMessage>
+                        ) : searchResults.length === 0 ? (
+                          <DJSearchMessage>No DJs found</DJSearchMessage>
+                        ) : (
+                          searchResults.map((dj) => {
+                            const isScheduled = slots.some(
+                              (s) => s.djId === dj.id,
+                            );
+                            return (
+                              <DJOption
+                                key={dj.id}
+                                $isScheduled={isScheduled}
+                                disabled={isScheduled}
+                                onClick={() =>
+                                  handleSelectDJ(dj.id, dayOfWeek, isScheduled)
+                                }
+                              >
+                                {isScheduled
+                                  ? React.createElement(
+                                      RiCheckLine as React.ComponentType,
+                                    )
+                                  : React.createElement(
+                                      RiMusic2Line as React.ComponentType,
+                                    )}
+                                <DJOptionInfo>
+                                  <DJOptionName>{dj.name}</DJOptionName>
+                                </DJOptionInfo>
+                              </DJOption>
+                            );
+                          })
+                        )}
                       </DJDropdown>
                     )}
                   </QuickAddContainer>

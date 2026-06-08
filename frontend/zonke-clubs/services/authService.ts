@@ -103,9 +103,11 @@ class AuthService {
           response,
         );
 
-        return this.saveAuthData(response.jwt, response.user).then(
-          () => response,
-        );
+        const normalizedUser = this.normalizeUser(response.user);
+        return this.saveAuthData(response.jwt, normalizedUser).then(() => ({
+          ...response,
+          user: normalizedUser,
+        }));
       })
       .catch((error) => {
         const message =
@@ -127,7 +129,7 @@ class AuthService {
     return getItem(USER_KEY)
       .then((userJson) => {
         if (userJson) {
-          return JSON.parse(userJson) as User;
+          return this.normalizeUser(JSON.parse(userJson));
         }
         return null;
       })
@@ -141,7 +143,8 @@ class AuthService {
     return api
       .get<User>("/profile", true)
       .then((user) => {
-        return this.saveUser(user).then(() => user);
+        const normalized = this.normalizeUser(user);
+        return this.saveUser(normalized).then(() => normalized);
       })
       .catch((error) => {
         if (error.message !== "Unauthorized") {
@@ -155,7 +158,8 @@ class AuthService {
     return api
       .put<User>("/profile", data, true)
       .then((user) => {
-        return this.saveUser(user).then(() => user);
+        const normalized = this.normalizeUser(user);
+        return this.saveUser(normalized).then(() => normalized);
       })
       .catch((error) => {
         console.error("Update profile failed:", error);
@@ -171,7 +175,8 @@ class AuthService {
     return api
       .put<User>("/profile/account", data, true)
       .then((user) => {
-        return this.saveUser(user).then(() => user);
+        const normalized = this.normalizeUser(user);
+        return this.saveUser(normalized).then(() => normalized);
       })
       .catch((error) => {
         console.error("Update account info failed:", error);
@@ -213,6 +218,14 @@ class AuthService {
     return this.getToken()
       .then((token) => token !== null)
       .catch(() => false);
+  }
+
+  private normalizeUser(raw: any): User {
+    return {
+      ...raw,
+      favoriteDrinks: raw.favoriteDrinks ?? raw.favorite_drinks,
+      favoriteClubIds: raw.favoriteClubIds ?? raw.favorite_club_ids,
+    };
   }
 
   private saveAuthData(jwt: string, user: User): Promise<void> {

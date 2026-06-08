@@ -169,6 +169,28 @@ class ApiService {
     return this.client.get("/clubs/my-club").then((response) => response.data);
   }
 
+  // QR code management
+  generateQRCode(
+    clubId: string,
+    data: { label?: string; valid_date: string; expires_at: string },
+  ) {
+    return this.client
+      .post(`/clubs/${clubId}/qr-codes`, data)
+      .then((r) => r.data.qr_code as any);
+  }
+
+  getQRCodes(clubId: string) {
+    return this.client
+      .get(`/clubs/${clubId}/qr-codes`)
+      .then((r) => r.data.qr_codes as any[]);
+  }
+
+  deleteQRCode(clubId: string, qrId: string) {
+    return this.client
+      .delete(`/clubs/${clubId}/qr-codes/${qrId}`)
+      .then((r) => r.data);
+  }
+
   uploadClubBanner(
     file: File,
     onProgress?: (progress: number) => void,
@@ -342,9 +364,7 @@ class ApiService {
   }
 
   // DJ user profile search (mobile DJ accounts)
-  searchDJUsers(
-    query: string = "",
-  ): Promise<
+  searchDJUsers(query: string = ""): Promise<
     Array<{
       id: string;
       username: string;

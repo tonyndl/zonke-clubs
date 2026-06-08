@@ -23,6 +23,7 @@ defmodule Backend.Application do
     opts = [strategy: :one_for_one, name: Backend.Supervisor]
     result = Supervisor.start_link(children, opts)
     Backend.Strobe.cleanup_stale_sessions()
+    Backend.Checkins.cleanup_expired()
     result
   end
 

@@ -160,7 +160,7 @@ defmodule Backend.Assets do
     content_type = get_content_type(filename)
 
     ExAws.S3.put_object(@bucket, filename, body, content_type: content_type)
-    |> ExAws.request(config: s3_config())
+    |> ExAws.request(s3_config_opts())
   end
 
   # Determine content type based on file extension
@@ -192,7 +192,7 @@ defmodule Backend.Assets do
   """
   def delete_object(filename) do
     S3.delete_object(@bucket, filename)
-    |> ExAws.request(config: s3_config())
+    |> ExAws.request(s3_config_opts())
   end
 
   @doc """
@@ -243,23 +243,22 @@ defmodule Backend.Assets do
   end
 
   @doc """
-  Returns S3 configuration (LocalStack for dev, AWS for prod).
+  Returns S3 config options as a keyword list (for ExAws.request/2).
+  """
+  defp s3_config_opts do
+    if Mix.env() == :dev do
+      local_ip = System.get_env("LOCAL_IP") || "192.168.1.140"
+      [scheme: "http://", host: local_ip, port: 4566, region: "us-east-1"]
+    else
+      []
+    end
+  end
+
+  @doc """
+  Returns a full ExAws.Config struct (for presigned_url and download_url).
   """
   def s3_config do
-    if Mix.env() == :dev do
-      # Use local network IP for mobile device access
-      # Change this to your machine's IP address if different
-      local_ip = System.get_env("LOCAL_IP") || "192.168.1.140"
-
-      ExAws.Config.new(:s3,
-        scheme: "http://",
-        host: local_ip,
-        port: 4566,
-        region: "us-east-1"
-      )
-    else
-      ExAws.Config.new(:s3)
-    end
+    ExAws.Config.new(:s3, s3_config_opts())
   end
 
   @doc """

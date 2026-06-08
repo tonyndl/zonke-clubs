@@ -163,9 +163,7 @@ export const ArrowIcon = styled.div<{ isOpen: boolean }>`
   display: flex;
   align-items: center;
   justify-content: center;
-  color: ${theme.colors.textSecondary};
-  transform: ${(props) => (props.isOpen ? "rotate(90deg)" : "rotate(0deg)")};
-  transition: transform ${theme.transitions.fast};
+  color: ${theme.colors.primary};
 
   svg {
     width: 20px;
