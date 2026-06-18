@@ -1,0 +1,94 @@
+{
+  "expo": {
+    "name": "Zonke Clubs",
+    "slug": "zonke-clubs",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/zonke-club-logo-with-background.png",
+    "scheme": "zonkeclubs",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.tonyndlovu.zonkeclubs",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/zonke-club-logo-with-background.png",
+        "backgroundColor": "#08041A"
+      },
+      "notification": {
+        "icon": "./assets/images/notification-icon.png",
+        "color": "#39f3ff"
+      },
+      "edgeToEdgeEnabled": true,
+      "predictiveBackGestureEnabled": false,
+      "package": "com.tonyndlovu.zonkeclubs",
+      "googleServicesFile": "./android/app/google-services.json",
+      "permissions": [
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.WAKE_LOCK",
+        "android.permission.CAMERA",
+        "android.permission.FLASHLIGHT"
+      ]
+    },
+    "web": {
+      "output": "static",
+      "favicon": "./assets/images/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/notification-icon.png",
+          "color": "#39f3ff"
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Allow Zonke Clubs to show clubs near you."
+        }
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/images/zonke-clubs-logo-no-background.png",
+          "imageWidth": 280,
+          "resizeMode": "contain",
+          "backgroundColor": "#0f2857",
+          "dark": {
+            "backgroundColor": "#0f2857"
+          }
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Zonke Clubs uses the camera to control your flashlight for DJ strobe sync.",
+          "microphonePermission": false,
+          "recordAudioAndroid": false
+        }
+      ],
+      "expo-font",
+      "expo-web-browser",
+      "expo-secure-store",
+      "expo-video",
+      "expo-localization"
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "4f84503b-5f0b-43b5-a070-49adf3f69733"
+      }
+    }
+  }
+}

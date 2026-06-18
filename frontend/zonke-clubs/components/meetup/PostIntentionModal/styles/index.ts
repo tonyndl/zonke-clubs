@@ -1,0 +1,178 @@
+import { StyleSheet } from "react-native";
+import { Colors } from "@/constants/ui";
+
+export const styles = StyleSheet.create({
+  header: {
+    alignItems: "center",
+    marginBottom: 24,
+  },
+  title: {
+    fontSize: 22,
+    fontWeight: "800",
+    color: Colors.platinum,
+    textAlign: "center",
+  },
+  subtitle: {
+    fontSize: 14,
+    color: Colors.smoke,
+    marginTop: 4,
+  },
+  activitiesGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+    marginBottom: 20,
+  },
+  activityCard: {
+    width: "48%",
+    backgroundColor: Colors.bgSecondary,
+    borderRadius: 16,
+    padding: 16,
+    alignItems: "center",
+    borderWidth: 2,
+    borderColor: "transparent",
+    marginBottom: 12,
+  },
+  activityCardSelected: {
+    borderColor: Colors.gold,
+    backgroundColor: "rgba(57, 243, 255, 0.1)",
+  },
+  activityEmoji: {
+    fontSize: 32,
+    marginBottom: 8,
+  },
+  activityLabel: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: Colors.smoke,
+  },
+  activityLabelSelected: {
+    color: Colors.gold,
+  },
+  checkmark: {
+    position: "absolute",
+    top: 8,
+    right: 8,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: Colors.gold,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  dateSection: {
+    marginBottom: 20,
+  },
+  sectionLabel: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: Colors.platinum,
+    marginBottom: 12,
+  },
+  dateOptionsContainer: {
+    gap: 8,
+  },
+  dateOption: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    backgroundColor: Colors.bgSecondary,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: "transparent",
+  },
+  dateOptionSelected: {
+    backgroundColor: Colors.gold,
+    borderColor: Colors.gold,
+  },
+  dateOptionText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: Colors.smoke,
+  },
+  dateOptionTextSelected: {
+    color: Colors.bg,
+  },
+  moreDatesButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    backgroundColor: "rgba(57, 243, 255, 0.1)",
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: "rgba(57, 243, 255, 0.3)",
+  },
+  moreDatesText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: Colors.primaryBlue,
+  },
+  inputContainer: {
+    marginBottom: 24,
+  },
+  inputLabel: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: Colors.platinum,
+    marginBottom: 12,
+  },
+  input: {
+    backgroundColor: Colors.bgSecondary,
+    borderRadius: 12,
+    padding: 14,
+    fontSize: 14,
+    color: Colors.platinum,
+    minHeight: 100,
+    textAlignVertical: "top",
+  },
+  charCount: {
+    fontSize: 12,
+    color: Colors.smoke,
+    textAlign: "right",
+    marginTop: 6,
+  },
+  actions: {
+    flexDirection: "row",
+    gap: 12,
+    marginTop: 8,
+  },
+  removeButton: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingVertical: 16,
+    backgroundColor: "rgba(255, 107, 107, 0.1)",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "rgba(255, 107, 107, 0.3)",
+  },
+  removeText: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#ff6b6b",
+  },
+  submitButton: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingVertical: 16,
+    backgroundColor: Colors.gold,
+    borderRadius: 12,
+  },
+  submitButtonDisabled: {
+    opacity: 0.5,
+  },
+  submitText: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: Colors.bg,
+  },
+});

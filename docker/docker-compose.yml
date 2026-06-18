@@ -1,0 +1,25 @@
+version: "3.8"
+
+services:
+  localstack:
+    image: localstack/localstack:latest
+    container_name: zonke-clubs-localstack
+    ports:
+      - "4566:4566" # LocalStack main endpoint
+      - "4571:4571" # Additional services
+    environment:
+      - SERVICES=s3 # Only run S3 service
+      - DEBUG=1 # Enable debug logs
+      - PERSISTENCE=1 # Persist data between restarts
+      - DATA_DIR=/var/lib/localstack/data
+      - AWS_DEFAULT_REGION=us-east-1
+    volumes:
+      - "./localstack-data:/var/lib/localstack/data" # Data persistence
+      - "/var/run/docker.sock:/var/run/docker.sock" # Docker access
+      - "./localstack/init/init-aws.sh:/etc/localstack/init/ready.d/init-aws.sh" # Init script
+    networks:
+      - zonke-network
+
+networks:
+  zonke-network:
+    driver: bridge
